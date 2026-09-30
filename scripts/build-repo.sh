@@ -225,7 +225,11 @@ if $DO_REPO; then
     done
 
     KEY=""
+    # CI hands the passphrase over; locally gpg-agent asks for it (pinentry)
+    # once and caches it for the rest of the run.
+    SIGN_OPTS=()
     if [[ -n "${INVICTUS_SIGNING_KEY:-}" ]]; then
+        SIGN_OPTS=(--batch --pinentry-mode loopback --passphrase "${INVICTUS_SIGNING_PASSPHRASE:-}")
         export GNUPGHOME="$WORK/gnupg"
         install -dm700 "$GNUPGHOME"
         echo "allow-loopback-pinentry" > "$GNUPGHOME/gpg-agent.conf"
@@ -248,8 +252,7 @@ if $DO_REPO; then
         for c in "${current[@]}"; do
             if [[ -f "$c.sig" ]] && gpg --batch --verify "$c.sig" "$c" 2>/dev/null; then continue; fi
             rm -f "$c.sig"
-            gpg --batch --pinentry-mode loopback --passphrase "${INVICTUS_SIGNING_PASSPHRASE:-}" \
-                --local-user "$KEY" --detach-sign --no-armor --output "$c.sig" "$c"
+            gpg "${SIGN_OPTS[@]}" --local-user "$KEY" --detach-sign --no-armor --output "$c.sig" "$c"
         done
         repo-add --sign --key "$KEY" "$REPO_NAME.db.tar.gz" "${current[@]}"
     else
