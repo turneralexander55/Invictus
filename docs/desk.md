@@ -291,3 +291,7 @@ Reused: the claude.ai Desk's sections, order, rules and words (Needs you, answer
 - `look.md`, "The Desk": replaced by a pointer here; the Now module's click opens the Desk (AI and No AI).
 - `no-ai.md` 4: the Desk table points here; the timer sits on the Now card; the Super+D row reads "Tap Super".
 - `simple-mode.md` 6 and 8: "The Desk" rows now say Atrium shows it only when a team is set up (1.3).
+
+## Team mode control (Alex, 2026-09-30)
+
+The header carries a small **Mode: Lean · Standard · Full** control, the same as the phone Desk (proposal in claude-team `projects/personal/iris-dashboard/proposals/team-mode.md`). It writes `meta/mode` as a person-signed field (design-desk.md), never written by a session. One gold rule holds: the current mode is a marble underline, not gold.
