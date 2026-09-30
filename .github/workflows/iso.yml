@@ -14,9 +14,16 @@
 # the run and no ISO is uploaded. The ISO is uploaded as a workflow artifact;
 # with publish on a release build it is also attached to a GitHub release
 # tagged iso-<version>.
+#
+# Manual dispatch only works once this file is on the default branch. Until
+# then, a push to the working branch that changes iso/build-request runs a
+# dev build (kind and channel fall back to dev and testing).
 name: iso
 
 on:
+  push:
+    branches: [ccr-e2dd4715-j4vnyk]
+    paths: [iso/build-request]
   workflow_dispatch:
     inputs:
       kind:
@@ -45,6 +52,9 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 330
+    env:
+      KIND: ${{ inputs.kind || 'dev' }}
+      CHANNEL: ${{ inputs.channel || 'testing' }}
     outputs:
       iso: ${{ steps.iso.outputs.name }}
       version: ${{ steps.iso.outputs.version }}
@@ -64,10 +74,9 @@ jobs:
           tests/iso/run.sh
 
       - name: Download the published signed repo (release)
-        if: inputs.kind == 'release'
+        if: env.KIND == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
-          CHANNEL: ${{ inputs.channel }}
         run: |
           tag=invictus-testing
           [ "$CHANNEL" = stable ] && tag=invictus
@@ -76,16 +85,13 @@ jobs:
           ls out/iso-repo | head -50
 
       - name: Build the ISO
-        env:
-          KIND: ${{ inputs.kind }}
-          CHANNEL: ${{ inputs.channel }}
         run: |
           args=(--channel "$CHANNEL")
           [ "$KIND" = release ] && args+=(--release)
           scripts/build-iso.sh "${args[@]}"
 
       - name: Install jobs on a real btrfs disk image (limine, snapper)
-        if: inputs.kind == 'dev'
+        if: env.KIND == 'dev'
         run: |
           sudo modprobe btrfs loop
           docker run --rm --privileged -v "$PWD:/src:ro" -v "$PWD/out/iso-repo:/repo:ro" \
