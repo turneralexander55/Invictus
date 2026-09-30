@@ -154,7 +154,7 @@ Options: `Lock the desktop style` (writes `/etc/invictus/flavor.lock`, password 
 - **Undo the last update**: `Undo last update` with one line of what it undoes (`38 changes from yesterday 03:10`). No password (Minerva tier 1).
 - **What changed**: the last update in plain names (`Internet (Zen Browser) 128 to 129`, then `and 34 parts of the system` collapsed).
 - **Custodia**: `Pause updates` with `1 day`, `7 days`, `14 days`. The system prompt holds for 5 seconds and says `Updates keep this computer safe. Paused updates start again by themselves on <date>.` While paused, the card says so with `Resume now`.
-- **Libertas**: no Pause. The row `Automatic updates: On` links to Safety copies, where the switch lives with the other nets (a choice, see 8).
+- **Libertas**: no Pause. The row `Automatic updates: On` links to Safety copies, where the switch lives with the other nets (accepted by Minerva, 12.4).
 - **Where updates come from**: `Stable: tested by Alex for a week first`. Custodia: locked to Stable, with `Custodia keeps Stable.` Libertas: `Testing` can be chosen, with the password.
 
 ### 3.7 Safety copies
@@ -177,8 +177,8 @@ See section 4.
 - **Account**: `Signed in to Claude`, since when, `Working` or `Can't reach Claude`; `Switch account` and `Sign out`. Sign in opens the browser; the window comes back when done. Settings never sees the token.
 - **Voice and limits**:
   - `Talk to Moneta`: `Hold the pen button and speak. Your voice is turned into text on this computer, then sent.` On/Off.
-  - **`Full access`** (Alex, 2026-09-30, DS11): `Let Moneta use the terminal and every tool, like a person at the keyboard. It still asks before each change, and system changes still need your password.` **Libertas: a switch, off by default.** **Custodia: locked off** with `Custodia keeps Moneta to a fixed set of safe tools.` Turning it on has no hold and no warning: Libertas was the guarded step. Turning it on or off restarts Moneta with `Moneta is starting again with the new rules` (the same restart as a guard-rails switch, Minerva 1.6 G7).
-- Options: `Team and memory` (local only, connect to a team repo, or make a new one), `A command-line agent` (Libertas only: `generic-cli`, the command filled in by the person; Custodia does not offer it, Minerva 4.1).
+  - **`Full access`** (Alex, 2026-09-30, DS11): `Let Moneta use the terminal and every tool, like a person at the keyboard. It still asks before each change, and system changes still need your password.` **Libertas: a switch, off by default.** **Custodia: locked off** with `Custodia keeps Moneta to a fixed set of safe tools.` Turning it on asks for the password with no hold and no warning: Libertas was the guarded step (Minerva 12.3: its own action, `org.invictus.sys.assistant-full-access`, password every time, never cached; the value lives in `/etc/invictus/assistant`). Turning it on or off restarts Moneta with `Moneta is starting again with the new rules` (the same restart as a guard-rails switch, Minerva 1.6 G7). **It ends with Libertas**: during a timed Libertas the row says `Ends with Libertas at 15:20`, and any return to Custodia (the click, the hour running out, a restart after the hour) turns it off; the row then says `Turned off when guard rails came back on at 15:20.` Going back to Libertas needs the switch again (not the nets pattern; Minerva 12.3 says why).
+- Options: `Team and memory` (local only, connect to a team repo, or make a new one), `A command-line agent` (only while Full access is on: `generic-cli`, the command filled in by the person; with Full access off or under Custodia the row is locked and a configured agent does not start, with `Moneta's command-line agent is off. Pick who answers in Settings > Moneta.`, Minerva 12.3).
 
 ### 3.10 Help from Alex
 
@@ -226,20 +226,20 @@ Clicks from Settings: 3 (Switch to Libertas, Continue, Switch) + wait + password
 
 ### 4.3 While Libertas is on
 
-- **Timed** (`settings-guard-rails-libertas-timed.html`): a card above the two choices, `lapis` edge: `Libertas until 15:20`, `Since 14:20 today. Switched by Maria, with her password. A safety copy was made first.`, the minutes left, large, and a bar that empties. The sidebar item shows `42 min`. The **taskbar** (Atrium) or the **bar** (Tessera) shows `Libertas · 42 min` with the shield, `lapis` outline, one click opens this page. When it ends, a message: `Guard rails are back on` / `Custodia is on again.` (`laurel`, 8 s).
+- **Timed** (`settings-guard-rails-libertas-timed.html`): a card above the two choices, `lapis` edge: `Libertas until 15:20`, `Since 14:20 today. Switched by Maria, with her password. A safety copy was made first.`, the minutes left, large, and a bar that empties (all from `/etc/invictus/guardrails-until`, Minerva 12.1). If Full access is on, one more line: `Moneta's full access ends then too.` The sidebar item shows `42 min`. The **taskbar** (Atrium) or the **bar** (Tessera) shows `Libertas · 42 min` with the shield, `lapis` outline, one click opens this page. When it ends, a message: `Guard rails are back on` / `Custodia is on again.` (`laurel`, 8 s).
 - **Until turned back on**: the same card without the countdown: `Libertas since 22 September. Switched by Maria, with her password.` No taskbar badge: someone who chose "until I turn them back on" chose it for good (Alex's own machines), and a permanent badge would be noise. The home page, the doctor and the helper digest still say it (Minerva TS11).
 - The Custodia card shows `Turn guard rails back on now`, `Instant. No password.`
 
 ### 4.4 To Custodia
 
-One click, no password, no question (Minerva 1.6: instant, local session only). The page updates at once; the Acta line is written; Moneta restarts with the new rules if it was running. If the person had turned nets off under Libertas, the Safety copies page shows them all locked on again, and their choices come back if they go to Libertas again (Minerva's nets file).
+One click, no password, no question (Minerva 1.6: instant, local session only). The page updates at once; the Acta line is written; Moneta restarts with the new rules if it was running. If the person had turned nets off under Libertas, the Safety copies page shows them all locked on again, and their choices come back if they go to Libertas again (Minerva's nets file). Moneta's Full access is turned off, not remembered (Minerva 12.3).
 
 ### 4.5 Edge cases the page must show honestly
 
 - **During a help session**: switching to Libertas is not possible from Alex's side; the page still offers it to the person, and the prompt still needs their password at their keyboard. The page does not hide this.
 - **Finishing an update first**: `guardrails set` waits for a running update. The prompt stays up with `Finishing an update first` under the heading.
 - **Changed elsewhere** (the hour ran out, or a terminal): Settings watches `/etc/invictus/guardrails` and redraws; it never shows a stale state.
-- **Restart during a timed Libertas**: the hour is a wall-clock end time, not a running timer, so a restart does not extend it (a question for Minerva, section 9).
+- **Restart during a timed Libertas**: the hour is a wall-clock end time in `/etc/invictus/guardrails-until` (Minerva 12.1), not a running timer, so a restart does not extend it; a machine that is off when the hour ends comes back as Custodia before anyone can log in, and shows `Guard rails are back on` at the first login. Settings, the taskbar and the bar read the end from that file and never compute one.
 
 ---
 
@@ -286,7 +286,7 @@ Header `Go back`, with `Copies use 14 GB. Old ones are removed by themselves.` o
 
 `Go back to this` opens a confirm card: `Go back to Tuesday 11:02?` / `Apps and settings go back to how they were then, and the computer restarts. Your own files don't change. A copy of now is made first, so you can come back.` Buttons `Go back and restart` and `Cancel`, equal weight; then the password prompt (tier 2 `rollback <id>` under Custodia; `auth_admin_keep` under Libertas).
 
-**Your files**: grouped by day, each hour a row. Two actions per row: **Look inside** (opens that copy in Files, read-only, to copy one photo back: the common case, "put my photo back") and **Go back to this** (all your files as they were then; a copy of now first; no restart; confirm card `Put all your files back to 14:00?` / `Files you changed or added since then go back to how they were. A copy of now is made first.`). No password: they are the person's own files (the restore runs as the user through `invictus-sys` tier 1 if it needs root to swap the subvolume; Minerva to confirm, section 9).
+**Your files**: grouped by day, each hour a row. In v1 one action per row: **Look inside** (opens that copy, `/home/.snapshots/<n>/snapshot/<user>/`, in Files, read-only, to copy one photo back: the common case, "put my photo back"). Minerva 12.2: a whole-files restore is the one action on this page that can silently remove hours of work from every app, and it cannot run cleanly while the person is logged in, so it is v1.1 as a logout-time job. **v1.1: Go back to this** (all your files as they were then; a copy of now first; runs when you log out; confirm card `Put all your files back to 14:00?` / `Files you changed or added since then go back to how they were when you log out. A copy of now is made first.` with `Log out now` and `Later`). No password: they are the person's own files.
 
 The home page's `Get a file back` opens this tab.
 
@@ -301,7 +301,7 @@ Same patterns as `simple-mode.md` 4.
 | Timed Libertas ends | `Guard rails are back on` | `Custodia is on again.` | none (8 s) | laurel |
 | An update needs a restart (once a day at most) | `Restart when you're ready` | `An update finishes when the computer restarts. Your apps open again after.` | `Restart now` · `Later` | lapis |
 | After going back (system), on the next start | `Your computer went back to Tuesday 11:02` | `Apps and settings are as they were then. Your files are fine.` | `Got it` | laurel |
-| After going back (files) | `Your files are back to 14:00` | `A copy of how they were a moment ago is in Safety copies.` | `Open Safety copies` | laurel |
+| After going back (files), at the next login (v1.1) | `Your files are back to 14:00` | `A copy of how they were before is in Safety copies.` | `Open Safety copies` | laurel |
 | Screens changed, keep-this | (the card, not a message) | | `Keep` · `Go back` | |
 
 ---
@@ -334,7 +334,7 @@ Before = what exists today in Invictus (Tessera tools and the terminal). Counted
 | Make text bigger | Launcher, `nwg-look`, find the font size, change it, apply: about 6 steps, 2 jargon words | Start, Settings, `Make text bigger`, pick 150%: 4 clicks |
 | Switch to Libertas for an hour | Not possible on screen (terminal verb) | Start, Settings, Guard rails, Switch to Libertas..., Continue, wait 5 s, password, Switch: 6 clicks + password, 0 decisions |
 | Guard rails back on | Terminal | Taskbar `Libertas · 42 min`, Turn guard rails back on now: 2 clicks |
-| Get a deleted photo back | Terminal (`snapper`, a mount) | Start, Settings, `Get a file back`, Look inside on the hour, copy the photo in Files: 5 clicks + drag |
+| Get a deleted photo back | Terminal (`snapper`, a mount) | Start, Settings, `Get a file back`, Look inside on the hour, copy the photo in Files: 5 clicks + drag (v1's only files restore, Minerva 12.2) |
 | Undo a bad app install (system) | Terminal (`snapper rollback`) | Settings, Safety copies, The system, Go back to this, Go back and restart, password: 5 clicks + password |
 | Turn off hourly copies (Libertas) | Edit a config as root | Settings, Safety copies, the switch, password: 3 clicks + password |
 | Change motion to Calm | Launcher, `Change motion`, pick: 3 steps | Settings, Look, Calm: 3 clicks |
@@ -344,6 +344,8 @@ Before = what exists today in Invictus (Tessera tools and the terminal). Counted
 ---
 
 ## 9. For Minerva (questions the pages raise)
+
+Answered (Minerva, 2026-09-30, `design-simple-mode.md` section 12): 1 is 12.1 (the until-file is `/etc/invictus/guardrails-until`, enforced by a root timer, at boot and by `invictus-sys`); 2 accepted, 12.4; 3 is `Look inside` only in v1, the logout job in v1.1, 12.2; 4 confirmed with its own action, no keep, and cleared on every return to Custodia rather than remembered, 12.3; 5 as assumed, both read the until-file. Sections 3.9, 4.5, 5.3 and 6 above carry the changes.
 
 1. **Timed Libertas across a restart.** The page says `until 15:20`. The design assumes a wall-clock end (`OnCalendar` with `Persistent=true`), so a restart never extends it and a machine off at 15:20 comes back as Custodia. Also: the end time must be readable by the session (for the countdown), for example `/etc/invictus/guardrails-until`, 0644.
 2. **The nets switches' home.** Minerva put the automatic-updates and start-up-guard switches under Settings > Updates; this design puts all nets on Safety copies, with a link from Updates. One place for every net, which is also what the Custodia lock explains once. If she wants them on Updates, the rows move; nothing else changes.
