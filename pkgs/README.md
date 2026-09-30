@@ -9,7 +9,7 @@ publishes to the `invictus-testing` release.
 | `own/` | Our own packages. They install files from elsewhere in this repo (`scripts/`, `config/`, `theme/`, `assets/`), found at `$startdir/../../..`; `build-repo.sh` stages the whole checkout | `invictus-keyring`, `invictus-tools`, `invictus-branding` |
 | `meta/` | Packages that pull a set of software. `invictus-desktop` also carries the desktop config and the first-login unit | `invictus-base`, `-desktop`, `-gaming`, `-dev` |
 | `aur/` | AUR PKGBUILDs copied at a reviewed commit, with checksums, and the upstream signing key in `keys/pgp/` when the source is signed. Never built from a live AUR checkout | `xwaylandvideobridge` |
-| `pinned/` | `hypr.lock`: the exact Arch files of the hypr* set, fetched and verified by `scripts/fetch-pinned.sh` at build time. No binaries in git | 15 packages, Hyprland 0.56.2-3 |
+| `pinned/` | `hypr.lock`: the exact Arch files of the hypr* set, fetched and verified by `scripts/fetch-pinned.sh` at build time. No binaries in git | 16 packages, Hyprland 0.56.2-3 |
 
 Rules:
 - Bump `pkgrel` whenever a file a PKGBUILD installs changes. CI reuses a
