@@ -1,0 +1,32 @@
+--------------------------------------------------------------------------------
+--                                                                            --
+--                                MONITORS                                    --
+--                                                                            --
+--------------------------------------------------------------------------------
+-- This file defines the physical monitor layout and properties.
+--
+-- Use this file to configure:
+--   • Resolution and refresh rate per display
+--   • Monitor positioning in the global layout
+--   • Scaling factors
+--   • Rotation / transforms for vertical or rotated displays
+--
+-- Monitor coordinates are relative to the global layout space.
+-- Negative offsets are valid and useful for stacked or asymmetric setups.
+--
+-- No rules are set, so Hyprland uses its defaults for every display (same as
+-- the old empty monitors.conf). Example, one rule per output:
+--
+-- hl.monitor({
+--     output   = "DP-2",
+--     mode     = "2560x1440@165",
+--     position = "0x0",
+--     scale    = 1,
+-- })
+--
+-- Catch-all for any display without its own rule:
+--
+-- hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
+--
+-- See https://wiki.hypr.land/Configuring/Basics/Monitors/
+--------------------------------------------------------------------------------
