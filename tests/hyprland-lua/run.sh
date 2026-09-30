@@ -143,7 +143,7 @@ grep -q -- "-selected-row 0" "$FAKE_DIR/args" || { echo "FAIL  default row is no
 grep -q -- "-no-custom" "$FAKE_DIR/args" || { echo "FAIL  free text is allowed"; cp_fail=1; }
 grep -q -- "-p Log out?" "$FAKE_DIR/args" || { echo "FAIL  prompt not passed to rofi"; cp_fail=1; }
 run_confirm "Yes" >/dev/null; rm -f "$FAKE_DIR/powered"
-bash "$REPO/scripts/confirm.sh" "Log out?" touch "$FAKE_DIR/powered" 2>/dev/null && { echo "FAIL  missing -- accepted"; cp_fail=1; } || true
+if bash "$REPO/scripts/confirm.sh" "Log out?" touch "$FAKE_DIR/powered" 2>/dev/null; then echo "FAIL  missing -- accepted"; cp_fail=1; fi
 [[ ! -e "$FAKE_DIR/powered" ]] || { echo "FAIL  missing -- ran the command"; cp_fail=1; }
 if [[ $cp_fail == 0 ]]; then echo "ok    only Yes runs the command; No, Escape and other text do nothing; default is No"; else fail=1; fi
 echo

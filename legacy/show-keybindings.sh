@@ -165,7 +165,7 @@ echo "" >> "$OUTPUT_FILE"
 
 if command -v rofi &>/dev/null; then
     # Use rofi
-    cat "$OUTPUT_FILE" | rofi -dmenu \
+    rofi -dmenu < "$OUTPUT_FILE" \
         -i \
         -p "Keybindings" \
         -theme-str 'window {width: 60%;} listview {lines: 25;}' \
