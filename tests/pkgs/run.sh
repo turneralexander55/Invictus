@@ -398,6 +398,17 @@ rc=0; BUMP_SUMS_CMD=':' bump demo --reviewer Tester --commit "$C3" --yes || rc=$
 if ! { [[ $rc == 3 ]] && grep -q "more than the version and checksums" "$B/out" && grep -q "helper.sh" "$B/out" && cmp -s "$P" "$B/before"; }; then
     abad "bump of a structural change: want exit 3 and no edit, got $rc: $(tail -4 "$B/out")"
 fi
+# Regression, bump-sig-skip (2026-09-30): updpkgsums writes SKIP for
+# signature files; bump-aur.sh must pin them like every other source.
+eval "$(sed -n '/^pin_signature_sums() {/,/^}/p' "$REPO/scripts/dev/bump-aur.sh")"
+SK="$TMP/sigskip"; mkdir -p "$SK/src"
+printf 'tarball' > "$SK/src/demo-1.tar.gz"; printf 'signature' > "$SK/src/demo-1.tar.gz.asc"
+S_T="$(printf 'tarball' | sha256sum | cut -d' ' -f1)"; S_A="$(printf 'signature' | sha256sum | cut -d' ' -f1)"
+printf "pkgname=demo\nsource=(\"demo-1.tar.gz::https://x/demo-1.tar.gz\"\n        \"demo-1.tar.gz.asc::https://x/demo-1.tar.gz.asc\")\nsha256sums=('%s'\n            'SKIP')\nvalidpgpkeys=('X')\n" "$S_T" > "$SK/PKGBUILD"
+( cd "$SK" && SRCDEST="$SK/src" pin_signature_sums )
+if [[ "$(bash -c 'source "$1"; echo "${sha256sums[*]}"' _ "$SK/PKGBUILD")" != "$S_T $S_A" ]] || ! grep -q "^validpgpkeys=('X')" "$SK/PKGBUILD"; then
+    abad "bump-sig-skip: signature checksum not pinned: $(cat "$SK/PKGBUILD")"
+fi
 [[ $a_fail == 0 ]] && ok "$(find "$REPO/pkgs/aur" -name PKGBUILD | wc -l) AUR pins: commit, review and update lines, no SKIP, signers' keys match; bump-aur.sh check, apply, refusals"
 echo
 

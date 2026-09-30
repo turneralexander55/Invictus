@@ -157,33 +157,56 @@ if [[ "$MODE" == bump ]]; then
 fi
 
 # ---- checksums and signatures ------------------------------------------------------
+# Both run in the package folder, as a normal user, with SRCDEST set.
+# updpkgsums writes SKIP for signature files; we pin those too (the same
+# rule as every other source), then let makepkg check the signatures.
+pin_signature_sums() {
+    local names=() sums=() i n out
+    mapfile -t names < <(bash -c 'source ./PKGBUILD; for s in "${source[@]}"; do if [[ "$s" == *::* ]]; then echo "${s%%::*}"; else echo "${s##*/}"; fi; done')
+    mapfile -t sums < <(bash -c 'source ./PKGBUILD; printf "%s\n" "${sha256sums[@]}"')
+    for i in "${!names[@]}"; do
+        n="${names[$i]}"
+        if [[ "${sums[$i]:-}" == SKIP && "$n" =~ \.(sig|asc|sign)$ ]]; then
+            sums[i]="$(sha256sum "$SRCDEST/$n" | cut -d' ' -f1)"
+        fi
+    done
+    out="sha256sums=('${sums[0]}'"
+    for ((i = 1; i < ${#sums[@]}; i++)); do out+=$'\n'"            '${sums[$i]}'"; done
+    out+=")"
+    awk -v block="$out" '
+        /^sha256sums=\(/ { skip = 1; print block }
+        skip { if ($0 ~ /\)/) skip = 0; next }
+        { print }' PKGBUILD > PKGBUILD.new && cat PKGBUILD.new > PKGBUILD && rm PKGBUILD.new
+}
+recompute_sums() {
+    local key
+    for key in keys/pgp/*.asc; do if [[ -f "$key" ]]; then gpg --batch --quiet --import "$key"; fi; done
+    mkdir -p "$SRCDEST"
+    updpkgsums
+    pin_signature_sums
+    makepkg --verifysource --noconfirm
+    rm -rf src
+}
+
 echo "==> Recomputing checksums and checking signatures for $NAME"
 if [[ -n "${BUMP_SUMS_CMD:-}" ]]; then
     bash -c "$BUMP_SUMS_CMD" _ "$DIR"
 elif command -v makepkg >/dev/null && [[ $EUID -ne 0 ]]; then
     command -v updpkgsums >/dev/null || { echo "updpkgsums not found: install pacman-contrib" >&2; exit 2; }
-    ( cd "$DIR"
-      for key in keys/pgp/*.asc; do [[ -f "$key" ]] && gpg --batch --quiet --import "$key"; done
-      export SRCDEST="$TMP/src"; mkdir -p "$SRCDEST"
-      updpkgsums
-      makepkg --verifysource --noconfirm
-      rm -rf src )
+    ( cd "$DIR" && SRCDEST="$TMP/src" && export SRCDEST && recompute_sums )
 else
     RUNTIME="$(command -v podman || command -v docker || true)"
     [[ -n "$RUNTIME" ]] || { echo "Need makepkg (Arch, not root) or podman/docker." >&2; exit 2; }
     read -ra extra <<< "${CONTAINER_ARGS:-}"
+    BUMP_FUNCS="$(declare -f pin_signature_sums recompute_sums)"
+    export BUMP_FUNCS
     # shellcheck disable=SC2016 # expanded in the container
-    "$RUNTIME" run --rm -v "$DIR:/pkg" "${extra[@]}" "$IMAGE" bash -c '
+    "$RUNTIME" run --rm -v "$DIR:/pkg" -e BUMP_FUNCS "${extra[@]}" "$IMAGE" bash -c '
         set -euo pipefail
         pacman -Syu --noconfirm --needed pacman-contrib git >/dev/null
         useradd -m builder
         cp -r /pkg /home/builder/pkg && chown -R builder /home/builder/pkg
-        sudo -u builder -H bash -c "
-            set -euo pipefail
-            cd ~/pkg
-            for key in keys/pgp/*.asc; do [[ -f \$key ]] && gpg --batch --quiet --import \$key; done
-            updpkgsums
-            makepkg --verifysource --noconfirm"
+        sudo -u builder -H --preserve-env=BUMP_FUNCS bash -c "set -euo pipefail; eval \"\$BUMP_FUNCS\"; cd ~/pkg; export SRCDEST=~/srcdest; recompute_sums"
         cat /home/builder/pkg/PKGBUILD > /pkg/PKGBUILD'
 fi
 

@@ -9,4 +9,4 @@ limine-mkinitcpio-hook    GraalVM (300 MB) and a native-image build
 limine-snapper-sync       GraalVM (300 MB) and a native-image build
 proton-ge-custom-bin      560 MB download, 600 MB package
 zen-browser-bin           110 MB download
-visual-studio-code-bin    110 MB .deb
+visual-studio-code-bin    110 MB .deb, 320 MB package

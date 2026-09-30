@@ -1,5 +1,5 @@
 # Copied from the AUR: https://aur.archlinux.org/claude-code.git
-# aur-commit: 5f4ea221a388adc3d500fcf05d1e2d528524aee6 (2.1.285, 2026-09-29)
+# aur-commit: 5f4ea221a388adc3d500fcf05d1e2d528524aee6 (2.1.285-1, 2026-09-29)
 # Reviewed 2026-09-30 by Vulcan: installs Anthropic's prebuilt x86_64
 # binary from downloads.claude.ai into /opt with a /usr/bin wrapper that
 # turns off Claude Code's self-update (pacman updates it). No build step,
