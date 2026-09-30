@@ -111,7 +111,7 @@ if [[ -n "$GPU_CARD" ]] && [[ -d "$GPU_CARD/device" ]]; then
 
     # Get power draw
     GPU_POWER="N/A"
-    if [[ -f "$GPU_CARD/device/hwmon/hwmon*/power1_average" ]]; then
+    if compgen -G "$GPU_CARD/device/hwmon/hwmon*/power1_average" >/dev/null; then
         POWER_UW=$(head -qn1 "$GPU_CARD"/device/hwmon/hwmon*/power1_average 2>/dev/null | head -n1)
         POWER_UW=${POWER_UW:-0}
         if [[ "$POWER_UW" != "0" ]]; then
