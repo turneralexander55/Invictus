@@ -1,0 +1,45 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# Meta package: depends only, no files. What each set is for and why each
+# package is in it: docs/packages.md.
+#
+# Tessera, the tiling flavour (Alex's desktop, formerly "Tiling"): the bar,
+# launcher and apps its waybar modules and binds open. The shared session
+# (Hyprland, portals, audio, files, fonts, the config) is invictus-desktop.
+# A machine can have Tessera and Atrium both installed; people switch live,
+# so the two never list the same package and never conflict.
+
+pkgname=invictus-tessera
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Invictus Tessera: the tiling desktop (waybar, rofi, Alex binds)'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=(
+  'invictus-desktop'
+
+  # bar and launcher (rofi also serves invictus-tools' pickers)
+  'waybar' 'rofi'
+
+  # what the waybar modules open on click
+  'pavucontrol' 'nm-connection-editor' 'btop'
+
+  # clipboard history (autostart stores it)
+  'cliphist'
+
+  # binds: Super+Y, Super+D; Discord runs under XWayland and needs the
+  # bridge to share a Wayland window (AUR, pkgs/aur/)
+  'yazi' 'discord' 'xwaylandvideobridge'
+
+  # terminal visualiser the theme tool recolours; GTK settings by hand
+  'cava' 'nwg-look'
+)
+optdepends=(
+  'invictus-gaming: Steam for the Super+G bind'
+  'invictus-dev: Zed for the Super+T bind'
+)
+
+package() {
+  :
+}

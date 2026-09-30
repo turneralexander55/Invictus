@@ -7,7 +7,9 @@
 # runs, not only the eleven names in design 1.5: hyprwire,
 # hyprland-guiutils, hyprtoolkit and hyprland-qt-support link against
 # the same libhyprutils/libhyprlang sonames, so leaving them to [extra]
-# would let Arch move a soname under a pinned Hyprland.
+# would let Arch move a soname under a pinned Hyprland. hyprshutdown
+# (the log-out bind uses it) links libhyprtoolkit/libhyprutils, so it is
+# pinned too (package audit, 2026-09-30).
 hyprland 0.56.2-3 x86_64 29dffae75c6dce936c31871bb223e9f60fe80882722565b823e7e0213b5d6086
 aquamarine 0.15.1-1 x86_64 ac96995cceea132e32cafd9bf63fd6cbe3d0599ab175e82bcee85b0c7da9706c
 hyprutils 0.14.2-1 x86_64 177dfe5d64dba65ef2f1274d84d647b12cc1bc0b808394fd556f135ac8d7e65e
@@ -23,3 +25,4 @@ hyprpaper 0.8.4-9 x86_64 8be950d50b261769b0a11d49eff8b25e7135d95bbc41350688478a5
 hypridle 0.1.8-2 x86_64 bf492603336e83e36551dc16edbd3351c04b4a2e9cd571a9164b5393029b2e7a
 hyprlock 0.9.6-3 x86_64 e1408ddf42d77c9babed0fac2e4022e9f45df44e9d3cd708ed8073242aaf1964
 hyprpolkitagent 0.2.0-1 x86_64 8267577cceee062d173e75f291ee550c61fe9c9331b2a4c4876c27a13d41c93e
+hyprshutdown 0.1.1-8 x86_64 f3cf8d385445ae082ca7543a3680d617405f5ebe8b8d1164ed9a1d93dbc3c54c

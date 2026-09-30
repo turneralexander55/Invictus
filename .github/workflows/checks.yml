@@ -1,5 +1,6 @@
 # Checks on every push and pull request: shell and Lua lint, the config and
-# package tests, an end-to-end signed-repo test in Arch, and a secrets scan
+# package tests, the package sets checked against Arch and the AUR, an
+# end-to-end signed-repo test in Arch, and a secrets scan
 # over the full git history.
 name: checks
 
@@ -14,8 +15,23 @@ permissions:
 jobs:
   shellcheck:
     runs-on: ubuntu-24.04
+    env:
+      # Pinned so CI and local runs use the same checks (the runner's apt
+      # copy is 0.9.0 and lagged the local one). Bump both together.
+      SHELLCHECK_VERSION: 0.11.0
+      SHELLCHECK_SHA256: 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install shellcheck (checksum pinned)
+        run: |
+          curl -sSfL -o shellcheck.tar.xz \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+          echo "${SHELLCHECK_SHA256}  shellcheck.tar.xz" | sha256sum -c -
+          tar -xJf shellcheck.tar.xz --strip-components=1 "shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
+          rm shellcheck.tar.xz
+          sudo install -m755 shellcheck /usr/local/bin/shellcheck
+          rm shellcheck
+          shellcheck --version | grep -qx "version: ${SHELLCHECK_VERSION}"
       - name: shellcheck scripts
         run: |
           mapfile -t files < <(git ls-files '*.sh')
@@ -55,6 +71,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build, sign with a throwaway key, install from the repo
         run: bash tests/pkgs/e2e-arch.sh "$GITHUB_WORKSPACE"
+
+  packages-live:
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Package sets against Arch and the AUR today
+        run: bash tests/pkgs/live-arch.sh "$GITHUB_WORKSPACE"
 
   adopt-e2e:
     runs-on: ubuntu-24.04

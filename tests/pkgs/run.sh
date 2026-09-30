@@ -72,6 +72,126 @@ dupes="$(for pb in "$REPO"/pkgs/meta/*/PKGBUILD; do field "$pb" depends | sort |
 [[ $m_fail == 0 ]] && ok "code not vscode, no mako, the missing deps added, no duplicates"
 echo
 
+# ---- 2b. package sets (docs/packages.md) -------------------------------------
+echo "== package sets"
+s_fail=0
+sbad() { bad "$1"; s_fail=1; }
+bare() { sed -e 's/:.*//' -e 's/[<>=].*//' -e '/^$/d'; }
+MANIFEST="$REPO/pkgs/meta/sources.txt"
+grep -v '^[[:space:]]*\(#\|$\)' "$MANIFEST" > "$TMP/sources"
+
+# Every name a meta or own PKGBUILD depends on (or suggests) is in
+# sources.txt, which tests/pkgs/live-arch.sh keeps true against Arch.
+for pb in "$REPO"/pkgs/meta/*/PKGBUILD "$REPO"/pkgs/own/*/PKGBUILD; do
+    { field "$pb" depends; field "$pb" optdepends; } | bare
+done | sort -u > "$TMP/named"
+missing="$(cut -d' ' -f1 "$TMP/sources" | sort | comm -13 - "$TMP/named" | paste -sd' ')"
+stale="$(cut -d' ' -f1 "$TMP/sources" | sort | comm -23 - "$TMP/named" | paste -sd' ')"
+[[ -z "$missing" ]] || sbad "not in pkgs/meta/sources.txt (run tests/pkgs/live-arch.sh --write in Arch): $missing"
+[[ -z "$stale" ]] || sbad "sources.txt lists packages no set names: $stale"
+while read -r n src; do
+    case "$src" in
+        core|extra|multilib|aur-paru) ;;
+        aur) [[ -f "$REPO/pkgs/aur/$n/PKGBUILD" ]] || sbad "$n: sources.txt says aur, but pkgs/aur/$n does not exist" ;;
+        invictus) [[ -f "$REPO/pkgs/own/$n/PKGBUILD" || -f "$REPO/pkgs/meta/$n/PKGBUILD" ]] || sbad "$n: sources.txt says invictus, but no PKGBUILD" ;;
+        *) sbad "$n: unknown source '$src'" ;;
+    esac
+done < "$TMP/sources"
+for d in "$REPO"/pkgs/aur/*/; do
+    n="$(basename "$d")"
+    grep -qx "$n aur" "$TMP/sources" || sbad "pkgs/aur/$n is built but no set names it"
+done
+
+# One package, one set. The podman trio is in dev and windows on purpose
+# (each works alone); a set may depend on another set (invictus-*).
+ALLOWED_OVERLAP="podman podman-compose crun"
+for pb in "$REPO"/pkgs/meta/*/PKGBUILD; do
+    field "$pb" depends | bare | grep -v '^invictus-' | sed "s|\$| $(basename "$(dirname "$pb")")|"
+done | sort > "$TMP/placed"
+while read -r n; do
+    [[ " $ALLOWED_OVERLAP " == *" $n "* ]] && continue
+    sbad "$n is in more than one set: $(awk -v n="$n" '$1 == n { print $2 }' "$TMP/placed" | paste -sd' ')"
+done < <(cut -d' ' -f1 "$TMP/placed" | uniq -d)
+for n in $ALLOWED_OVERLAP; do
+    [[ "$(awk -v n="$n" '$1 == n { print $2 }' "$TMP/placed" | paste -sd' ')" == "invictus-dev invictus-windows" ]] \
+        || sbad "$n: expected in invictus-dev and invictus-windows only"
+done
+
+# Regression, adopt-jack2-conflict (2026-09-30): an existing install has
+# jack2 (waybar needs "jack"), and a set that depends on pipewire-jack
+# makes pacman --noconfirm refuse the whole update.
+for pb in "$REPO"/pkgs/meta/*/PKGBUILD; do
+    field "$pb" depends | grep -x pipewire-jack >/dev/null && sbad "adopt-jack2-conflict: $(basename "$(dirname "$pb")") depends on pipewire-jack (optdepends only)"
+done
+
+# invictus-base stays off existing installs: no set depends on it, and
+# adopt.sh installs only desktop, tessera, gaming, dev.
+for pb in "$REPO"/pkgs/meta/*/PKGBUILD; do
+    # grep without -q: an early exit would SIGPIPE field, and pipefail
+    # would read that as "not found"
+    field "$pb" depends | grep -x invictus-base >/dev/null && sbad "$(basename "$(dirname "$pb")") depends on invictus-base"
+done
+adopt_metas="$(sed -n 's/^for m in \(.*\); do$/\1/p' "$REPO/scripts/dev/adopt.sh")"
+[[ "$adopt_metas" == "desktop tessera gaming dev" ]] || sbad "adopt.sh installs '$adopt_metas', want 'desktop tessera gaming dev'"
+for f in tessera atrium gaming windows voice; do
+    field "$REPO/pkgs/meta/invictus-$f/PKGBUILD" depends | grep -x invictus-desktop >/dev/null || sbad "invictus-$f does not depend on invictus-desktop"
+done
+
+# Commands outside the Hyprland config (fixtures/commands.txt). The
+# package must be installed wherever the file is: invictus-desktop, a
+# flavour, an own package, or Arch's base; never only invictus-base.
+{
+    for m in desktop tessera atrium; do field "$REPO/pkgs/meta/invictus-$m/PKGBUILD" depends; done
+    for pb in "$REPO"/pkgs/own/*/PKGBUILD; do field "$pb" depends; done
+    grep -v '^#' "$HERE/fixtures/arch-base.txt"
+    ls "$REPO/pkgs/own"
+} | bare | sort -u > "$TMP/desktop-closure"
+cut -d' ' -f1 "$TMP/placed" "$TMP/named" | sort -u > "$TMP/anyset"
+grep -v '^[[:space:]]*\(#\|$\)' "$HERE/fixtures/commands.txt" > "$TMP/commands"
+while read -r cmd pkg file opt; do
+    [[ -f "$REPO/$file" ]] || { sbad "commands.txt: no file $file"; continue; }
+    needle="$cmd"   # a zsh prompt theme is named, not its file
+    [[ "$cmd" =~ /prompt_([a-z0-9_-]+)_setup$ ]] && needle="prompt ${BASH_REMATCH[1]}"
+    grep -qF -- "$needle" "$REPO/$file" || sbad "commands.txt: $file does not run $cmd (stale entry?)"
+    if [[ "$opt" == optional ]]; then
+        grep -qx "$pkg" "$TMP/anyset" || sbad "$cmd ($file): $pkg is in no set"
+    else
+        grep -qx "$pkg" "$TMP/desktop-closure" || sbad "$cmd ($file): $pkg is not in invictus-desktop, a flavour, our packages or Arch base"
+    fi
+done < "$TMP/commands"
+listed() { awk -v c="$1" -v f="$2" '$1 == c && $3 == f { found = 1 } END { exit !found }' "$TMP/commands"; }
+# waybar and swaync: the first word of every command they run; waybar's
+# own actions (activate, mode) are not commands
+cmds_of_json() {
+    grep -oE '"(exec|exec-if|command|on-click[a-z-]*|on-scroll-[a-z]+)": *"([^"\\]|\\.)*"' "$1" \
+        | sed -E 's/^"[^"]*": *"//; s/"$//; s/\\"/"/g' \
+        | tr '|;&' '\n' | awk '{ print $1 }' | grep -vxE 'activate|mode|' || true
+}
+seen=0
+for f in config/waybar/config.json config/swaync/config.json; do
+    while read -r c; do
+        seen=$((seen + 1)); listed "$c" "$f" || sbad "$f runs '$c', which fixtures/commands.txt does not map to a package"
+    done < <(cmds_of_json "$REPO/$f" | sort -u)
+done
+# zshrc: sourced files, the prompt theme, $(command ...), and a command after &&
+Z=config/shell/zshrc
+while read -r c; do
+    seen=$((seen + 1)); listed "$c" "$Z" || sbad "$Z runs '$c', which fixtures/commands.txt does not map to a package"
+done < <(
+    grep -v '^[[:space:]]*#' "$REPO/$Z" | {
+        tee >(sed -nE 's/^[[:space:]]*source[[:space:]]+([^[:space:]]+).*/\1/p') \
+            >(sed -nE 's/^[[:space:]]*prompt[[:space:]]+([a-z0-9_-]+).*/\/usr\/share\/zsh\/site-functions\/prompt_\1_setup/p') \
+            >(grep -oE '\$\([a-z0-9_-]+' | cut -c3-) \
+            >(grep -oE '&&[[:space:]]*[a-z0-9_-]+' | sed -E 's/&&[[:space:]]*//') >/dev/null
+    } | sort -u
+)
+[[ $seen -ge 12 ]] || sbad "only $seen commands parsed from waybar, swaync and zshrc; parsing broke?"
+# The prompt comes from our AUR copy: its PKGBUILD must put it on zsh's fpath.
+grep -q 'usr/share/zsh/site-functions/prompt_spaceship_setup' "$REPO/pkgs/aur/spaceship-prompt/PKGBUILD" \
+    || sbad "spaceship-prompt no longer installs prompt_spaceship_setup on zsh's fpath"
+[[ $s_fail == 0 ]] && ok "$(wc -l < "$TMP/sources") names in sources.txt, one set each, base off adopt, $(wc -l < "$TMP/commands") commands mapped ($seen parsed)"
+echo
+
 # ---- 3. invictus-keyring -----------------------------------------------------
 echo "== invictus-keyring"
 KR="$REPO/pkgs/own/invictus-keyring"

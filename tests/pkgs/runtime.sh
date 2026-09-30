@@ -53,7 +53,7 @@ if [[ "$(wc -l < "$ALL/usr/share/invictus/pinned-hypr.txt")" == "$n_lock" ]] \
 else
     bad "pinned-hypr.txt does not match the lock: $(head -3 "$ALL/usr/share/invictus/pinned-hypr.txt")"
 fi
-if bash -c 'source "$1"; printf "%s\n" "${depends[@]}"' _ "$REPO/pkgs/meta/invictus-desktop/PKGBUILD" | grep -qx invictus-tools; then
+if bash -c 'source "$1"; printf "%s\n" "${depends[@]}"' _ "$REPO/pkgs/meta/invictus-desktop/PKGBUILD" | grep -x invictus-tools >/dev/null; then
     ok "invictus-desktop depends on invictus-tools"
 else
     bad "invictus-desktop does not depend on invictus-tools"
@@ -197,7 +197,7 @@ else
 fi
 sed -i '$d' "$SHARE/config/rofi/config.rasi"
 sed -i '$d' "$SHARE/config/kitty/kitty.conf"
-if doctor "$H" --diff kitty/kitty.conf | grep -q '^-# my change'; then
+if doctor "$H" --diff kitty/kitty.conf | grep '^-# my change' >/dev/null; then
     ok "doctor --diff shows your change against the shipped default"
 else
     bad "doctor --diff output wrong"

@@ -1,0 +1,48 @@
+# Copied from the AUR (https://aur.archlinux.org/spaceship-prompt.git)
+# at commit 876c787938f31b01725b277f53e654745907f439 (v4.22.5, 2026-07-02),
+# reviewed 2026-09-30 by Vulcan: fetches one GitHub release tarball
+# (sha256 checked against the AUR's, which matched), installs zsh files.
+# No build step, no network after the download.
+# Changes from the AUR copy:
+#   - the prompt link goes to /usr/share/zsh/site-functions (on zsh's
+#     default fpath), not /usr/local, which packages must not own;
+#   - the .install file is dropped: it only told people to edit .zshrc,
+#     and the shipped ~/.zshrc already runs `prompt spaceship`;
+#   - makedepends git dropped (nothing uses it).
+# Update: copy the new AUR commit over this file, review the diff, keep
+# the changes above, bump in one commit.
+#
+# Maintainer: Violeta Veras <vverasagreda at gmail dot com>
+# Contributor: Alexey Peschany <archlinux at sandboiii dot xyz>
+# Contributor: Batuhan Baserdem <lastname dot firstname at gmail dot com>
+# Contributor: Dave Kleinschmidt <dave.f.kleinschmidt at gmail dot com>
+
+pkgname=spaceship-prompt
+pkgver=4.22.5
+pkgrel=1
+pkgdesc="A Zsh prompt for Astronauts"
+arch=('any')
+url="https://spaceship-prompt.sh/"
+license=('MIT')
+depends=('zsh')
+provides=('spaceship-zsh-theme')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/${pkgname}/${pkgname}/archive/v${pkgver}.tar.gz")
+sha256sums=('2b82500b06efd7bca5c5a104279d247ec24466f90f38df0e65cbfa4509e67fe9')
+
+package() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+
+    install -D -m644 LICENSE.md "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    install -D -m644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+    find docs -type f -exec install -D -m644 {} "${pkgdir}/usr/share/doc/${pkgname}/{}" \;
+
+    find lib -type f -exec install -D -m644 {} "${pkgdir}/usr/lib/${pkgname}/{}" \;
+    find scripts -type f -exec install -D -m644 {} "${pkgdir}/usr/lib/${pkgname}/{}" \;
+    find sections -type f -exec install -D -m644 {} "${pkgdir}/usr/lib/${pkgname}/{}" \;
+    install -D -m644 spaceship.zsh "${pkgdir}/usr/lib/${pkgname}/spaceship.zsh"
+    install -D -m644 async.zsh "${pkgdir}/usr/lib/${pkgname}/async.zsh"
+    ln -s spaceship.zsh "${pkgdir}/usr/lib/${pkgname}/spaceship.zsh-theme"
+
+    install -d "${pkgdir}/usr/share/zsh/site-functions"
+    ln -s "/usr/lib/${pkgname}/spaceship.zsh" "${pkgdir}/usr/share/zsh/site-functions/prompt_spaceship_setup"
+}

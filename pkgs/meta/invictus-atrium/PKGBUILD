@@ -1,0 +1,45 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# Meta package: depends only, no files. What each set is for and why each
+# package is in it: docs/packages.md.
+#
+# Atrium, the windows-and-taskbar flavour (formerly "Classic",
+# docs/simple-mode.md): the everyday apps behind its Start tiles (this is
+# the invictus-everyday set of simple-mode.md 2.4), printing and scanning,
+# Flatpak apps, and a disk tool. The Atrium shell itself (Quickshell
+# taskbar, Start, hyprbars) is not built yet; its packages join here when
+# it is. Viewers both flavours use (photos, video, PDFs, archives) are in
+# invictus-desktop. A machine can have Atrium and Tessera both installed.
+#
+# The installer (not this package) enables cups.socket and avahi-daemon
+# and adds mdns_minimal to the hosts line of /etc/nsswitch.conf, so
+# network printers and scanners are found without drivers.
+
+pkgname=invictus-atrium
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Invictus Atrium: the windows-and-taskbar desktop and its everyday apps'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=(
+  'invictus-desktop'
+
+  # Start tiles: Documents, Calculator, a text editor
+  'libreoffice-fresh' 'ttf-carlito' 'ttf-caladea'
+  'gnome-calculator' 'gnome-text-editor'
+
+  # Printers and scanning: driverless IPP printers and eSCL/WSD scanners
+  'cups' 'system-config-printer' 'ipp-usb' 'nss-mdns'
+  'simple-scan' 'sane-airscan'
+
+  # Get apps: per-user Flatpaks from Flathub (design-simple-mode 3.1)
+  'flatpak' 'bazaar' 'flatseal'
+
+  # formatting a USB stick; photos from an iPhone
+  'gnome-disk-utility' 'gvfs-afc'
+)
+
+package() {
+  :
+}

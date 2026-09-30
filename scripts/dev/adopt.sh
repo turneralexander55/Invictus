@@ -34,8 +34,8 @@
 #      (between "# BEGIN invictus" and "# END invictus"), imports and
 #      locally signs the key (signed mode)
 #   4. sudo pacman -Syu --needed invictus-keyring invictus-desktop
-#      invictus-gaming invictus-dev (never invictus-base: no limine or
-#      snap-pac on this machine; never a partial upgrade)
+#      invictus-tessera invictus-gaming invictus-dev (never invictus-base:
+#      no limine or snap-pac on this machine; never a partial upgrade)
 #   5. writes ~/.config/hypr/monitors.lua (from monitors.conf) and
 #      ~/.config/hypr/user.lua (your own binds such as dashboard-tmux, and
 #      every other line you added, as comments; workspace = N, monitor:X lines
@@ -237,7 +237,7 @@ SIGNED=true
 [[ -n "$LOCAL_REPO" ]] && SIGNED=false
 
 METAS=()
-for m in desktop gaming dev; do
+for m in desktop tessera gaming dev; do
     [[ " ${SKIP[*]} " == *" $m "* ]] || METAS+=("invictus-$m")
 done
 TARGETS=("${METAS[@]}")

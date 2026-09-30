@@ -1,0 +1,30 @@
+# Arch's base meta package: its direct depends (every Arch install has
+# them). Commands from these need no set of ours. tests/pkgs/live-arch.sh
+# checks this list against pacman -Si base.
+archlinux-keyring
+bash
+bzip2
+coreutils
+file
+filesystem
+findutils
+gawk
+gcc-libs
+gettext
+glibc
+grep
+gzip
+iproute2
+iputils
+licenses
+pacman
+pciutils
+procps-ng
+psmisc
+sed
+shadow
+systemd
+systemd-sysvcompat
+tar
+util-linux
+xz

@@ -1,0 +1,67 @@
+# Commands the shipped config and our scripts run, outside the Hyprland
+# config (tests/hyprland-lua checks that one with COMMAND_PACKAGES).
+#
+#   <command or path> <package> <file that runs it> [optional]
+#
+# tests/pkgs/run.sh: the command appears in that file, and the package is
+# in invictus-desktop, a flavour, one of our own packages' depends, or
+# Arch's base (never only in invictus-base, which adopt.sh never installs);
+# "optional" entries only need the package in some set (the script checks
+# for the command first). waybar, swaync and zshrc are parsed: every
+# command they run must be listed here.
+# tests/pkgs/live-arch.sh: each command is a file of that Arch package.
+
+# waybar
+head                                  coreutils       config/waybar/config.json
+cut                                   coreutils       config/waybar/config.json
+/usr/lib/invictus/waybar/updates      invictus-tools  config/waybar/config.json
+/usr/lib/invictus/waybar/alert        invictus-tools  config/waybar/config.json
+kitty                                 kitty           config/waybar/config.json
+invictus-update                       invictus-tools  config/waybar/config.json
+pkill                                 procps-ng       config/waybar/config.json
+btop                                  btop            config/waybar/config.json
+pavucontrol                           pavucontrol     config/waybar/config.json
+nm-connection-editor                  nm-connection-editor config/waybar/config.json
+swaync-client                         swaync          config/waybar/config.json
+
+# swaync
+swaync-client                         swaync          config/swaync/config.json
+
+# ~/.zshrc
+/usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh zsh-autosuggestions config/shell/zshrc
+/usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh zsh-syntax-highlighting config/shell/zshrc
+/usr/share/zsh/site-functions/prompt_spaceship_setup spaceship-prompt config/shell/zshrc
+dircolors                             coreutils       config/shell/zshrc
+fastfetch                             fastfetch       config/shell/zshrc
+
+# first login (installed by invictus-desktop)
+xdg-user-dirs-update                  xdg-user-dirs   scripts/first-login.sh
+fc-cache                              fontconfig      scripts/first-login.sh
+systemctl                             systemd         scripts/first-login.sh
+
+# invictus-tools
+gsettings                             glib2           theme/invictus-theme
+notify-send                           libnotify       theme/invictus-theme
+swaync-client                         swaync          theme/invictus-theme
+hyprctl                               hyprland        theme/invictus-theme
+kitty                                 kitty           theme/invictus-theme
+rofi                                  rofi            theme/invictus-theme
+gsettings                             glib2           scripts/invictus-motion.sh
+hyprctl                               hyprland        scripts/invictus-motion.sh
+rofi                                  rofi            scripts/invictus-motion.sh
+hyprctl                               hyprland        scripts/show-keybindings.sh
+kitty                                 kitty           scripts/show-keybindings.sh
+rofi                                  rofi            scripts/show-keybindings.sh
+notify-send                           libnotify       scripts/show-keybindings.sh
+lua                                   lua             scripts/show-keybindings.sh
+rofi                                  rofi            scripts/confirm.sh
+lua                                   lua             scripts/confirm.sh
+checkupdates                          pacman-contrib  scripts/waybar/updates.sh
+free                                  procps-ng       scripts/waybar/alert.sh
+findmnt                               util-linux      scripts/invictus-update.sh
+paru                                  paru            scripts/invictus-update.sh optional
+diff                                  diffutils       scripts/invictus-doctor.sh
+cmp                                   diffutils       scripts/invictus-doctor.sh
+findmnt                               util-linux      scripts/invictus-doctor.sh
+snapper                               snapper         scripts/invictus-doctor.sh optional
+Hyprland                              hyprland        scripts/invictus-doctor.sh optional

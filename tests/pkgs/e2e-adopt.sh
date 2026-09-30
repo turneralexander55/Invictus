@@ -15,7 +15,8 @@
 #             refuses an unsigned remote repo and the placeholder key
 #   adopt     signed: ends on hyprland.lua (Hyprland --verify-config
 #             passes), user.lua and monitors.lua ported, backups kept,
-#             packages in, theme applied; invictus-doctor and
+#             packages in (desktop and tessera), the spaceship prompt
+#             loads, theme applied; invictus-doctor and
 #             invictus-update pass; a second adopt is refused
 #   epoch     a package with an epoch (1:...) installs from the repo
 #             under its GitHub-safe file name
@@ -98,7 +99,7 @@ fi
 echo "==> Making the legacy machine"
 # Stand-ins for what Alex installed from the AUR with paru.
 id builder >/dev/null 2>&1 || useradd -m builder
-for p in zen-browser-bin nordic-darker-theme claude-code; do
+for p in zen-browser-bin claude-code; do
     d="$WORK/aur-standins/$p"; mkdir -p "$d"
     printf "pkgname=%s\npkgver=1\npkgrel=1\narch=('any')\nlicense=('custom')\npackage() { :; }\n" "$p" > "$d/PKGBUILD"
 done
@@ -111,6 +112,12 @@ pacman -U --noconfirm "$WORK"/aur-standins/*/*.pkg.tar.zst > "$WORK/standin.log"
 # What the old install had from Arch.
 pacman -S --noconfirm --needed hyprland hyprpaper hypridle hyprlock waybar kitty rofi > "$WORK/legacy-pkgs.log" 2>&1 \
     || { tail -5 "$WORK/legacy-pkgs.log"; exit 1; }
+
+# waybar needs "jack"; pacman's default provider is jack2, so the old
+# install has it, as Alex's machine almost certainly does. Adopt must
+# work around it (regression adopt-jack2-conflict).
+if pacman -Q jack2 >/dev/null 2>&1; then ok "the legacy machine has jack2 (from waybar), like a real one"
+else bad "legacy machine: jack2 not installed, the jack2 regression is not covered"; fi
 
 useradd -m -s /bin/bash alex
 echo 'alex ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/alex
@@ -142,6 +149,8 @@ echo "==> Dry run"
 rc=0; as_alex bash "$ADOPT" --server "file://$OUT" > "$WORK/dry.log" 2>&1 || rc=$?
 if [[ $rc == 0 ]] && grep -q "^+\[invictus-testing\]" <(sed 's/^    //' "$WORK/dry.log") \
    && grep -qE '^ +invictus-desktop [^ ]+ invictus-testing$' "$WORK/dry.log" \
+   && grep -qE '^ +invictus-tessera [^ ]+ invictus-testing$' "$WORK/dry.log" \
+   && grep -qE '^ +spaceship-prompt [^ ]+ invictus-testing$' "$WORK/dry.log" \
    && grep -qE '^ +invictus-gaming [^ ]+ invictus-testing$' "$WORK/dry.log" \
    && grep -q "replacing /home/alex/.config/waybar/config.json" "$WORK/dry.log" \
    && grep -q 'hl.bind("SUPER + SHIFT + B", hl.dsp.exec_cmd("firefox --private-window")' "$WORK/dry.log" \
@@ -210,13 +219,20 @@ if cmp -s "$B/config/waybar/config.json" "$SRC/tests/pkgs/fixtures/legacy-home/w
 else
     bad "backup incomplete: $(ls "$B")"
 fi
-if pacman -Q invictus-keyring invictus-desktop invictus-tools invictus-branding xwaylandvideobridge >/dev/null \
+if pacman -Q invictus-keyring invictus-desktop invictus-tessera invictus-tools invictus-branding xwaylandvideobridge spaceship-prompt >/dev/null \
    && [[ -x /usr/lib/invictus/waybar/updates && -x /usr/bin/invictus-update ]] \
    && [[ "$(grep -m1 -E '^\[' <(grep -v '^\[options\]' /etc/pacman.conf))" == "[invictus-testing]" ]] \
    && pacman-key --list-keys "$FPR" >/dev/null 2>&1; then
     ok "packages installed; [invictus-testing] is the first repo; the key is in pacman's keyring"
 else
     bad "packages or repo: $(pacman -Q invictus-desktop 2>&1)"
+fi
+# The shipped ~/.zshrc runs `prompt spaceship`; our pkgs/aur copy must put
+# the theme on zsh's default fpath.
+if out="$(as_alex zsh -fc 'autoload -U promptinit; promptinit; prompt spaceship' 2>&1)" && [[ -z "$out" ]]; then
+    ok "zsh finds the spaceship prompt (from our repo), no errors"
+else
+    bad "prompt spaceship: $out"
 fi
 if [[ -e /home/alex/.config/invictus/current/waybar-colors.css && -f /home/alex/.local/state/invictus/first-login.done ]] \
    && as_alex /usr/lib/invictus/first-login | grep -q "already done"; then

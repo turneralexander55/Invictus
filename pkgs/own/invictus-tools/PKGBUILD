@@ -15,15 +15,16 @@
 
 pkgname=invictus-tools
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Invictus commands: theme, motion, update, doctor, and the scripts the desktop runs'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
 license=('GPL-3.0-or-later')
 depends=(
   'bash' 'python' 'lua' 'invictus-branding'
-  # waybar modules and the cheatsheet
-  'pacman-contrib' 'lm_sensors' 'sysstat' 'libnotify' 'rofi' 'util-linux' 'procps-ng'
+  # waybar modules (checkupdates, free), the cheatsheet and pickers
+  # (rofi, notify-send), pkill, gsettings for the GTK look
+  'pacman-contrib' 'libnotify' 'rofi' 'util-linux' 'procps-ng' 'glib2'
   # doctor: diff, findmnt, the keysym list for the stub check
   'diffutils' 'libxkbcommon'
 )

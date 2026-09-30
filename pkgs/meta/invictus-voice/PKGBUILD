@@ -1,0 +1,27 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# Meta package: depends only, no files. What each set is for and why each
+# package is in it: docs/packages.md.
+#
+# PLACEHOLDER until invictus-ptt exists: local speech to text (design 4.4).
+# whisper-cpp in [extra] ships whisper-server and replaced the AUR
+# whisper.cpp-vulkan build; ggml-vulkan is its GPU backend, so nothing
+# here needs building in our repo. Models are downloaded at first boot,
+# never packaged. Audio and bluetooth (the pen button) come with
+# invictus-desktop.
+
+pkgname=invictus-voice
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Invictus voice: local whisper speech to text on the GPU (placeholder)'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=(
+  'invictus-desktop'
+  'whisper-cpp' 'ggml-vulkan'
+)
+
+package() {
+  :
+}
