@@ -16,7 +16,7 @@
 # network printers and scanners are found without drivers.
 
 pkgname=invictus-atrium
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc='Invictus Atrium: the windows-and-taskbar desktop and its everyday apps'
 arch=('any')
@@ -25,8 +25,8 @@ license=('GPL-3.0-or-later')
 depends=(
   'invictus-desktop'
 
-  # Start tiles: Documents, Calculator, a text editor
-  'libreoffice-fresh' 'ttf-carlito' 'ttf-caladea'
+  # Start tiles: Calculator, a text editor (Documents is invictus-office,
+  # an extra, so the ISO stays under 2 GiB)
   'gnome-calculator' 'gnome-text-editor'
 
   # Printers and scanning: driverless IPP printers and eSCL/WSD scanners
@@ -38,6 +38,9 @@ depends=(
 
   # formatting a USB stick; photos from an iPhone
   'gnome-disk-utility' 'gvfs-afc'
+)
+optdepends=(
+  'invictus-office: LibreOffice for the Documents tile (an installer extra)'
 )
 
 package() {

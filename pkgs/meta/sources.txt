@@ -3,7 +3,7 @@
 # container on 2026-09-30; checked offline by tests/pkgs/run.sh and
 # live by tests/pkgs/live-arch.sh. Sources: core, extra, multilib (Arch),
 # aur (built from pkgs/aur), aur-paru (AUR, not in pkgs/aur yet: install it
-# with paru), invictus (our own PKGBUILD).
+# with paru), invictus (our own PKGBUILD), pinned (pkgs/pinned/*.lock, not in Arch).
 7zip extra
 adw-gtk-theme extra
 amd-ucode core
@@ -72,6 +72,7 @@ invictus-desktop invictus
 invictus-dev invictus
 invictus-gaming invictus
 invictus-keyring invictus
+invictus-office invictus
 invictus-tessera invictus
 invictus-tools invictus
 ipp-usb extra
@@ -91,9 +92,20 @@ libxkbcommon extra
 limine extra
 limine-mkinitcpio-hook aur
 limine-snapper-sync aur
-linux core
-linux-firmware core
-linux-lts core
+linux-cachyos pinned
+linux-cachyos-headers pinned
+linux-firmware-amd core
+linux-firmware-amdgpu core
+linux-firmware-atheros core
+linux-firmware-broadcom core
+linux-firmware-cirrus core
+linux-firmware-intel core
+linux-firmware-mediatek core
+linux-firmware-nvidia core
+linux-firmware-other core
+linux-firmware-radeon core
+linux-firmware-realtek core
+linux-firmware-ti core
 lm_sensors extra
 loupe extra
 lua extra

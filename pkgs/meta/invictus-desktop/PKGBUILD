@@ -32,7 +32,7 @@
 
 pkgname=invictus-desktop
 pkgver=0.3.0
-pkgrel=2
+pkgrel=3
 pkgdesc='Invictus desktop session shared by Tessera and Atrium, and its config'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
@@ -85,11 +85,12 @@ depends=(
   # invictus-theme recolours, qt6ct for Qt apps (QT_QPA_PLATFORMTHEME)
   'papirus-icon-theme' 'capitaine-cursors' 'adw-gtk-theme' 'qt6ct'
 
-  # fonts: the UI and mono face, bar and terminal glyphs, every script
-  # (Noto, CJK, emoji), metric-compatible Arial/Times/Courier; fontconfig
-  # for fc-cache at first login
+  # fonts: the UI and mono face, bar and terminal glyphs, Latin, Greek,
+  # Cyrillic and most other scripts, emoji (Noto), metric-compatible
+  # Arial/Times/Courier; fontconfig for fc-cache at first login. Chinese,
+  # Japanese and Korean (noto-fonts-cjk, 300 MB) is an installer extra.
   'fontconfig' 'ttf-ibm-plex' 'ttf-nerd-fonts-symbols-mono'
-  'noto-fonts' 'noto-fonts-cjk' 'noto-fonts-emoji' 'ttf-liberation'
+  'noto-fonts' 'noto-fonts-emoji' 'ttf-liberation'
 
   # the shipped ~/.zshrc: zsh, its two plugins, the spaceship prompt
   # (pkgs/aur/), fastfetch on every new shell
@@ -106,6 +107,7 @@ optdepends=(
   'invictus-atrium: the windows-and-taskbar flavour and everyday apps'
   'libva-utils: vainfo, to check video decode on the GPU'
   'seahorse: see and edit what the keyring holds'
+  'noto-fonts-cjk: Chinese, Japanese and Korean text (an installer extra)'
 )
 
 package() {

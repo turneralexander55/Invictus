@@ -168,7 +168,16 @@ check "the calamares PKGBUILD used builds packagechooser" bash -c "! sed -n '/_s
 check "the ISO installs the four sets and pipewire-jack (docs/packages.md)" bash -c "for p in invictus-base invictus-desktop invictus-tessera invictus-atrium pipewire-jack; do grep -qx \$p <<<'$pkgs' || exit 1; done"
 check "no NVIDIA packages (AMD only)" bash -c "! grep -qi nvidia <<<'$pkgs'"
 check "no BIOS loaders (syslinux, grub)" bash -c "! grep -Eqx 'syslinux|grub' <<<'$pkgs'"
-check "linux-lts for the second boot entry (in invictus-base)" grep -q "'linux-lts'" "$REPO/pkgs/meta/invictus-base/PKGBUILD"
+# One kernel, linux-cachyos (Alex, 2026-09-30); rollback is the snapshot
+# entries, not a second kernel.
+basepb="$REPO/pkgs/meta/invictus-base/PKGBUILD"
+check "kernel: invictus-base depends on linux-cachyos, not linux or linux-lts" bash -c "grep -q \"'linux-cachyos'\" '$basepb' && ! grep -Eq \"'linux(-lts)?'\" '$basepb'"
+check "kernel: every live boot entry starts linux-cachyos" bash -c "for f in '$ISO'/efiboot/loader/entries/0[123]-*.conf; do grep -qx 'linux    /%INSTALL_DIR%/boot/%ARCH%/vmlinuz-linux-cachyos' \"\$f\" && grep -qx 'initrd   /%INSTALL_DIR%/boot/%ARCH%/initramfs-linux-cachyos.img' \"\$f\" || exit 1; done; ! grep -q 'vmlinuz-linux ' '$ISO/grub/loopback.cfg'"
+check "kernel: the live initramfs is built for linux-cachyos" grep -q 'grep -lx linux-cachyos /usr/lib/modules/\*/pkgbase' "$ISO/airootfs/root/customize_airootfs.sh"
+check "firmware: no NVIDIA firmware on the ISO (the linux-firmware meta pulls it)" bash -c "! grep -Eq \"'linux-firmware(-nvidia)?'\" '$basepb'"
+for fw in amdgpu intel atheros mediatek broadcom realtek; do
+    check "firmware: linux-firmware-$fw stays (graphics or Wi-Fi)" grep -q "'linux-firmware-$fw'" "$basepb"
+done
 check "no duplicate package lines" bash -c "[[ -z \$(sort <<<'$pkgs' | uniq -d) ]]"
 
 # ---- 8. staged build (build-iso.sh --prepare-only) -------------------------------------------------
@@ -181,7 +190,10 @@ if bash "$REPO/scripts/build-iso.sh" --prepare-only "$W" --version 2026.09.30 >"
     check "staged: release file says dev, testing, the version" bash -c "grep -qx build=dev '$W/profile/airootfs/etc/invictus/iso-release' && grep -qx channel=testing '$W/profile/airootfs/etc/invictus/iso-release' && grep -qx version=2026.09.30 '$W/profile/airootfs/etc/invictus/iso-release'"
     check "staged: the installer package is added under pkgs/own" test -f "$W/src/pkgs/own/invictus-installer/PKGBUILD"
     check "staged: the real checkout's pkgs/ is untouched" test ! -e "$REPO/pkgs/own/invictus-installer"
-    check "staged: the build-only folders are not in the profile" bash -c "! -e '$W/profile/own-needed' -a ! -e '$W/profile/secrets-scan.sh'"
+    # Regression, test-cmd-not-found (2026-09-30): this check read
+    # `! -e ...` without a test command, so bash ran "-e", failed, and the
+    # "!" made it pass whatever the profile held.
+    check "staged: the build-only folders are not in the profile" test ! -e "$W/profile/own-needed" -a ! -e "$W/profile/secrets-scan.sh" -a ! -e "$W/profile/live-only.txt"
     kf="$W/src/pkgs/own/invictus-keyring/invictus.gpg"
     if grep -q INVICTUS-PLACEHOLDER "$REPO/pkgs/own/invictus-keyring/invictus.gpg"; then
         check "staged: dev keyring holds only a public key" bash -c "grep -q 'BEGIN PGP PUBLIC KEY BLOCK' '$kf' && ! grep -q PRIVATE '$kf'"

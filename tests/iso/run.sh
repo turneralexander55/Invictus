@@ -22,9 +22,20 @@ REPO="$(cd -- "$HERE/../.." && pwd)"
 failed=()
 
 run() {
-    local name="$1"; shift
+    local name="$1" out rc=0; shift
     echo "=== $name"
-    if "$@"; then echo; else failed+=("$name"); echo; fi
+    out="$(mktemp)"
+    "$@" >"$out" 2>&1 || rc=$?
+    cat "$out"
+    # A check whose command does not exist can pass by accident (the
+    # "! -e" check in profile.sh did, 2026-09-30): any "command not found"
+    # fails the group.
+    if grep -q 'command not found' "$out"; then
+        echo "FAIL  $name printed 'command not found': a check runs a command that does not exist"
+        rc=1
+    fi
+    rm -f "$out"
+    if ((rc == 0)); then echo; else failed+=("$name"); echo; fi
 }
 
 run profile bash "$HERE/profile.sh"

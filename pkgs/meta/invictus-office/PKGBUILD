@@ -1,0 +1,29 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# Meta package: depends only, no files. What each set is for and why each
+# package is in it: docs/packages.md.
+#
+# Office: LibreOffice and the fonts that lay out Microsoft Office files
+# the way they were written (Calibri and Cambria metrics). Split from
+# invictus-atrium to keep the ISO under GitHub's 2 GiB limit (Alex,
+# 2026-09-30): the installer's Extras page offers it, ticked by default,
+# and installs it from our repo when there is internet. Atrium's
+# "Documents" tile opens it.
+
+pkgname=invictus-office
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Invictus office: LibreOffice and Office-compatible fonts'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=(
+  'invictus-desktop'
+
+  # documents, spreadsheets, slides; Calibri- and Cambria-metric fonts
+  'libreoffice-fresh' 'ttf-carlito' 'ttf-caladea'
+)
+
+package() {
+  :
+}
