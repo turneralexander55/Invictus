@@ -28,7 +28,9 @@ pick() { for c in "$@"; do command -v "$c" >/dev/null 2>&1 && { command -v "$c";
 
 LUA="${LUA:-$(pick lua5.5 lua5.4 lua || true)}"
 [[ -n "$LUA" ]] || { echo "No Lua interpreter found (install lua or lua54)"; exit 2; }
-LUAC="${LUAC:-$(pick "$(dirname "$LUA")/luac" luac5.5 luac5.4 luac || true)}"
+# The compiler must match the interpreter's version: a plain "luac" may be
+# Lua 5.1 (luacheck pulls it in), which rejects 5.3+ syntax such as bitwise ops.
+LUAC="${LUAC:-$(pick "$(dirname "$LUA")/$(basename "$LUA" | sed 's/^lua/luac/')" "$(dirname "$LUA")/luac" luac5.5 luac5.4 luac || true)}"
 
 if [[ -z "${HL_STUBS:-}" ]]; then
     if [[ -f /usr/share/hypr/stubs/hl.meta.lua ]]; then
