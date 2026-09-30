@@ -1,53 +1,105 @@
+/* Launcher (docs/look.md, Rofi). Colours are tokens, never hex:
+   colors-fallback.rasi is Dusk; the current theme's file loads after it and wins. */
+@import "~/.config/rofi/themes/colors-fallback.rasi"
+@import "~/.config/invictus/current/rofi-colors.rasi"
+
 * {
-    bg: rgba(0, 0, 0, 0.55);
-    fg: #ffffff;
-    fg-dim: #cfcfcf;
-
-    sel-bg: rgba(255, 255, 255, 0.15);
-    sel-fg: #ffffff;
-
     background-color: transparent;
-    text-color: @fg;
+    text-color: @marble;
+    font: "IBM Plex Sans 15";
 }
 
 window {
-    background-color: @bg;
-    border: 0;
-    border-radius: 14px;
+    width: 560px;
+    location: north;
+    anchor: north;
+    y-offset: 18%;
+    background-color: @window-bg;
+    border: 1px;
+    border-color: @line;
+    border-radius: 12px;
+    padding: 12px;
 }
 
 mainbox {
-    background-color: transparent;
+    spacing: 4px;
+    children: [ inputbar, listview, textbox-hint ];
 }
 
-listview {
-    background-color: transparent;
+/* Input row: 44 px, stone, radius 8, 1 px sol border (it always has focus) */
+inputbar {
+    background-color: @stone;
+    border: 1px;
+    border-color: @sol;
+    border-radius: 8px;
+    padding: 0 12px;
+    spacing: 10px;
+    children: [ textbox-search, entry ];
+    /* 44 px total: 1 px borders + 42 px content */
+    expand: false;
 }
 
-element {
-    background-color: transparent;
-}
-
-element-text {
-    background-color: transparent;
-    text-color: @fg;
-}
-
-element selected {
-    background-color: @sel-bg;
-}
-
-element selected element-text {
-    text-color: @sel-fg;
+textbox-search {
+    expand: false;
+    content: "󰍉";
+    font: "Symbols Nerd Font Mono 15";
+    text-color: @ash;
+    vertical-align: 0.5;
+    padding: 12px 0;
 }
 
 entry {
-    background-color: transparent;
-    text-color: @fg;
+    placeholder: "Search apps";
+    placeholder-color: @ash;
+    cursor-color: @sol;
+    text-color: @marble;
+    vertical-align: 0.5;
 }
 
-prompt,
-textbox-prompt-colon {
-    background-color: transparent;
-    text-color: @fg-dim;
+/* List: 8 rows of 40 px, no scrollbar */
+listview {
+    lines: 8;
+    columns: 1;
+    scrollbar: false;
+    fixed-height: true;
+    spacing: 0;
+    padding: 4px 0 0 0;
+}
+
+element {
+    padding: 8px;
+    spacing: 12px;
+    border-radius: 8px;
+    orientation: horizontal;
+    text-color: @marble;
+}
+
+element-icon {
+    size: 24px;
+    vertical-align: 0.5;
+}
+
+element-text {
+    text-color: inherit;
+    vertical-align: 0.5;
+    markup: true;
+}
+
+/* Selected: stone, radius 8, 3 px sol bar on the left edge */
+element selected.normal,
+element selected.active,
+element selected.urgent {
+    background-color: @stone;
+    border: 0 0 0 3px;
+    border-color: @sol;
+    text-color: @marble;
+}
+
+/* One hint line under the list */
+textbox-hint {
+    expand: false;
+    content: "Enter open   Ctrl+Enter run as typed";
+    font: "IBM Plex Sans 12";
+    text-color: @ash;
+    padding: 6px 4px 0 4px;
 }

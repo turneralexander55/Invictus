@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Change motion
+Comment=Motion level: Showcase, Calm or Off
+Exec=invictus-motion pick
+Icon=preferences-desktop-theme
+Terminal=false
+Categories=Settings;DesktopSettings;
+Keywords=motion;animation;animations;calm;off;
+# Hidden until the invictus-motion command exists (the picker that writes
+# ~/.config/invictus/motion, links motion.d/ and reloads); then delete this line.
+NoDisplay=true

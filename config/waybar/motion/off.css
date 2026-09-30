@@ -1,0 +1,5 @@
+/* Off: nothing in the bar moves. The motion switcher links ~/.config/invictus/motion.d/waybar.css here. */
+#workspaces button,
+#custom-swaync {
+    transition: none;
+}

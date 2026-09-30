@@ -1,0 +1,160 @@
+/* ============================================================
+   swaync (GTK 4): notifications and the control centre
+   (docs/look.md, Notifications). Colours are tokens, never hex:
+   colors-fallback.css is Dusk; the current theme's file loads after it.
+   The entrance accent is in accent.css (Dusk's sunrise bar); the motion
+   switcher points ~/.config/invictus/motion.d/swaync.css at motion/calm.css
+   or motion/off.css to turn it off.
+   ============================================================ */
+@import url("colors-fallback.css");
+@import url("../invictus/current/swaync-colors.css");
+@import url("accent.css");
+@import url("../invictus/motion.d/swaync.css");
+
+* {
+    font-family: "IBM Plex Sans", "Symbols Nerd Font Mono", sans-serif;
+    font-size: 13px;
+}
+
+/* ---- popups and the list ---- */
+
+.notification-row {
+    outline: none;
+    background: transparent;
+}
+
+.notification-row .notification {
+    background: @card-bg;
+    border: 1px solid @line;
+    border-radius: 12px;
+    margin: 4px 8px;
+    padding: 14px;
+}
+
+.notification-content {
+    background: transparent;
+    padding: 0;
+}
+
+.notification .image,
+.notification-content .image {
+    min-width: 32px;
+    min-height: 32px;
+    border-radius: 8px;
+    margin-right: 12px;
+    background: transparent;
+}
+
+.notification .summary {
+    color: @marble;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.notification .body {
+    color: @parchment;
+    font-size: 13px;
+}
+
+.notification .time {
+    color: @ash;
+    font-size: 12px;
+}
+
+/* Critical: a 3 px pompeii bar on the left edge (they stay until dismissed) */
+.notification-row .notification.critical,
+.notification-row .critical .notification {
+    box-shadow: inset 3px 0 @pompeii;
+}
+
+/* Actions: text only, parchment; hover marble on stone */
+.notification-action,
+.notification-default-action {
+    background: transparent;
+    color: @parchment;
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+.notification-action:hover,
+.notification-default-action:hover {
+    background: @stone;
+    color: @marble;
+}
+
+.close-button {
+    background: transparent;
+    color: @ash;
+    border-radius: 8px;
+    min-width: 20px;
+    min-height: 20px;
+}
+
+.close-button:hover {
+    background: @stone;
+    color: @marble;
+}
+
+/* ---- control centre ---- */
+
+.control-center {
+    background: @card-bg;
+    border: 1px solid @line;
+    border-radius: 12px;
+    padding: 8px;
+}
+
+.control-center-list {
+    background: transparent;
+}
+
+/* Do not disturb: one switch, sol track when on */
+.widget-dnd {
+    color: @marble;
+    margin: 8px;
+    font-size: 13px;
+}
+
+.widget-dnd > switch {
+    background: @stone;
+    border: 1px solid @line;
+    border-radius: 12px;
+    min-width: 40px;
+    min-height: 22px;
+}
+
+.widget-dnd > switch:checked {
+    background: @sol;
+    border-color: @sol;
+}
+
+.widget-dnd > switch slider {
+    background: @marble;
+    border-radius: 12px;
+    min-width: 18px;
+    min-height: 18px;
+}
+
+/* Clear all at the bottom, in ash */
+.widget-buttons-grid {
+    background: transparent;
+    margin: 4px 8px;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button {
+    background: transparent;
+    color: @ash;
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button:hover {
+    background: @stone;
+    color: @marble;
+}
+
+.notification-group-headers,
+.notification-group-name {
+    color: @parchment;
+    font-weight: 600;
+}

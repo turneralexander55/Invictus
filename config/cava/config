@@ -279,7 +279,8 @@
 
 # use theme file instead of defining colors in this file
 # themes are located in $HOME/.config/cava/themes
-; theme = 'none'
+# invictus is the theme's cava-colors file (a Dusk fallback ships in themes/invictus)
+theme = 'invictus'
 
 
 [smoothing]

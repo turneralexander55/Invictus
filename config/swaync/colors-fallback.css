@@ -1,0 +1,14 @@
+/* Dusk fallback for when ~/.config/invictus/current is missing; the generated file loads after this one and wins. Kept equal to the generated Dusk file by tests/theme/run.sh. */
+@define-color night #14120F;
+@define-color basalt #1C1A16;
+@define-color stone #27241F;
+@define-color line #3A352D;
+@define-color marble #ECE6DA;
+@define-color parchment #BDB4A3;
+@define-color ash #968E7F;
+@define-color sol #E0A64B;
+@define-color sol-bright #F0C274;
+@define-color pompeii #D9725A;
+@define-color laurel #94AD7B;
+@define-color lapis #7C9FD4;
+@define-color card-bg rgba(28,26,22,0.94);

@@ -1,0 +1,18 @@
+/* Entrance accent, Dusk: the sunrise bar. The 3 px sol bar and a warm wash from
+   the left edge settle in 300 ms, once (opacity and box-shadow only). It is the
+   default for every theme; the other three shapes (dye, ripple, beam) are in
+   accents/ for a per-theme switch. Critical notifications get none: their
+   pompeii bar is already there. */
+@keyframes sunrise {
+    from { box-shadow: inset 3px 0 @sol, inset 24px 0 32px -24px alpha(@sol, .5); }
+    to   { box-shadow: inset 3px 0 @sol; }
+}
+
+.notification-row .notification {
+    animation: sunrise 300ms cubic-bezier(.16, 1, .3, 1) 1;
+}
+
+.notification-row .notification.critical,
+.notification-row .critical .notification {
+    animation: none;
+}

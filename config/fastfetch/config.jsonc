@@ -1,30 +1,41 @@
 {
+  // Colours use the terminal's palette (fastfetch cannot include a generated file),
+  // so the theme's terminal colours apply: yellow is the logo (Dusk's sol),
+  // white is parchment, light_white is marble, light_black is bright black.
   "logo": {
-    "type": "builtin",
-    "source": "arch",
-    "padding": {
-      "right": 2,
+    "type": "file",
+    "source": "~/.config/fastfetch/logo.txt",
+    "color": {
+      "1": "yellow"
     },
+    "padding": {
+      "right": 2
+    }
+  },
+
+  "display": {
+    "color": {
+      "title": "light_white",
+      "keys": "white",
+      "output": "light_white",
+      "separator": "light_black"
+    }
   },
 
   "modules": [
     "title",
-    "separator",
+    { "type": "separator", "string": "─" },
 
-    { "type": "os", "key": "OS" },
+    { "type": "os", "key": "OS", "format": "Invictus (based on Arch Linux)" },
     { "type": "kernel", "key": "Kernel" },
     { "type": "uptime", "key": "Uptime" },
     { "type": "packages", "key": "Pkgs" },
-
-    "separator",
-
     { "type": "wm", "key": "WM" },
     { "type": "terminal", "key": "Term" },
     { "type": "shell", "key": "Shell" },
-
-    "separator",
-
     { "type": "cpu", "key": "CPU" },
+    { "type": "gpu", "key": "GPU" },
     { "type": "memory", "key": "RAM" },
+    { "type": "disk", "key": "Disk", "folders": "/" },
   ],
 }

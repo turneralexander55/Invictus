@@ -1,0 +1,15 @@
+/* Entrance accent, Porphyry: the dye. The card border starts in the focus colour
+   (Tyrian) and bleeds back to line. Used instead of ../accent.css. */
+@keyframes dye {
+    from { border-color: @sol; }
+    to   { border-color: @line; }
+}
+
+.notification-row .notification {
+    animation: dye 300ms cubic-bezier(.16, 1, .3, 1) 1;
+}
+
+.notification-row .notification.critical,
+.notification-row .critical .notification {
+    animation: none;
+}

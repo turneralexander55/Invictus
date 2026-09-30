@@ -3,9 +3,49 @@
   "positionY": "top",
   "layer": "overlay",
   "control-center-layer": "overlay",
+  "layer-shell": true,
+  "cssPriority": "user",
 
-  "popup": {
-    "enabled": true,
-    "timeout": 6
+  "control-center-positionX": "right",
+  "control-center-positionY": "top",
+  "control-center-width": 400,
+  "control-center-margin-top": 8,
+  "control-center-margin-bottom": 8,
+  "control-center-margin-right": 8,
+  "control-center-margin-left": 0,
+  "fit-to-screen": true,
+
+  "notification-window-width": 380,
+  "notification-icon-size": 32,
+  "notification-body-image-height": 100,
+  "notification-body-image-width": 200,
+  "notification-grouping": true,
+  "relative-timestamps": true,
+  "image-visibility": "when-available",
+  "hide-on-clear": true,
+  "hide-on-action": true,
+
+  "timeout": 5,
+  "timeout-low": 3,
+  "timeout-critical": 0,
+  "transition-time": 220,
+
+  "widgets": ["dnd", "notifications", "buttons-grid"],
+  "widget-config": {
+    "dnd": {
+      "text": "Do not disturb"
+    },
+    "notifications": {
+      "vexpand": true
+    },
+    "buttons-grid": {
+      "buttons-per-row": 1,
+      "actions": [
+        {
+          "label": "Clear all",
+          "command": "swaync-client --close-all"
+        }
+      ]
+    }
   }
 }

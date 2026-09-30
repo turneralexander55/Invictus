@@ -1,0 +1,8 @@
+/* Calm: 120 ms. The motion switcher links ~/.config/invictus/motion.d/waybar.css here. */
+#workspaces button {
+    transition: box-shadow 120ms cubic-bezier(.25, 1, .5, 1), color 120ms;
+}
+
+#custom-swaync {
+    transition: color 120ms;
+}

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Change theme
+Comment=Pick a look: Dusk, Porphyry, Aegean or Alexandria
+Exec=invictus-theme pick
+Icon=preferences-desktop-theme
+Terminal=false
+Categories=Settings;DesktopSettings;
+Keywords=theme;look;colour;color;dark;

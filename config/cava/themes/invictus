@@ -1,0 +1,6 @@
+# Dusk fallback theme. invictus-theme's cava-colors file replaces this (link or copy) so cava follows the theme; kept equal to the generated Dusk file by tests/theme/run.sh.
+# cava config: theme = invictus (copy or link this file as themes/invictus)
+[color]
+gradient = 1
+gradient_color_1 = '#3A352D'
+gradient_color_2 = '#BDB4A3'

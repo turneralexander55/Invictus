@@ -1,0 +1,6 @@
+/* Off: no accent and no slide (transition-time 0 in config.json). The motion switcher links
+   ~/.config/invictus/motion.d/swaync.css here. */
+.notification-row .notification,
+.notification-default-action .image {
+    animation: none;
+}

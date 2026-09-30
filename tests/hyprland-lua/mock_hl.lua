@@ -478,6 +478,22 @@ function M.new(opts)
         if spec.spring and not state.curves[spec.spring] then
             err("hl.animation: spring '" .. spec.spring .. "' is not defined")
         end
+        if spec.style ~= nil then
+            -- style names per CHyprAnimationManager::styleValidInConfigVar (0.56.2), with the
+            -- leaf families each may be used on; a percentage argument is a number followed by %
+            local word, arg = tostring(spec.style):match("^(%a+)%s*(.-)$")
+            local family = api.animationStyles[word or ""]
+            if not family then
+                err("hl.animation: unknown style '" .. tostring(spec.style) .. "'")
+            else
+                if arg ~= "" and not (arg:match("^%d+%.?%d*%%$") or word == "slide" or word == "slidevert" or word == "slidefade" or word == "slidefadevert") then
+                    err("hl.animation: style argument '" .. arg .. "' is not a percentage")
+                end
+                if family == "angle" and not spec.leaf:match("angle$") then
+                    err("hl.animation: style '" .. word .. "' is only valid on the *angle leaves")
+                end
+            end
+        end
         if type(spec.enabled) ~= "boolean" then err("hl.animation: enabled must be a boolean") end
         if spec.enabled and type(spec.speed) ~= "number" then err("hl.animation: speed must be a number") end
         table.insert(state.animations, spec)
