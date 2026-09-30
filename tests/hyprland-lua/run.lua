@@ -219,8 +219,11 @@ local EXCEPTIONS = {
     end,
     -- hyprctl keyword is gone; the layout toggle is a Lua function
     ["72+space"] = function() return { "<lua function>" } end,
+    -- the repo is called invictus now; the deployed copy is rewritten for other clone paths
+    ["64+slash"] = function() return { "exec_cmd", "$HOME/invictus/scripts/show-keybindings.sh" } end,
+    ["64+f1"] = function() return { "exec_cmd", "$HOME/invictus/scripts/show-keybindings.sh" } end,
     -- power off now asks first: the bind runs scripts/confirm-poweroff.sh (rofi yes/no, default No)
-    ["76+escape"] = function() return { "exec_cmd", "$HOME/hyprdots/scripts/confirm-poweroff.sh" } end,
+    ["76+escape"] = function() return { "exec_cmd", "$HOME/invictus/scripts/confirm-poweroff.sh" } end,
 }
 local KEY_RENAMES = { ESC = "Escape" } -- ESC is not an xkb keysym; the old bind never fired
 -- Old binds deliberately left out of the port. Empty now: the power-off bind is back

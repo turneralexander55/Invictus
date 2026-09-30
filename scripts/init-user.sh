@@ -13,12 +13,14 @@ set -euo pipefail
 # Safe to run multiple times, but guarded by a sentinel.
 # ------------------------------------------------------------
 
-SENTINEL="$HOME/.local/state/hyprdots-initialized"
+SENTINEL="$HOME/.local/state/invictus-initialized"
+# Machines set up before the rename (hyprdots) already ran this once.
+LEGACY_SENTINEL="$HOME/.local/state/hyprdots-initialized"
 
 # Ensure state directory exists
 mkdir -p "$HOME/.local/state"
 
-if [[ -f "$SENTINEL" ]]; then
+if [[ -f "$SENTINEL" || -f "$LEGACY_SENTINEL" ]]; then
   echo "==> User environment already initialized. Skipping."
   exit 0
 fi

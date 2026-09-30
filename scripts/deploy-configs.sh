@@ -36,7 +36,8 @@ echo "==> You will be prompted before each directory is overwritten"
 # ------------------------------------------------------------
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-DOTFILES_DIR="$SCRIPT_DIR/../config"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+DOTFILES_DIR="$REPO_ROOT/config"
 TARGET_DIR="$HOME/.config"
 
 # Ensure ~/.config exists
@@ -157,6 +158,18 @@ for cfg in "${APPROVED_CONFIGS[@]}"; do
   cp -aL "$SRC" "$DEST"
 
   echo "    Copied $SRC -> $DEST"
+
+  # The configs call scripts and assets as $HOME/invictus/... . If this
+  # clone lives elsewhere (for example ~/hyprdots from before the rename),
+  # point the deployed copy at where the repo really is.
+  if [[ "$REPO_ROOT" != "$HOME/invictus" ]]; then
+    # shellcheck disable=SC2016  # a literal $HOME, expanded later by the config's shell
+    TOKEN='$HOME/invictus/'
+    grep -rlF "$TOKEN" "$DEST" 2>/dev/null | while IFS= read -r f; do
+      sed -i "s|$TOKEN|$REPO_ROOT/|g" "$f"
+      echo "    Repo path set to $REPO_ROOT in $f"
+    done
+  fi
 done
 
 echo

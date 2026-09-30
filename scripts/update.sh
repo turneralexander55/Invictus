@@ -33,7 +33,7 @@ fi
 #   DEVELOPER_MODE=true
 # fi
 
-echo "==> Starting hyprdots update"
+echo "==> Starting Invictus update"
 
 if [[ "$DEVELOPER_MODE" == true ]]; then
   echo "==> DEVELOPER MODE ENABLED"
@@ -136,19 +136,19 @@ if [[ "$SKIP_REPO_UPDATE" == false ]]; then
   git -C "$REPO_ROOT" fetch origin
 
   LOCAL=$(git -C "$REPO_ROOT" rev-parse @)
-  REMOTE=$(git -C "$REPO_ROOT" rev-parse @{u} 2>/dev/null || echo "$LOCAL")
-  BASE=$(git -C "$REPO_ROOT" merge-base @ @{u} 2>/dev/null || echo "$LOCAL")
+  REMOTE=$(git -C "$REPO_ROOT" rev-parse "@{u}" 2>/dev/null || echo "$LOCAL")
+  BASE=$(git -C "$REPO_ROOT" merge-base @ "@{u}" 2>/dev/null || echo "$LOCAL")
 
   if [[ "$LOCAL" != "$REMOTE" && "$LOCAL" != "$BASE" ]]; then
     # We have unpushed commits
-    AHEAD=$(git -C "$REPO_ROOT" rev-list --count @{u}..@ 2>/dev/null || echo "0")
+    AHEAD=$(git -C "$REPO_ROOT" rev-list --count "@{u}"..@ 2>/dev/null || echo "0")
 
     if [[ "$DEVELOPER_MODE" == true ]]; then
       echo ""
       echo "ERROR: You have $AHEAD unpushed commit(s)."
       echo ""
       echo "Recent unpushed commits:"
-      git -C "$REPO_ROOT" log --oneline @{u}..@ 2>/dev/null || true
+      git -C "$REPO_ROOT" log --oneline "@{u}"..@ 2>/dev/null || true
       echo ""
       echo "DEVELOPER MODE: Aborting to protect your work."
       echo "Please push your commits first."

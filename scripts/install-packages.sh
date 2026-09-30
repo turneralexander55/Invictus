@@ -15,7 +15,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "==> Starting hyprdots package installation"
+echo "==> Starting Invictus package installation"
 
 # ------------------------------------------------------------
 # Ensure we are running on Arch Linux

@@ -17,7 +17,6 @@ echo "======================================"
 # Determine real user and paths
 # ------------------------------------------------------------
 REAL_USER="${SUDO_USER:-$(whoami)}"
-REAL_HOME="$(getent passwd "$REAL_USER" | cut -d: -f6)"
 
 echo "==> Configuring for user: $REAL_USER"
 
@@ -37,7 +36,9 @@ echo "==> SDDM found"
 # ------------------------------------------------------------
 echo "==> Installing blackglass theme"
 
-THEME_SRC="$REAL_HOME/hyprdots/assets/SDDM/blackglass"
+# The repo may be cloned anywhere (~/invictus, or ~/hyprdots on older machines).
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+THEME_SRC="$SCRIPT_DIR/../assets/SDDM/blackglass"
 THEME_DST="/usr/share/sddm/themes/blackglass"
 
 if [[ ! -d "$THEME_SRC" ]]; then

@@ -42,8 +42,8 @@ end
 -- Show Keybindings Reference
 -- ─────────────────────────────────────────────────────────────────────────────
 local S = "Help: "
-bind(mod("slash"), dsp.exec_cmd("$HOME/hyprdots/scripts/show-keybindings.sh"), S .. "show keybindings")
-bind(mod("F1"),    dsp.exec_cmd("$HOME/hyprdots/scripts/show-keybindings.sh"), S .. "show keybindings")
+bind(mod("slash"), dsp.exec_cmd("$HOME/invictus/scripts/show-keybindings.sh"), S .. "show keybindings")
+bind(mod("F1"),    dsp.exec_cmd("$HOME/invictus/scripts/show-keybindings.sh"), S .. "show keybindings")
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ bind(mod("D"),      dsp.exec_cmd("discord"),                S .. "Discord")
 bind(mod("ALT", "SPACE"), toggleLayout,                     S .. "switch layout master/dwindle")
 bind(mod("G"),      dsp.exec_cmd("steam"),                  S .. "Steam")
 -- Asks yes/no first (default No, Escape cancels), then runs systemctl poweroff.
-bind(mod("ALT", "CTRL", "Escape"), dsp.exec_cmd("$HOME/hyprdots/scripts/confirm-poweroff.sh"), S .. "power off with confirm")
+bind(mod("ALT", "CTRL", "Escape"), dsp.exec_cmd("$HOME/invictus/scripts/confirm-poweroff.sh"), S .. "power off with confirm")
 
 -- Toggle dashboard terminal (tmux)
 bind(mod("minus"),  dsp.exec_cmd("kitty --title dashboard -e ~/.local/bin/dashboard-tmux"), S .. "dashboard (tmux)")

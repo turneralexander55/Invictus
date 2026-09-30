@@ -2,13 +2,13 @@
 set -euo pipefail
 
 # ------------------------------------------------------------
-# Hyprdots installer orchestrator
+# Invictus installer orchestrator
 # ------------------------------------------------------------
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "============================================================"
-echo " Hyprdots Installer"
+echo " Invictus Installer"
 echo "============================================================"
 echo
 
@@ -91,7 +91,7 @@ else
 fi
 
 echo "======================================"
-echo " Hyprdots installation complete"
+echo " Invictus installation complete"
 echo
 echo " System will reboot in 5 seconds"
 echo " Press Ctrl+C to cancel"
