@@ -115,7 +115,7 @@ if ! { grep -q "Building in .* (no signing key in there)" "$WORK/a.log" && grep 
     bad "a.log does not show build-in-container then sign-here: $(grep '==>' "$WORK/a.log" | head -5)"
 fi
 [[ "$(grep -c '^run ' "$RUNLOG")" == 1 ]] || bad "expected one container run, got: $(cat "$RUNLOG")"
-grep -q 'args=--no-container --build-only --out /out --no-pinned' "$RUNLOG" || bad "container args: $(cat "$RUNLOG")"
+grep -q 'args=_ --no-container --build-only --out /out --no-pinned$' "$RUNLOG" || bad "container args: $(cat "$RUNLOG")"
 not_alex="$(find "$OUT" ! -user alex | head -3)"
 if [[ -z "$not_alex" && -n "$(ls "$OUT")" ]]; then ok "every file in the repo belongs to alex (the container's root handed them back)"
 else bad "files not alex's: $not_alex"; fi
@@ -156,13 +156,20 @@ gpg --batch --quiet --pinentry-mode loopback --passphrase "$PASS" --quick-gen-ke
 CIFPR="$(gpg --with-colons --list-keys 2>/dev/null | awk -F: '/^fpr:/ { print $10; exit }')"
 SECRET="$(gpg --batch --pinentry-mode loopback --passphrase "$PASS" --armor --export-secret-keys "$CIFPR")"
 gpgconf --kill gpg-agent
+# --in-container as root (CI's runners); --no-container as alex, because
+# makepkg then runs as the caller with the caller's environment (as root
+# it runs as "builder" through sudo, which drops it anyway).
 for mode in --in-container --no-container; do
-    out="$WORK/ci-repo$mode"
-    mkdir -p "$out"
+    out="/home/alex/ci-repo$mode"
+    as_alex mkdir -p "$out"
     probe_clean
     : > "$RUNLOG"
-    if INVICTUS_SIGNING_KEY="$SECRET" INVICTUS_SIGNING_PASSPHRASE="$PASS" PATH="$SHIM:$PATH" \
-        bash "$BUILD_REPO" "$mode" --no-pinned --out "$out" > "$WORK/ci$mode.log" 2>&1; then
+    # The secret goes through the environment, never a command line (sudo
+    # would copy a command line into SUDO_COMMAND, where the probe sees it).
+    runner=()
+    [[ "$mode" == --no-container ]] && runner=(sudo -u alex -H "--preserve-env=INVICTUS_SIGNING_KEY,INVICTUS_SIGNING_PASSPHRASE")
+    if INVICTUS_SIGNING_KEY="$SECRET" INVICTUS_SIGNING_PASSPHRASE="$PASS" \
+        "${runner[@]}" env PATH="$SHIM:$PATH" bash "$BUILD_REPO" "$mode" --no-pinned --out "$out" > "$WORK/ci$mode.log" 2>&1; then
         good=true
         for p in "$out"/*.pkg.tar.zst; do gpg --batch --verify "$p.sig" "$p" 2>/dev/null || good=false; done
         if $good; then ok "CI key $mode: built and signed"; else bad "CI key $mode: a signature does not verify"; fi
