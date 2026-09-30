@@ -6,6 +6,8 @@
 #   scripts/build-repo.sh --build-only    build packages, no repo db
 #   scripts/build-repo.sh --repo-only     sign (if a key is given) + repo-add
 #   scripts/build-repo.sh --out DIR       output folder (default out/repo)
+#   scripts/build-repo.sh --no-pinned     leave out the pinned hypr* set
+#                                         (offline builds; not for publishing)
 #   scripts/build-repo.sh --in-container  run in archlinux:base-devel via
 #                                         podman or docker (the default when
 #                                         makepkg is not installed)
@@ -24,6 +26,19 @@
 # same file name would clash with copies in pacman caches). Bump pkgrel to
 # publish a change.
 #
+# PKGBUILDs in pkgs/own and pkgs/meta package files from elsewhere in
+# the repo (scripts/, config/, theme/, assets/): the whole checkout is
+# staged, and each PKGBUILD finds the root at $startdir/../../..
+# Bump pkgrel whenever one of those files changes, or the old package
+# is reused.
+#
+# The pinned hypr* set (pkgs/pinned/hypr.lock) is fetched from the Arch
+# archive and verified by scripts/fetch-pinned.sh in the build step.
+#
+# Repo file names only use [A-Za-z0-9._-] (scripts/lib/repo-names.sh):
+# GitHub renames release assets with other characters, such as the ':'
+# of an epoch.
+#
 # Signing (repo step): set INVICTUS_SIGN_KEY to a key id in your own gpg
 # keyring (local), or INVICTUS_SIGNING_KEY to an ASCII-armoured private key
 # plus INVICTUS_SIGNING_PASSPHRASE (CI secrets; imported into a temp
@@ -41,6 +56,7 @@ OUT="$ROOT/out/repo"
 DO_BUILD=true
 DO_REPO=true
 CONTAINER=auto
+PINNED=true
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -49,7 +65,8 @@ while [[ $# -gt 0 ]]; do
         --repo-only) DO_BUILD=false; shift ;;
         --in-container) CONTAINER=yes; shift ;;
         --no-container) CONTAINER=no; shift ;;
-        -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
+        --no-pinned) PINNED=false; shift ;;
+        -h|--help) sed -n '2,45p' "$0"; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 2 ;;
     esac
 done
@@ -66,6 +83,7 @@ if [[ "$CONTAINER" == yes || ( "$CONTAINER" == auto && ! -x /usr/bin/makepkg ) ]
     args=(--no-container --out /out)
     $DO_BUILD || args+=(--repo-only)
     $DO_REPO || args+=(--build-only)
+    $PINNED || args+=(--no-pinned)
     # CONTAINER_ARGS: extra runtime flags, split on spaces (e.g. "--network host").
     read -ra extra <<< "${CONTAINER_ARGS:-}"
     echo "==> Running in $IMAGE via $(basename "$RUNTIME")"
@@ -77,6 +95,9 @@ if [[ "$CONTAINER" == yes || ( "$CONTAINER" == auto && ! -x /usr/bin/makepkg ) ]
 fi
 
 command -v makepkg >/dev/null || { echo "makepkg not found" >&2; exit 2; }
+
+# shellcheck source=scripts/lib/repo-names.sh
+. "$SCRIPT_DIR/lib/repo-names.sh"
 
 # makepkg refuses to run as root; containers start as root.
 BUILD_USER=""
@@ -92,7 +113,11 @@ as_builder() {
 WORK="$(mktemp -d)"
 cleanup() { rm -rf "$WORK"; }
 trap cleanup EXIT
-cp -r "$ROOT/pkgs" "$WORK/pkgs"
+# Stage the whole checkout (not .git, not build output): own packages
+# install files from scripts/, config/, theme/ and assets/.
+mkdir -p "$WORK/src"
+tar -C "$ROOT" --exclude=./.git --exclude=./out -cf - . | tar -C "$WORK/src" -xf -
+PKGS="$WORK/src/pkgs"
 # makepkg writes packages here (as the build user); we copy them to $OUT.
 STAGE="$WORK/stage"
 mkdir -p "$STAGE"
@@ -103,7 +128,8 @@ is_placeholder_keyring() {
     [[ "$(basename "$1")" == invictus-keyring ]] && grep -q INVICTUS-PLACEHOLDER "$1/invictus.gpg"
 }
 
-# Package file names (no path) one PKGBUILD produces; fails if there are none.
+# Package file names (no path) one PKGBUILD produces, as makepkg names
+# them; fails if there are none.
 package_files() {
     local list
     list="$(cd "$1" && as_builder env PKGDEST="$STAGE" makepkg --packagelist)" || return 1
@@ -113,21 +139,24 @@ package_files() {
     printf '%s\n' "$list" | xargs -n1 basename | grep -v -- '-debug-[^-]*-[^-]*-[^-]*\.pkg\.tar'
 }
 
-# The same for every PKGBUILD that is not skipped.
+# Repo file names for every PKGBUILD that is not skipped, plus the
+# pinned set.
 expected_files() {
-    local dir
-    for dir in "$WORK"/pkgs/*/*/; do
+    local dir f files
+    for dir in "$PKGS"/*/*/; do
         dir="${dir%/}"
         [[ -f "$dir/PKGBUILD" ]] || continue
         is_placeholder_keyring "$dir" && continue
-        package_files "$dir" || { echo "makepkg --packagelist failed in $dir" >&2; return 1; }
+        files="$(package_files "$dir")" || { echo "makepkg --packagelist failed in $dir" >&2; return 1; }
+        for f in $files; do repo_file_name "$f"; echo; done
     done
+    if $PINNED; then bash "$SCRIPT_DIR/fetch-pinned.sh" --list; fi
 }
 
 # ---- build ----------------------------------------------------------------
 if $DO_BUILD; then
     built=0 reused=0 skipped=0
-    for dir in "$WORK"/pkgs/*/*/; do
+    for dir in "$PKGS"/*/*/; do
         dir="${dir%/}"
         [[ -f "$dir/PKGBUILD" ]] || continue
         name="$(basename "$dir")"
@@ -137,7 +166,7 @@ if $DO_BUILD; then
         fi
         files="$(package_files "$dir")" || { echo "makepkg --packagelist failed for $name" >&2; exit 1; }
         have=true
-        for f in $files; do [[ -f "$OUT/$f" ]] || have=false; done
+        for f in $files; do [[ -f "$OUT/$(repo_file_name "$f")" ]] || have=false; done
         if $have; then
             echo "==> $name: $(head -1 <<< "$files") already built, reusing (bump pkgrel to rebuild)"
             reused=$((reused + 1)); continue
@@ -149,13 +178,15 @@ if $DO_BUILD; then
         (cd "$dir" && as_builder env PKGDEST="$STAGE" makepkg --clean --cleanbuild --noconfirm "${deps[@]}")
         for f in $files; do
             [[ -f "$STAGE/$f" ]] || { echo "$name did not produce $f" >&2; exit 1; }
-            cp "$STAGE/$f" "$OUT/$f"
-            rm -f "$OUT/$f.sig"
+            safe="$(repo_file_name "$f")"
+            cp "$STAGE/$f" "$OUT/$safe"
+            rm -f "$OUT/$safe.sig"
         done
         built=$((built + 1))
     done
-    expected_files > "$OUT/invictus-manifest.txt"
     echo "==> Build: $built built, $reused reused, $skipped skipped"
+    if $PINNED; then bash "$SCRIPT_DIR/fetch-pinned.sh" --out "$OUT"; fi
+    expected_files > "$OUT/invictus-manifest.txt"
 fi
 
 # ---- sign + index -----------------------------------------------------------
@@ -175,7 +206,7 @@ if $DO_REPO; then
     # The manifest came from the build step, where package code ran: accept
     # plain package file names only (no paths, no leading dash).
     for c in "${current[@]}"; do
-        [[ "$c" =~ ^[A-Za-z0-9@_+][A-Za-z0-9@._+:-]*\.pkg\.tar\.zst$ ]] || { echo "Bad package name in manifest: $c" >&2; exit 1; }
+        [[ "$c" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]*\.pkg\.tar\.zst$ ]] || { echo "Bad package name in manifest: $c" >&2; exit 1; }
     done
     for f in *.pkg.tar.zst; do
         [[ -e "$f" ]] || continue
