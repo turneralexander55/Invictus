@@ -172,9 +172,15 @@ if $DO_BUILD; then
             reused=$((reused + 1)); continue
         fi
         echo "==> Building $name"
-        # Metas only list depends (some are AUR packages built later), so skip
-        # dependency checks for them; everything else installs its deps.
-        if [[ "$dir" == */pkgs/meta/* ]]; then deps=(--nodeps); else deps=(--syncdeps); fi
+        # Our own and meta packages build nothing and depend on each other and
+        # on AUR packages, so skip dependency checks for them; AUR packages
+        # compile, so they install their build and runtime deps.
+        if [[ "$dir" == */pkgs/aur/* ]]; then deps=(--syncdeps); else deps=(--nodeps); fi
+        # Upstream signing keys kept with the PKGBUILD (AUR convention
+        # keys/pgp/<fingerprint>.asc), so makepkg can check source signatures.
+        for key in "$dir"/keys/pgp/*.asc; do
+            [[ -f "$key" ]] && as_builder gpg --batch --quiet --import "$key"
+        done
         (cd "$dir" && as_builder env PKGDEST="$STAGE" makepkg --clean --cleanbuild --noconfirm "${deps[@]}")
         for f in $files; do
             [[ -f "$STAGE/$f" ]] || { echo "$name did not produce $f" >&2; exit 1; }

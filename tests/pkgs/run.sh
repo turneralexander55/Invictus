@@ -36,7 +36,7 @@ while IFS= read -r pb; do
     name="$(field "$pb" pkgname)"
     [[ "$name" == "$dir" ]] || bad "$pb: pkgname '$name' is not the folder name '$dir'"
     [[ -n "$(field "$pb" pkgver)" && -n "$(field "$pb" pkgrel)" ]] || bad "$pb: no pkgver/pkgrel"
-    [[ "$(field "$pb" arch)" == "any" ]] || bad "$pb: arch is not 'any'"
+    case "$(field "$pb" arch)" in any|x86_64) ;; *) bad "$pb: arch is not 'any' or 'x86_64'" ;; esac
     bash -c 'source "$1"; declare -F package >/dev/null' _ "$pb" || bad "$pb: no package()"
 done < <(find "$REPO/pkgs" -name PKGBUILD | sort)
 [[ $n -ge 5 ]] || bad "found only $n PKGBUILDs"

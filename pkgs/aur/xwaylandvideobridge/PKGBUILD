@@ -1,0 +1,60 @@
+# Copied from the AUR (https://aur.archlinux.org/xwaylandvideobridge.git)
+# at commit 6682410be6998939d22be49c4c1b13c8d9da6ae7 (v0.5.3, 2026-09-27), reviewed
+# 2026-09-30 by Vulcan: fetches one KDE release tarball, verifies its
+# signature and sha256, builds with cmake, installs with DESTDIR. No
+# install scripts, no network at build time.
+# Changes from the AUR copy: the signature's sha256 is pinned too (was
+# SKIP), and the signer's public key is kept in keys/pgp/ (fetched from
+# keys.openpgp.org by fingerprint; scripts/build-repo.sh imports it
+# before makepkg verifies the tarball).
+# Update: copy the new AUR commit over this file, review the diff, keep
+# the two changes above, bump in one commit.
+#
+# Maintainer:
+# Contributor: Tomaz Canabrava <tcanabrava@archlinux.org>
+
+pkgname=xwaylandvideobridge
+pkgver=0.5.3
+pkgrel=1
+pkgdesc="Utility to allow streaming Wayland windows to X applications"
+arch=('x86_64')
+url="https://invent.kde.org/system/xwaylandvideobridge"
+license=('BSD-3-Clause' 'LGPL-2.1-or-later' 'LicenseRef-scancode-kde-accepted-gpl')
+depends=('glibc'
+         'hicolor-icon-theme'
+         'kcoreaddons'
+         'kcrash'
+         'kdbusaddons'
+         'ki18n'
+         'kpipewire'
+         'kstatusnotifieritem'
+         'kwindowsystem'
+         'libstdc++'
+         'libxcb'
+         'qt6-base'
+         'qt6-declarative')
+makedepends=('cmake' 'extra-cmake-modules' 'vulkan-headers')
+source=("https://download.kde.org/stable/${pkgname}/src/${pkgname}-${pkgver}.tar.xz"{,.sig})
+sha256sums=('b96194c68ef67ac3127cf353f026b5b69d35c7d5e204bd89d1155c74f2fe073a'
+            '0387f4938face57f6a7d71c18df312aed1f84e830547704fdf87245d6deba533')
+validpgpkeys=('D253F4FD09638D1D6B65354B3B0E1973DFCD652D') # Hadi Chokr <hadichokr@icloud.com>
+
+build() {
+    local cmake_options=(
+        -B build
+        -S "${pkgname}-${pkgver}"
+        -W no-author
+        -D CMAKE_BUILD_TYPE=Release
+        -D CMAKE_INSTALL_PREFIX=/usr
+        -D BUILD_TESTING=OFF
+    )
+    cmake "${cmake_options[@]}"
+    cmake --build build
+}
+
+package() {
+    DESTDIR="${pkgdir}" cmake --install build
+
+    cd "${pkgname}-${pkgver}"
+    install -Dm644 LICENSES/{BSD-3-Clause.txt,LicenseRef-KDE-Accepted-GPL.txt} -t "${pkgdir}/usr/share/licenses/${pkgname}"
+}
