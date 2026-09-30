@@ -120,12 +120,14 @@ done
 # invictus-base stays off existing installs: no set depends on it, and
 # adopt.sh installs only desktop, tessera, gaming, dev.
 for pb in "$REPO"/pkgs/meta/*/PKGBUILD; do
-    field "$pb" depends | grep -qx invictus-base && sbad "$(basename "$(dirname "$pb")") depends on invictus-base"
+    # grep without -q: an early exit would SIGPIPE field, and pipefail
+    # would read that as "not found"
+    field "$pb" depends | grep -x invictus-base >/dev/null && sbad "$(basename "$(dirname "$pb")") depends on invictus-base"
 done
 adopt_metas="$(sed -n 's/^for m in \(.*\); do$/\1/p' "$REPO/scripts/dev/adopt.sh")"
 [[ "$adopt_metas" == "desktop tessera gaming dev" ]] || sbad "adopt.sh installs '$adopt_metas', want 'desktop tessera gaming dev'"
 for f in tessera atrium gaming windows voice; do
-    field "$REPO/pkgs/meta/invictus-$f/PKGBUILD" depends | grep -qx invictus-desktop || sbad "invictus-$f does not depend on invictus-desktop"
+    field "$REPO/pkgs/meta/invictus-$f/PKGBUILD" depends | grep -x invictus-desktop >/dev/null || sbad "invictus-$f does not depend on invictus-desktop"
 done
 
 # Commands outside the Hyprland config (fixtures/commands.txt). The
@@ -156,7 +158,7 @@ listed() { awk -v c="$1" -v f="$2" '$1 == c && $3 == f { found = 1 } END { exit 
 cmds_of_json() {
     grep -oE '"(exec|exec-if|command|on-click[a-z-]*|on-scroll-[a-z]+)": *"([^"\\]|\\.)*"' "$1" \
         | sed -E 's/^"[^"]*": *"//; s/"$//; s/\\"/"/g' \
-        | tr '|;&' '\n\n\n' | awk '{ print $1 }' | grep -vxE 'activate|mode|' || true
+        | tr '|;&' '\n' | awk '{ print $1 }' | grep -vxE 'activate|mode|' || true
 }
 seen=0
 for f in config/waybar/config.json config/swaync/config.json; do

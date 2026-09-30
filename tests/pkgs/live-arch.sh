@@ -66,7 +66,8 @@ done | sort -u > "$TMP/names"
 ours() { [[ -f "$SRC/pkgs/own/$1/PKGBUILD" || -f "$SRC/pkgs/meta/$1/PKGBUILD" ]]; }
 
 # pacman -Si exits 1 when any name is missing (ours, the AUR ones)
-{ "${P[@]}" -Si $(cat "$TMP/names") 2>/dev/null || true; } \
+mapfile -t names < "$TMP/names"
+{ "${P[@]}" -Si "${names[@]}" 2>/dev/null || true; } \
     | awk -F' *: ' '/^Repository/ { r = $2 } /^Name/ { print $2, r }' | sort -u > "$TMP/arch"
 args="$(sed 's/^/arg[]=/' "$TMP/names" | paste -sd'&')"
 curl -sSf "https://aur.archlinux.org/rpc/v5/info?$args" | jq -r '.results[].Name' | sort -u > "$TMP/aur"
@@ -131,7 +132,8 @@ for pb in "$SRC"/pkgs/meta/*/PKGBUILD; do field "$pb" depends | bare; done | sor
 mapfile -t targets < <(awk 'NR == FNR { d[$1] = 1; next } ($1 in d) && $2 ~ /^(core|extra|multilib)$/ { print $1 }' "$TMP/deps" "$TMP/found")
 if "${P[@]}" -Sp --noconfirm --print-format '%n' "${targets[@]}" > "$TMP/plan" 2>"$TMP/plan.err"; then
     # Conflicts among the planned packages (pacman -Sp does not check them).
-    { "${P[@]}" -Si $(cat "$TMP/plan") 2>/dev/null || true; } | awk -F' *: ' '
+    mapfile -t plan < "$TMP/plan"
+    { "${P[@]}" -Si "${plan[@]}" 2>/dev/null || true; } | awk -F' *: ' '
         /^Name/ { n = $2 }
         /^Provides/ || /^Conflicts With/ {
             k = ($1 == "Provides") ? "p" : "c"
