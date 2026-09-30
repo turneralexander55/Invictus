@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# ------------------------------------------------------------
+# Tests for the Lua Hyprland config. Needs no running Hyprland.
+#
+#   tests/hyprland-lua/run.sh
+#
+# 1. Compiles every Lua file (luac -p, or load() if luac is missing).
+# 2. Loads config/hypr/hyprland.lua against a mock `hl` that checks
+#    each call against the Hyprland Lua API, and compares the result
+#    with the old hyprlang config in fixtures/.
+# 3. Feeds fake `hyprctl binds` output to scripts/show-keybindings.sh.
+#
+# API source: /usr/share/hypr/stubs/hl.meta.lua when Hyprland is
+# installed (so it tracks the installed version), else the vendored
+# 0.56.2 copy in stubs/. Override with HL_STUBS=/path.
+# Key names are checked against XKB_KEYSYMS_H, default
+# /usr/include/xkbcommon/xkbcommon-keysyms.h (package libxkbcommon).
+#
+# Env: LUA=/path/to/lua (default: first of lua5.5, lua5.4, lua)
+# ------------------------------------------------------------
+set -euo pipefail
+
+HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(cd -- "$HERE/../.." && pwd)"
+
+pick() { for c in "$@"; do command -v "$c" >/dev/null 2>&1 && { command -v "$c"; return 0; }; done; return 1; }
+
+LUA="${LUA:-$(pick lua5.5 lua5.4 lua || true)}"
+[[ -n "$LUA" ]] || { echo "No Lua interpreter found (install lua or lua54)"; exit 2; }
+LUAC="${LUAC:-$(pick "$(dirname "$LUA")/luac" luac5.5 luac5.4 luac || true)}"
+
+if [[ -z "${HL_STUBS:-}" ]]; then
+    if [[ -f /usr/share/hypr/stubs/hl.meta.lua ]]; then
+        HL_STUBS=/usr/share/hypr/stubs/hl.meta.lua
+    else
+        HL_STUBS="$HERE/stubs/hl.meta.lua"
+    fi
+fi
+XKB_KEYSYMS_H="${XKB_KEYSYMS_H:-/usr/include/xkbcommon/xkbcommon-keysyms.h}"
+
+echo "lua:     $("$LUA" -v 2>&1 | head -1)"
+echo "stubs:   $HL_STUBS"
+echo "keysyms: $([[ -f "$XKB_KEYSYMS_H" ]] && echo "$XKB_KEYSYMS_H" || echo "not found")"
+echo
+
+fail=0
+
+# ---- 1. syntax -------------------------------------------------------------
+echo "== syntax"
+mapfile -t LUA_FILES < <(find "$REPO/config/hypr" "$HERE" -name '*.lua' -not -path "$HERE/stubs/*" | sort)
+n=0
+for f in "${LUA_FILES[@]}"; do
+    if [[ -n "$LUAC" ]]; then
+        out=$("$LUAC" -p "$f" 2>&1) || { echo "FAIL  $f"; echo "$out"; fail=1; continue; }
+    else
+        out=$("$LUA" -e "assert(loadfile(arg[1]))" "$f" 2>&1) || { echo "FAIL  $f"; echo "$out"; fail=1; continue; }
+    fi
+    n=$((n + 1))
+done
+echo "ok    $n/${#LUA_FILES[@]} Lua files compile"
+echo
+
+# ---- 2. config against the API --------------------------------------------
+echo "== config"
+FAKE_BINDS="$(mktemp)"
+trap 'rm -f "$FAKE_BINDS" "$FAKE_BINDS.hyprctl"' EXIT
+( cd "$HERE" && "$LUA" run.lua "$REPO" "$HL_STUBS" "$([[ -f "$XKB_KEYSYMS_H" ]] && echo "$XKB_KEYSYMS_H")" "$FAKE_BINDS" ) || fail=1
+echo
+
+# ---- 3. show-keybindings.sh -----------------------------------------------
+echo "== show-keybindings.sh"
+cat > "$FAKE_BINDS.hyprctl" <<EOF
+#!/usr/bin/env bash
+[[ "\$1" == "binds" ]] && cat "$FAKE_BINDS"
+EOF
+chmod +x "$FAKE_BINDS.hyprctl"
+
+sk_fail=0
+out=$(HYPRCTL="$FAKE_BINDS.hyprctl" bash "$REPO/scripts/show-keybindings.sh" --stdout) || { echo "FAIL  script exited non-zero"; sk_fail=1; }
+
+expect() {
+    if grep -qF -- "$1" <<< "$out"; then :; else echo "FAIL  missing line: $1"; sk_fail=1; fi
+}
+expect "=== HYPRLAND KEYBINDINGS ==="
+expect "─── Apps & windows ───"
+expect "─── Screenshots ───"
+expect "Super + Return"
+expect "terminal"
+expect "Super + Alt + SPACE"
+expect "Super + Ctrl + Alt + Escape"
+expect "Super + Shift + 0"
+expect "to workspace 10"
+expect "Shift + Print"
+expect "XF86AudioRaiseVolume"
+expect "Super + mouse:272"
+
+total=$(grep -c "→" <<< "$out" || true)
+binds=$(grep -c "^bind" "$FAKE_BINDS" || true)
+if [[ "$total" != "$binds" ]]; then echo "FAIL  $total rows shown for $binds binds"; sk_fail=1; fi
+if grep -q "(no description)" <<< "$out"; then echo "FAIL  a bind has no description"; sk_fail=1; fi
+
+if [[ $sk_fail == 0 ]]; then echo "ok    $total binds listed, grouped by section"; else fail=1; fi
+echo
+
+if [[ $fail == 0 ]]; then echo "ALL PASSED"; else echo "SOME TESTS FAILED"; fi
+exit $fail
