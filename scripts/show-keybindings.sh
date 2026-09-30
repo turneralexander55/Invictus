@@ -5,7 +5,7 @@
 # Displays all Hyprland keybindings.
 #
 # Reads the live binds from `hyprctl binds`, so it always matches
-# what Hyprland has loaded. The Lua config (lua/binds.lua) gives
+# what Hyprland has loaded. The Lua config (config/hypr/invictus/binds.lua) gives
 # every bind a description "Section: action"; binds are grouped by
 # that section.
 #
