@@ -18,6 +18,7 @@
 --------------------------------------------------------------------------------
 
 require("invictus.look")
+require("invictus.motion")
 require("invictus.variables")
 require("invictus.autostart")
 require("invictus.env")

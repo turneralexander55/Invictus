@@ -72,31 +72,70 @@ end
 
 -- ─── load the config the way Hyprland does ─────────────────────────────────
 
-local hl, state = mock.new({ stubs = stubsPath, keysyms = keysymsPath })
-_G.hl = hl
-
 -- Hyprland's require(), emulated (hyprrequire.lua, shared with invictus-doctor).
 local realRequire = require
+local realGetenv = os.getenv
 local hyprrequire = require("hyprrequire")
 local function makeRequire(onRequire, onError)
     return hyprrequire.make(realRequire, onRequire, onError)
 end
 
-local requiredModules = {}
-local moduleErrors = {}
-_G.require = makeRequire(function(name) requiredModules[name] = true end,
-                         function(e) table.insert(moduleErrors, e) end)
-
-local mainChunk, loadErr = loadfile(hyprDir .. "/hyprland.lua")
-local mainOk, mainErr = false, loadErr
-if mainChunk then mainOk, mainErr = pcall(mainChunk) end
-_G.require = realRequire
-
--- Run the autostart handlers, as Hyprland does once at start.
-for _, cb in ipairs(state.events["hyprland.start"] or {}) do
-    local ok, e = pcall(cb)
-    if not ok then table.insert(moduleErrors, "hyprland.start handler: " .. tostring(e)) end
+-- The environment the config sees. The suite never touches the real HOME:
+-- every load runs with a scratch HOME, and the motion and game-mode files
+-- point into it, so a machine that has a theme or a motion level set gives
+-- the same results as a fresh one.
+local SCRATCH_HOME = os.tmpname()
+os.remove(SCRATCH_HOME)
+os.execute('mkdir -p "' .. SCRATCH_HOME .. '/.config/invictus" "' .. SCRATCH_HOME .. '/run/invictus"')
+local function writeFile(path, body)
+    os.execute('mkdir -p "$(dirname "' .. path .. '")"')
+    local f = assert(io.open(path, "w"))
+    f:write(body)
+    f:close()
 end
+local function removeFile(path) os.remove(path) end
+
+-- Load the whole config the way Hyprland does, in a fresh mock, with some
+-- environment variables overridden (a false value means unset). Returns the
+-- mock's recorded state and how the load went.
+local function loadConfig(over)
+    over = over or {}
+    local env = { HOME = SCRATCH_HOME, XDG_RUNTIME_DIR = SCRATCH_HOME .. "/run",
+                  INVICTUS_MOTION_FILE = false, INVICTUS_GAMEMODE_FILE = false }
+    for k, v in pairs(over) do env[k] = v end
+    os.getenv = function(name)
+        local v = env[name]
+        if v == nil then return realGetenv(name) end
+        return v or nil
+    end
+    -- Hyprland clears package.loaded on every reload
+    for name in pairs(package.loaded) do
+        if name:match("^invictus%.") or name:match("^/") or name:match("^~/") then package.loaded[name] = nil end
+    end
+    local L = { requiredModules = {}, moduleErrors = {} }
+    local hlNew, st = mock.new({ stubs = stubsPath, keysyms = keysymsPath })
+    L.hl, L.state = hlNew, st
+    _G.hl = hlNew
+    _G.require = makeRequire(function(name) L.requiredModules[name] = true end,
+                             function(e) table.insert(L.moduleErrors, e) end)
+    local chunk, loadErr = loadfile(hyprDir .. "/hyprland.lua")
+    L.mainChunk, L.loadErr = chunk, loadErr
+    L.mainOk, L.mainErr = false, loadErr
+    if chunk then L.mainOk, L.mainErr = pcall(chunk) end
+    -- Run the autostart handlers, as Hyprland does once at start.
+    for _, cb in ipairs(st.events["hyprland.start"] or {}) do
+        local ok, e = pcall(cb)
+        if not ok then table.insert(L.moduleErrors, "hyprland.start handler: " .. tostring(e)) end
+    end
+    _G.require = realRequire
+    os.getenv = realGetenv
+    return L
+end
+
+local L0 = loadConfig({})
+local state = L0.state
+local requiredModules, moduleErrors = L0.requiredModules, L0.moduleErrors
+local mainChunk, loadErr, mainOk, mainErr = L0.mainChunk, L0.loadErr, L0.mainOk, L0.mainErr
 
 -- ─── old config (fixtures) ──────────────────────────────────────────────────
 
@@ -300,6 +339,11 @@ local EXCEPTIONS = {
     -- power off now asks first: the bind runs scripts/confirm-poweroff.sh (rofi yes/no, default No)
     ["76+escape"] = function() return { "exec_cmd", "$HOME/invictus/scripts/confirm-poweroff.sh" } end,
 }
+-- Binds added since the hyprlang config, each with the dispatcher it must run.
+-- Keyed like EXCEPTIONS: modmask + key (SUPER+SHIFT = 65).
+local NEW_BINDS = {
+    ["65+t"] = { "exec_cmd", "invictus-theme pick" }, -- Look: change theme (docs/look.md, The switcher)
+}
 local KEY_RENAMES = { ESC = "Escape" } -- ESC is not an xkb keysym; the old bind never fired
 -- Old binds deliberately left out of the port. Empty now: the power-off bind is back
 -- (Alex, 2026-09-30) with a confirm step, so it is an EXCEPTION above instead.
@@ -343,8 +387,22 @@ test("every old keybind exists with the same keys, action and flags", function(c
     end
     check(oldCount == 67, "expected 67 binds in the old keybindings.conf, found " .. oldCount)
     for combo, b in pairs(byCombo) do
-        check(seen[combo], "new bind not in the old config: " .. b.keys)
+        local added = NEW_BINDS[combo]
+        if added then
+            check(deepEqual(actualDispatcher(b.dispatcher), added),
+                b.keys .. ": expected " .. show(added) .. ", got " .. show(actualDispatcher(b.dispatcher)))
+        else
+            check(seen[combo], "new bind not in the old config or NEW_BINDS: " .. b.keys)
+        end
     end
+    for combo in pairs(NEW_BINDS) do check(byCombo[combo], "NEW_BINDS entry " .. combo .. " is not bound") end
+end)
+
+test("theme picker bind: Super+Shift+T, described 'Look: change theme'", function(check)
+    local found
+    for _, b in ipairs(state.binds) do if b.keys == "SUPER + SHIFT + T" then found = b end end
+    check(found ~= nil, "SUPER + SHIFT + T is not bound")
+    if found then check(found.opts.description == "Look: change theme", "description " .. tostring(found.opts.description)) end
 end)
 
 test("every bind has a 'Section: action' description", function(check)
@@ -371,9 +429,28 @@ test("layout toggle bind switches master <-> dwindle", function(check)
 end)
 
 -- Config keys whose old value intentionally differs or is gone.
+-- A value here is the exact new value. The look ones come from docs/look.md
+-- (Hyprland table); the colours are the Dusk fallbacks, Showcase level.
 local KEY_CHANGES = {
     ["dwindle.pseudotile"]    = "removed", -- removed in 0.55
     ["general.allow_tearing"] = true,      -- gaming addition (invictus/gaming.lua)
+    -- the look (docs/look.md, Surfaces > Hyprland)
+    ["general.gaps_in"]                = 4,
+    ["general.gaps_out"]               = 8,
+    ["general.border_size"]            = 2,
+    ["general.col.active_border"]      = { colors = { "rgb(E0A64B)", "rgb(F0C274)", "rgb(E0A64B)" }, angle = 45 },
+    ["general.col.inactive_border"]    = "rgb(27241F)",
+    ["decoration.rounding"]            = 8,
+    ["decoration.active_opacity"]      = 1.0,
+    ["decoration.inactive_opacity"]    = 1.0,
+    ["decoration.shadow.range"]        = 16,
+    ["decoration.shadow.render_power"] = 3,
+    ["decoration.shadow.color"]        = "rgba(00000073)",
+    ["decoration.blur.size"]           = 6,
+    ["decoration.blur.passes"]         = 3,
+    ["decoration.blur.vibrancy"]       = 0.1,
+    ["misc.force_default_wallpaper"]   = 0,
+    ["misc.disable_hyprland_logo"]     = true,
 }
 
 local function compareSections(check, parsed, label)
@@ -406,28 +483,6 @@ test("input and cursor settings match input-rules.conf / environment.conf", func
     compareSections(check, old.env, "environment.conf")
 end)
 
-test("curves and animations match aesthetics.conf", function(check)
-    local oldCurves, oldAnims = 0, 0
-    for _, kw in ipairs(old.look.keywords) do
-        if kw.kind == "bezier" then
-            oldCurves = oldCurves + 1
-            local p = hyprlang.split(kw.value)
-            local c = state.curves[p[1]]
-            local want = { type = "bezier", points = { { tonumber(p[2]), tonumber(p[3]) }, { tonumber(p[4]), tonumber(p[5]) } } }
-            check(deepEqual(c, want), "curve " .. p[1] .. ": want " .. show(want) .. ", got " .. show(c))
-        elseif kw.kind == "animation" then
-            oldAnims = oldAnims + 1
-            local p = hyprlang.split(kw.value)
-            local found
-            for _, a in ipairs(state.animations) do if a.leaf == p[1] then found = a end end
-            local want = { leaf = p[1], enabled = p[2] == "1", speed = tonumber(p[3]), bezier = p[4], style = p[5] }
-            check(deepEqual(found, want), "animation " .. p[1] .. ": want " .. show(want) .. ", got " .. show(found))
-        end
-    end
-    check(oldCurves == 5 and oldAnims == 17, "fixture counts changed: " .. oldCurves .. " curves, " .. oldAnims .. " animations")
-    check(#state.animations == oldAnims, "animation count " .. #state.animations .. " vs old " .. oldAnims)
-end)
-
 test("gesture and per-device settings match input-rules.conf", function(check)
     local g
     for _, kw in ipairs(old.input.keywords) do if kw.kind == "gesture" then g = hyprlang.split(kw.value) end end
@@ -457,12 +512,17 @@ end)
 local REMOVED_EXECS = {
     mako = true, -- second notification daemon; swaync stays
 }
+-- Old autostart commands that now run behind another step (docs/look.md, Themes:
+-- `invictus-theme apply` runs once at session start, before waybar).
+local WRAPPED_EXECS = {
+    waybar = "invictus-theme apply; waybar",
+}
 
 test("autostart runs the same commands as autostart.conf, once at start", function(check)
     local want = {}
     for _, kw in ipairs(old.auto.keywords) do
         local cmd = trim((kw.value:gsub("%s*&%s*$", "")))
-        if kw.kind == "exec-once" and not REMOVED_EXECS[cmd] then table.insert(want, cmd) end
+        if kw.kind == "exec-once" and not REMOVED_EXECS[cmd] then table.insert(want, WRAPPED_EXECS[cmd] or cmd) end
     end
     for cmd in pairs(REMOVED_EXECS) do
         for _, got in ipairs(state.execs) do check(got ~= cmd, cmd .. " is still autostarted") end
@@ -527,9 +587,43 @@ test("window rules match window-rules.conf", function(check)
     compareRules(check, old.rules.windowRules, plain, "windowrule")
 end)
 
-test("layer rules match window-rules.conf", function(check)
-    check(#state.layerRules == #old.rules.layerRules, "layer rule count")
-    compareRules(check, old.rules.layerRules, state.layerRules, "layerrule")
+-- The old config had one layer rule, "rofi" (blur, dim_around). The look adds
+-- blur + ignore_alpha 0.3 for every panel on the wallpaper (docs/look.md),
+-- no_anim for swaync (it animates itself) and the theme-switch veil, and the
+-- Showcase-only layer animations from motion.lua. Kept exact: any other layer
+-- rule, or any other effect, fails.
+local function layerRule(L, name)
+    for _, r in ipairs(L.state.layerRules) do if r.name == name then return r end end
+end
+
+test("layer rules: the old rofi rule, plus the look's blur and no_anim rules", function(check)
+    local want = {
+        waybar                        = { blur = true, ignore_alpha = 0.3 },
+        rofi                          = { blur = true, ignore_alpha = 0.3, dim_around = true },
+        ["swaync-notification-window"] = { blur = true, ignore_alpha = 0.3, no_anim = true },
+        ["swaync-control-center"]     = { blur = true, ignore_alpha = 0.3, no_anim = true },
+        ["moneta-panel"]              = { blur = true, ignore_alpha = 0.3 },
+        ["invictus-veil"]             = { no_anim = true },
+        ["motion-waybar"]             = { animation = "slide top" },
+        ["motion-moneta-panel"]       = { animation = "slide right" },
+    }
+    local n = 0
+    for name, effects in pairs(want) do
+        n = n + 1
+        local r = layerRule(L0, name)
+        check(r ~= nil, "layer rule '" .. name .. "' missing")
+        if r then
+            local ns = name:gsub("^motion%-", "")
+            check(deepEqual(r.match, { namespace = ns }), name .. ": match " .. show(r.match))
+            local got = {}
+            for k, v in pairs(r) do if k ~= "name" and k ~= "match" then got[k] = v end end
+            check(deepEqual(got, effects), name .. ": effects " .. show(got) .. ", want " .. show(effects))
+        end
+    end
+    check(#state.layerRules == n, "layer rule count " .. #state.layerRules .. ", expected " .. n)
+    -- the old rofi rule is still there with its old effects
+    local oldRofi = old.rules.layerRules[1]
+    check(oldRofi and oldRofi.blur == "on" and oldRofi.dim_around == "on" and oldRofi.name == "rofi", "fixture changed")
 end)
 
 test("gaming: VRR for fullscreen games, tearing allowed, direct scanout auto", function(check)
@@ -593,6 +687,7 @@ local COMMAND_PACKAGES = {
     ["/usr/lib/xdg-desktop-portal"] = "xdg-desktop-portal",
     swaync = "swaync", hyprpaper = "hyprpaper", hypridle = "hypridle", waybar = "waybar",
     hyprctl = "hyprland",
+    ["invictus-theme"] = false, -- installed to /usr/bin by the invictus tools package (Vulcan, pkgs/)
     hyprshutdown = false,  -- optional: the bind checks `command -v` first
     ["$HOME/invictus/scripts/show-keybindings.sh"] = false, -- repo script; invictus-tools in Phase 1
     ["$HOME/invictus/scripts/confirm-poweroff.sh"] = false, -- same
@@ -650,6 +745,323 @@ test("every command the config runs comes from a meta package in pkgs/meta", fun
     check(seen > 30, "only " .. seen .. " commands found; parsing broke?")
 end)
 
+-- ─── the look: values from docs/look.md ─────────────────────────────────────
+
+local function configOf(L) return L.state.config end
+local function noProblems(L, check)
+    check(L.mainOk, "config raised: " .. tostring(L.mainErr))
+    for _, e in ipairs(L.moduleErrors) do check(false, e) end
+    for _, e in ipairs(L.state.errors) do check(false, e) end
+    for _, w in ipairs(L.state.warnings) do check(false, w) end
+end
+
+local DUSK = { night = "rgb(14120F)", stone = "rgb(27241F)", line = "rgb(3A352D)", marble = "rgb(ECE6DA)",
+               sol = "rgb(E0A64B)", sol_bright = "rgb(F0C274)" }
+
+test("look (Dusk fallback, Showcase): every value in the Hyprland table of docs/look.md", function(check)
+    local cfg = configOf(L0)
+    local want = {
+        ["general.gaps_in"] = 4, ["general.gaps_out"] = 8, ["general.border_size"] = 2,
+        ["general.col.active_border"] = { colors = { DUSK.sol, DUSK.sol_bright, DUSK.sol }, angle = 45 },
+        ["general.col.inactive_border"] = DUSK.stone,
+        ["general.layout"] = "master", ["general.resize_on_border"] = false,
+        ["decoration.rounding"] = 8, ["decoration.rounding_power"] = 2,
+        ["decoration.active_opacity"] = 1.0, ["decoration.inactive_opacity"] = 1.0,
+        ["decoration.dim_inactive"] = true, ["decoration.dim_strength"] = 0.12,
+        ["decoration.shadow.enabled"] = true, ["decoration.shadow.range"] = 16,
+        ["decoration.shadow.render_power"] = 3, ["decoration.shadow.color"] = "rgba(00000073)",
+        ["decoration.shadow.color_inactive"] = "rgba(00000000)",
+        ["decoration.blur.enabled"] = true, ["decoration.blur.size"] = 6, ["decoration.blur.passes"] = 3,
+        ["decoration.blur.noise"] = 0.015, ["decoration.blur.vibrancy"] = 0.1,
+        ["decoration.blur.new_optimizations"] = true, ["decoration.blur.xray"] = false,
+        ["group.col.border_active"] = DUSK.sol, ["group.col.border_inactive"] = DUSK.stone,
+        ["group.groupbar.font_family"] = "IBM Plex Sans", ["group.groupbar.font_size"] = 12,
+        ["group.groupbar.col.active"] = DUSK.sol, ["group.groupbar.col.inactive"] = DUSK.line,
+        ["group.groupbar.text_color"] = DUSK.marble,
+        ["misc.disable_hyprland_logo"] = true, ["misc.disable_splash_rendering"] = true,
+        ["misc.force_default_wallpaper"] = 0, ["misc.background_color"] = DUSK.night,
+        ["misc.focus_on_activate"] = false,
+    }
+    for key, v in pairs(want) do
+        check(deepEqual(cfg[key], v), key .. ": want " .. show(v) .. ", got " .. show(cfg[key]))
+    end
+    -- unchanged: the cursor fix from 0a579b7 is not touched by the look
+    check(cfg["cursor.no_hardware_cursors"] == 0 or cfg["cursor.no_hardware_cursors"] == nil
+        or type(cfg["cursor.no_hardware_cursors"]) ~= "table", "cursor.no_hardware_cursors changed shape")
+end)
+
+-- Motion levels are picked by a one-word state file.
+local function withLevel(word, extra)
+    local file = SCRATCH_HOME .. "/level"
+    if word then writeFile(file, word) else removeFile(file) end
+    local env = { INVICTUS_MOTION_FILE = file }
+    for k, v in pairs(extra or {}) do env[k] = v end
+    local L = loadConfig(env)
+    removeFile(file)
+    return L
+end
+
+test("motion: no state file, and unreadable ones, mean Showcase", function(check)
+    for _, word in ipairs({ false, "", "\n", "garbage", "showcase extra words", "ON" }) do
+        local L = withLevel(word)
+        noProblems(L, check)
+        check(configOf(L)["animations.enabled"] == true and #L.state.animations > 10,
+            "level file " .. show(word) .. ": not Showcase")
+        local bo = L.state.config["general.col.active_border"]
+        check(type(bo) == "table", "level file " .. show(word) .. ": no glint gradient")
+    end
+end)
+
+-- The Motion table of docs/look.md, typed here on its own so the config is
+-- checked against the spec and not against itself. { speed, curve, style }; false = off.
+local SPEC = {
+    showcase = {
+        global = { 1.5, "snap" }, windowsIn = { 2.6, "rise", "popin 88%" }, windowsOut = { 1.4, "sink", "popin 92%" },
+        windowsMove = { 1.5, "snap" }, fadeIn = { 1.6, "glide" }, fadeOut = { 1.2, "linear" },
+        fadeSwitch = { 1.2, "glide" }, fadeShadow = { 1.5, "glide" }, fadeDim = { 1.5, "glide" },
+        border = { 1.2, "glide" }, borderangle = { 3, "unveil", "once" },
+        layersIn = { 1.8, "snap", "popin 94%" }, layersOut = { 1.2, "sink", "fade" },
+        fadeLayersIn = { 1.6, "glide" }, fadeLayersOut = { 1.0, "linear" },
+        fadePopupsIn = { 1.0, "glide" }, fadePopupsOut = { 0.8, "linear" },
+        workspaces = { 2.8, "glide", "slidefade 12%" }, specialWorkspace = { 2.6, "glide", "slidefadevert 16%" },
+        zoomFactor = { 2.5, "glide" }, monitorAdded = { 6, "unveil" }, fadeDpms = { 3, "glide" },
+    },
+    calm = {
+        global = { 1.2, "snap" }, windowsIn = { 1.8, "glide", "popin 96%" }, windowsOut = { 1.0, "sink", "popin 96%" },
+        windowsMove = { 1.2, "snap" }, fadeIn = { 1.2, "glide" }, fadeOut = { 1.0, "linear" },
+        fadeSwitch = { 1.2, "glide" }, fadeShadow = { 1.2, "glide" }, fadeDim = { 1.2, "glide" },
+        border = { 1.2, "glide" }, borderangle = false,
+        layersIn = { 1.2, "glide", "fade" }, layersOut = { 1.0, "linear", "fade" },
+        fadeLayersIn = { 1.2, "glide" }, fadeLayersOut = { 1.0, "linear" },
+        fadePopupsIn = { 1.0, "glide" }, fadePopupsOut = { 0.8, "linear" },
+        workspaces = { 1.8, "glide", "fade" }, specialWorkspace = { 1.8, "glide", "fade" },
+        zoomFactor = { 1.5, "glide" }, monitorAdded = false, fadeDpms = { 2, "glide" },
+    },
+}
+local CURVES = {
+    snap = { { 0.2, 0.9 }, { 0.1, 1 } }, glide = { { 0.25, 1 }, { 0.5, 1 } }, rise = { { 0.3, 1.5 }, { 0.6, 1 } },
+    unveil = { { 0.16, 1 }, { 0.3, 1 } }, sink = { { 0.4, 0 }, { 1, 1 } }, linear = { { 0, 0 }, { 1, 1 } },
+}
+
+for _, level in ipairs({ "showcase", "calm" }) do
+    test("motion " .. level .. ": every leaf, speed, curve and style matches the spec table", function(check)
+        local L = withLevel(level)
+        noProblems(L, check)
+        check(configOf(L)["animations.enabled"] == true, "animations.enabled is not true")
+        local got, n = {}, 0
+        for _, a in ipairs(L.state.animations) do
+            check(got[a.leaf] == nil, "leaf " .. a.leaf .. " set twice")
+            got[a.leaf] = a
+            n = n + 1
+        end
+        local want = 0
+        for leaf, spec in pairs(SPEC[level]) do
+            want = want + 1
+            local a = got[leaf]
+            check(a ~= nil, "leaf " .. leaf .. " missing")
+            if a then
+                if spec then
+                    check(a.enabled == true and a.speed == spec[1] and a.bezier == spec[2] and a.style == spec[3],
+                        leaf .. ": " .. show(a) .. ", want " .. show(spec))
+                else
+                    check(a.enabled == false, leaf .. " should be off in " .. level .. ", got " .. show(a))
+                end
+                check(a.spring == nil, leaf .. ": springs are not used")
+            end
+        end
+        check(n == want, n .. " leaves set, spec has " .. want)
+        for name, pts in pairs(CURVES) do
+            local c = L.state.curves[name]
+            check(deepEqual(c, { type = "bezier", points = pts }), "curve " .. name .. ": " .. show(c))
+        end
+        -- Rule 2: nothing loops. Rule 1 (retargeting) is Hyprland's own.
+        for _, a in ipairs(L.state.animations) do
+            check(not tostring(a.style):match("loop"), a.leaf .. " uses a looping style")
+        end
+    end)
+end
+
+test("motion: the timing budget (Showcase everyday <= 150 ms, moments <= 300 ms; Calm 120 / 180)", function(check)
+    -- tiers from the spec's leaf table. zoomFactor is listed as everyday there
+    -- but is 250 ms (Calm 150 ms), over that tier; left out and reported.
+    local everyday = { "windowsMove", "fadeSwitch", "fadeShadow", "fadeDim", "border", "fadePopupsIn", "fadePopupsOut", "global" }
+    local moments = { "windowsIn", "windowsOut", "fadeIn", "fadeOut", "layersIn", "layersOut", "fadeLayersIn",
+                      "fadeLayersOut", "workspaces", "specialWorkspace" }
+    local caps = { showcase = { 1.5, 3.0 }, calm = { 1.2, 1.8 } }
+    for level, cap in pairs(caps) do
+        local L = withLevel(level)
+        local byLeaf = {}
+        for _, a in ipairs(L.state.animations) do byLeaf[a.leaf] = a end
+        for _, leaf in ipairs(everyday) do
+            check(byLeaf[leaf] and byLeaf[leaf].speed <= cap[1], level .. " " .. leaf .. " over the everyday budget")
+        end
+        for _, leaf in ipairs(moments) do
+            check(byLeaf[leaf] and byLeaf[leaf].speed <= cap[2], level .. " " .. leaf .. " over the moment budget")
+        end
+    end
+end)
+
+test("motion off: animations.enabled = false, no animation leaf, no glint gradient", function(check)
+    local L = withLevel("off")
+    noProblems(L, check)
+    check(configOf(L)["animations.enabled"] == false, "animations.enabled = " .. show(configOf(L)["animations.enabled"]))
+    check(#L.state.animations == 0, #L.state.animations .. " animation leaves still set")
+    check(configOf(L)["general.col.active_border"] == DUSK.sol, "Off should use the solid focus border")
+    for _, name in ipairs({ "motion-waybar", "motion-moneta-panel" }) do
+        check(layerRule(L, name) == nil, "layer animation " .. name .. " set in Off")
+    end
+    check(layerRule(L, "invictus-veil") and layerRule(L, "invictus-veil").no_anim == true, "veil no_anim missing")
+end)
+
+test("motion calm: solid border, no glint leaf, no slides, layer animations absent", function(check)
+    local L = withLevel("calm")
+    check(configOf(L)["general.col.active_border"] == DUSK.sol, "Calm border should be solid focus colour")
+    for _, a in ipairs(L.state.animations) do
+        check(not (a.style or ""):match("^slide") or (a.style or ""):match("^slidefade"), a.leaf .. ": slide style in Calm")
+        check(not (a.style or ""):match("^slidefade"), a.leaf .. ": slidefade in Calm (no slides)")
+    end
+    check(layerRule(L, "motion-waybar") == nil and layerRule(L, "motion-moneta-panel") == nil, "layer slides set in Calm")
+end)
+
+test("motion showcase: gradient glint border and the layer slides", function(check)
+    local L = withLevel("showcase")
+    check(deepEqual(configOf(L)["general.col.active_border"], { colors = { DUSK.sol, DUSK.sol_bright, DUSK.sol }, angle = 45 }),
+        "border " .. show(configOf(L)["general.col.active_border"]))
+    check(layerRule(L, "motion-waybar").animation == "slide top", "waybar slide")
+    check(layerRule(L, "motion-moneta-panel").animation == "slide right", "panel slide")
+end)
+
+test("motion: level names are case-insensitive and the file may end with a newline", function(check)
+    local L = withLevel("Calm\n")
+    check(#L.state.animations > 0 and configOf(L)["animations.enabled"] == true and configOf(L)["general.col.active_border"] == DUSK.sol,
+        "'Calm' not read as calm")
+    L = withLevel("  OFF  \n")
+    check(configOf(L)["animations.enabled"] == false, "'  OFF' not read as off")
+end)
+
+test("game mode forces motion Off whatever the state file says, and the level returns afterwards", function(check)
+    local marker = SCRATCH_HOME .. "/run/invictus/game-mode"
+    writeFile(marker, "")
+    for _, word in ipairs({ "showcase", "calm", "off", false }) do
+        local L = withLevel(word)
+        check(configOf(L)["animations.enabled"] == false and #L.state.animations == 0,
+            "game mode on, level " .. show(word) .. ": animations still on")
+    end
+    -- the look: no gaps, border, shadow, blur or dim while gaming
+    local L = withLevel("showcase")
+    local cfg = configOf(L)
+    check(cfg["general.gaps_in"] == 0 and cfg["general.gaps_out"] == 0 and cfg["general.border_size"] == 0, "game mode: gaps or border")
+    check(cfg["decoration.shadow.enabled"] == false and cfg["decoration.blur.enabled"] == false
+        and cfg["decoration.dim_inactive"] == false, "game mode: shadow, blur or dim still on")
+    removeFile(marker)
+    L = withLevel("calm")
+    check(configOf(L)["animations.enabled"] == true, "Calm did not come back after game mode")
+    L = withLevel("showcase")
+    check(configOf(L)["general.gaps_in"] == 4 and configOf(L)["decoration.blur.enabled"] == true, "look did not come back")
+end)
+
+-- ─── colours come from the theme system ─────────────────────────────────────
+
+local GENERATED = SCRATCH_HOME .. "/.config/invictus/current/hyprland-colors.lua"
+local TOOL = repo .. "/theme/invictus-theme"
+
+-- Run the real generator for a theme and put its output where the config looks.
+local function installTheme(id)
+    local dir = SCRATCH_HOME .. "/gen-" .. id
+    os.execute('rm -rf "' .. dir .. '" "' .. SCRATCH_HOME .. '/.config/invictus/current"')
+    local ok = os.execute('python3 "' .. TOOL .. '" generate ' .. id .. ' "' .. dir .. '" >/dev/null 2>&1')
+    os.execute('mkdir -p "' .. SCRATCH_HOME .. '/.config/invictus" && ln -sfn "' .. dir .. '" "' .. SCRATCH_HOME .. '/.config/invictus/current"')
+    return ok, dir
+end
+local function uninstallTheme() os.execute('rm -rf "' .. SCRATCH_HOME .. '/.config/invictus/current" "' .. SCRATCH_HOME .. '"/gen-*') end
+
+local function readTokens(path)
+    local t = dofile(path)
+    return t
+end
+
+for _, id in ipairs({ "dusk", "porphyry", "aegean", "alexandria" }) do
+    test("colours: theme " .. id .. " (real generator output) reaches borders, groups and background", function(check)
+        local ok, dir = installTheme(id)
+        check(ok, "invictus-theme generate " .. id .. " failed (needs python3 >= 3.11)")
+        if not ok then return end
+        local t = readTokens(dir .. "/hyprland-colors.lua")
+        local L = withLevel("showcase")
+        noProblems(L, check)
+        local cfg = configOf(L)
+        check(deepEqual(cfg["general.col.active_border"], { colors = { t.sol, t.sol_bright, t.sol }, angle = 45 }),
+            "active_border " .. show(cfg["general.col.active_border"]))
+        check(cfg["general.col.inactive_border"] == t.stone, "inactive_border " .. show(cfg["general.col.inactive_border"]))
+        check(cfg["group.col.border_active"] == t.sol and cfg["group.groupbar.col.active"] == t.sol, "group focus colour")
+        check(cfg["group.groupbar.col.inactive"] == t.line and cfg["group.groupbar.text_color"] == t.marble, "groupbar colours")
+        check(cfg["misc.background_color"] == t.night, "background_color " .. show(cfg["misc.background_color"]))
+        L = withLevel("calm")
+        check(configOf(L)["general.col.active_border"] == t.sol, "Calm border is not the theme's sol")
+        -- every token the config reads exists in the generated file (contract with the generator)
+        local colorsModule = dofile(hyprDir .. "/invictus/colors.lua")
+        for k in pairs(colorsModule) do
+            if k ~= "shadow" and k ~= "shadow_none" then check(t[k] ~= nil, "generator output lacks token " .. k) end
+        end
+        uninstallTheme()
+    end)
+end
+
+test("colours: switching theme and reloading changes the borders (Dusk to Porphyry)", function(check)
+    local ok1 = installTheme("dusk")
+    local a = configOf(withLevel("calm"))["general.col.active_border"]
+    local ok2 = installTheme("porphyry")
+    local b = configOf(withLevel("calm"))["general.col.active_border"]
+    check(ok1 and ok2, "generate failed")
+    check(a == "rgb(E0A64B)" and b == "rgb(CE93C8)", "dusk " .. show(a) .. ", porphyry " .. show(b))
+    uninstallTheme()
+end)
+
+test("colours: a missing, broken, partial or hostile generated file falls back to Dusk", function(check)
+    local cases = {
+        { "missing", nil },
+        { "syntax error", "return {{{" },
+        { "runtime error", "error('boom')" },
+        { "not a table", "return 42" },
+        { "empty table", "return {}" },
+        { "hostile values", 'return { sol = "rgb(zz)", stone = 5, night = "red; os.exit()", sol_bright = "rgb(1,2,3)" }' },
+        { "partial", 'return { sol = "rgb(112233)" }' },
+    }
+    for _, case in ipairs(cases) do
+        local name, body = case[1], case[2]
+        os.execute('rm -rf "' .. SCRATCH_HOME .. '/.config/invictus/current"')
+        if body then writeFile(GENERATED, body) end
+        local L = withLevel("calm")
+        check(L.mainOk, name .. ": config raised " .. tostring(L.mainErr))
+        for _, e in ipairs(L.state.errors) do check(false, name .. ": " .. e) end
+        local cfg = configOf(L)
+        local wantSol = (name == "partial") and "rgb(112233)" or DUSK.sol
+        check(cfg["general.col.active_border"] == wantSol, name .. ": active_border " .. show(cfg["general.col.active_border"]))
+        check(cfg["general.col.inactive_border"] == DUSK.stone, name .. ": inactive_border " .. show(cfg["general.col.inactive_border"]))
+        check(cfg["misc.background_color"] == DUSK.night, name .. ": background " .. show(cfg["misc.background_color"]))
+        check(cfg["decoration.blur.size"] == 6, name .. ": rest of the config did not load")
+        os.execute('rm -rf "' .. SCRATCH_HOME .. '/.config/invictus/current"')
+    end
+end)
+
+test("colours: look.lua and motion.lua type no colour of their own", function(check)
+    for _, f in ipairs({ "look.lua", "motion.lua", "rules.lua", "binds.lua" }) do
+        local n = 0
+        for line in io.lines(hyprDir .. "/invictus/" .. f) do
+            n = n + 1
+            local code = line:gsub("%-%-.*$", "")
+            check(not code:match("#%x%x%x%x%x%x") and not code:match("rgba?%(") and not code:match('"0x%x%x%x%x%x%x'),
+                f .. ":" .. n .. ": hardcoded colour: " .. line)
+        end
+    end
+end)
+
+test("the config requires the generated file (not dofile), so Hyprland sees it as part of the config", function(check)
+    local src = assert(io.open(hyprDir .. "/invictus/colors.lua")):read("a"):gsub("%-%-[^\n]*", "")
+    check(src:find('require, GENERATED', 1, true) or src:find('pcall(require', 1, true), "colors.lua does not require the file")
+    check(not src:find("dofile", 1, true) and not src:find("loadfile", 1, true), "colors.lua uses dofile or loadfile")
+    check(src:find(".config/invictus/current/hyprland-colors.lua", 1, true), "colors.lua does not read the generated path")
+end)
+
 -- ─── fake `hyprctl binds` output for the show-keybindings test ──────────────
 
 if fakeBindsOut and fakeBindsOut ~= "" then
@@ -667,5 +1079,6 @@ if fakeBindsOut and fakeBindsOut ~= "" then
     f:close()
 end
 
+os.execute('rm -rf "' .. SCRATCH_HOME .. '"')
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

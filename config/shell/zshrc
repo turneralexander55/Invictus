@@ -73,48 +73,28 @@ typeset -gA ZSH_HIGHLIGHT_STYLES
 
 
 # ===============================
-# Frost zsh syntax highlighting
+# Syntax highlighting
 # ===============================
-# Base/default text
-ZSH_HIGHLIGHT_STYLES[default]='fg=#EAF2FF'
+# Terminal palette names only (no hex), so the colours follow the current
+# theme: kitty's colour0-15 are set by invictus-theme.
+# Base text and arguments stay in the terminal foreground (marble).
+ZSH_HIGHLIGHT_STYLES[default]='none'
+ZSH_HIGHLIGHT_STYLES[command]='fg=cyan,bold'
+ZSH_HIGHLIGHT_STYLES[builtin]='fg=white'
+ZSH_HIGHLIGHT_STYLES[alias]='fg=white'
+ZSH_HIGHLIGHT_STYLES[function]='fg=white'
+ZSH_HIGHLIGHT_STYLES[precommand]='fg=blue'
+ZSH_HIGHLIGHT_STYLES[argument]='none'
+ZSH_HIGHLIGHT_STYLES[options]='fg=blue,bold'
+ZSH_HIGHLIGHT_STYLES[path]='fg=cyan,underline'
+ZSH_HIGHLIGHT_STYLES[globbing]='fg=magenta'
+ZSH_HIGHLIGHT_STYLES[quoted]='fg=green'
+ZSH_HIGHLIGHT_STYLES[dollar-quoted-argument]='fg=green'
+ZSH_HIGHLIGHT_STYLES[variable]='fg=magenta'
+ZSH_HIGHLIGHT_STYLES[assign]='fg=white'
+ZSH_HIGHLIGHT_STYLES[comment]='fg=8'
+ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=red'
 
-# Commands
-ZSH_HIGHLIGHT_STYLES[command]='fg=#18a9c9,bold'
-
-# Builtins / aliases / functions
-ZSH_HIGHLIGHT_STYLES[builtin]='fg=#D6E8FF'
-ZSH_HIGHLIGHT_STYLES[alias]='fg=#D6E8FF'
-ZSH_HIGHLIGHT_STYLES[function]='fg=#D6E8FF'
-
-# Arguments
-ZSH_HIGHLIGHT_STYLES[argument]='fg=#EAF2FF'
-
-# Options / flags
-ZSH_HIGHLIGHT_STYLES[options]='fg=#1b3dc4,bold'
-
-# Paths
-ZSH_HIGHLIGHT_STYLES[path]='fg=#18a9c9,underline'
-
-# Globbing
-ZSH_HIGHLIGHT_STYLES[globbing]='fg=#A9D7FF'
-
-# Quoted strings
-ZSH_HIGHLIGHT_STYLES[quoted]='fg=#9FC7FF'
-ZSH_HIGHLIGHT_STYLES[dollar-quoted-argument]='fg=#9FC7FF'
-
-# Variables
-ZSH_HIGHLIGHT_STYLES[variable]='fg=#C7E3FF'
-
-# Assignments
-ZSH_HIGHLIGHT_STYLES[assign]='fg=#D6E8FF'
-
-# Comments
-ZSH_HIGHLIGHT_STYLES[comment]='fg=#7FA6D6'
-
-# Unknown tokens
-ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=#FFFFFF,bg=#162338'
-
-ZSH_HIGHLIGHT_STYLES[precommand]='fg=#1b3dc4'
 # ===============================
 # Autosuggestions
 # ===============================
@@ -141,4 +121,4 @@ source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zs
 # ===============================
 # Fastfetch (interactive only)
 # ===============================
-[[ $- == *i* ]] && fastfetch --color white --logo-color-1 white --logo-color-2 white
+[[ $- == *i* ]] && fastfetch

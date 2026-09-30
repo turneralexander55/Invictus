@@ -1,140 +1,181 @@
 /* ============================================================
-   Waybar CSS – Pill Layout (GTK CSS Compatible)
+   Waybar: one continuous bar (docs/look.md, Waybar)
    ------------------------------------------------------------
-   Goals:
-   - Left: Workspaces + Window title
-   - Center: Clock (prominent)
-   - Right: Updates, CPU, Memory, Audio, Network
-   ============================================================ */
+   Colours are tokens, never hex:
+   - colors-fallback.css   Dusk, loaded first (covers tokens a stale generated
+     file lacks; it cannot cover a missing file, see the note below)
+   - ../invictus/current/waybar-colors.css   the current theme, written by
+     invictus-theme; loaded second so it wins
+   Motion: motion.css holds the Showcase durations (the default). The motion
+   switcher copies motion/calm.css or motion/off.css over ~/.config/waybar/motion.css.
 
-/* ------------------------------------------------------------
-   GLOBAL RESET
-   ------------------------------------------------------------ */
+   Every @import must exist: waybar exits if one is missing (checked on 0.9.24).
+   invictus-theme apply writes the theme file before waybar starts (autostart.lua).
+   ============================================================ */
+@import url("colors-fallback.css");
+@import url("../invictus/current/waybar-colors.css");
+@import url("motion.css");
+
 * {
     border: none;
     border-radius: 0;
-    font-family: "IBM Plex Mono";
-    font-size: 11px;
+    font-family: "IBM Plex Sans", "Symbols Nerd Font Mono", sans-serif;
+    font-size: 13px;
     min-height: 0;
 }
 
-/* ------------------------------------------------------------
-   WAYBAR ROOT WINDOW
-   ------------------------------------------------------------ */
+/* The bar: night at 82% over the layer blur, one 1 px line under it */
 window#waybar {
-    background: transparent;
+    background: @bar-bg;
+    border-bottom: 1px solid @line;
+    color: @parchment;
 }
 
-/* ============================================================
-   LEFT SIDE – WORKSPACES + WINDOW TITLE
-   ============================================================ */
+/* Modules: 0 10 px padding, no backgrounds. The 4 px gap is "spacing" in config.json */
+#custom-mark,
+#workspaces,
+#window,
+#clock,
+#custom-now,
+#tray,
+#custom-updates,
+#custom-alert,
+#pulseaudio,
+#network,
+#custom-swaync {
+    padding: 0 10px;
+    background: transparent;
+    color: @parchment;
+}
 
-/* ------------------------------------------------------------
-   WORKSPACE PILL
-   ------------------------------------------------------------ */
+/* Hover: marble on stone, 6 px radius */
+#custom-mark:hover,
+#clock:hover,
+#custom-now:hover,
+#custom-updates:hover,
+#custom-alert:hover,
+#pulseaudio:hover,
+#network:hover,
+#custom-swaync:hover {
+    background: @stone;
+    color: @marble;
+    border-radius: 6px;
+}
+
+/* ---- left ---- */
+
+#custom-mark {
+    color: @marble;
+    font-size: 16px;
+}
+
+/* Workspaces: numbers match the keys. Arabic numerals in Plex Mono, 22 px wide.
+   Has windows parchment, empty ash, active marble with a 2 px sol bar. */
 #workspaces {
-    background: rgba(0, 0, 0, 1);
-    padding: 6px 10px;
-    margin-right: 8px;
-    border-radius: 999px;
+    padding: 0 4px;
 }
 
-/* Workspace buttons */
 #workspaces button {
-    padding: 0 5px;
-    color: #666666;
+    min-width: 22px;
+    padding: 0;
+    margin: 0 1px;
+    color: @parchment;
     background: transparent;
-    border: none;
     border-radius: 0;
+    font-family: "IBM Plex Mono", "Symbols Nerd Font Mono", monospace;
+    font-feature-settings: "tnum";
 }
 
-/* Active workspace */
-#workspaces button.active {
-    color: #f2f2f2;
+#workspaces button.empty {
+    color: @ash;
 }
 
-/* Hover effect */
 #workspaces button:hover {
-    color: #aaaaaa;
-    background: transparent;
+    color: @marble;
+    background: @stone;
+    border-radius: 6px;
 }
 
-/* ------------------------------------------------------------
-   WINDOW TITLE PILL
-   ------------------------------------------------------------ */
+#workspaces button.active {
+    color: @marble;
+    box-shadow: inset 0 -2px @sol;
+}
+
+#workspaces button.urgent {
+    color: @pompeii;
+}
+
+/* Window title: ash. Nothing on an empty desktop. */
 #window {
-    background: rgba(0, 0, 0, 1);
-    padding: 6px 12px;
-    margin-right: 8px;
-    border-radius: 999px;
-    color: #bbbbbb;
+    color: @ash;
 }
 
-/* Hide pill when no window is focused */
-window#waybar.empty #window,
-#window.empty {
-    background: transparent;
+window#waybar.empty #window {
     padding: 0;
     margin: 0;
 }
 
-/* ------------------------------------------------------------
-   UPDATES PILL (LEFT SIDE)
-   ------------------------------------------------------------ */
-#custom-updates {
-    background: rgba(0, 0, 0, 1);
-    padding: 6px 12px;
-    border-radius: 999px;
-    color: #88c0d0;
-}
+/* ---- centre ---- */
 
-/* Highlight when updates are available */
-#custom-updates.has-updates {
-    color: #ebcb8b;
-}
-
-/* ============================================================
-   CENTER – CLOCK (PRIMARY FOCAL POINT)
-   ============================================================ */
-
-/* ------------------------------------------------------------
-   CLOCK PILL
-   ------------------------------------------------------------ */
 #clock {
-    background: rgba(0, 0, 0, 1);
-    padding: 8px 20px;
-    border-radius: 999px;
-    font-size: 16px;
-    font-weight: 700;
-    color: #f5f5f5;
+    color: @marble;
+    font-size: 14px;
+    font-weight: 600;
 }
 
-/* ============================================================
-   RIGHT SIDE – SYSTEM STATS
-   ============================================================ */
+/* ---- right (primary monitor only) ---- */
 
-/* ------------------------------------------------------------
-   SHARED STYLE FOR RIGHT-SIDE MODULES
-   ------------------------------------------------------------ */
-#custom-gpu,
-#custom-cpu,
-#custom-memory,
+#custom-now {
+    color: @parchment;
+}
+
+#custom-updates,
 #pulseaudio,
-#network {
-    background: rgba(0, 0, 0, 1);
-    padding: 6px 12px;
-    margin-left: 8px;
-    border-radius: 999px;
-    color: #e6e6e6;
+#custom-alert {
+    font-family: "IBM Plex Mono", "Symbols Nerd Font Mono", monospace;
+    font-feature-settings: "tnum";
 }
 
-/* ------------------------------------------------------------
-   QUIET / INACTIVE STATES
-   ------------------------------------------------------------ */
+/* Hidden at 0 updates. updates.sh prints "0" with class up-to-date, and
+   waybar only hides an empty text, so this collapses the module instead. */
+#custom-updates.up-to-date {
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+    font-size: 0;
+}
+
+/* The system alert shows only when a reading is over 90 (alert.sh prints an empty text otherwise) */
+#custom-alert.hot {
+    color: @pompeii;
+}
+
 #pulseaudio.muted {
-    color: #777777;
+    color: @ash;
 }
 
 #network.disconnected {
-    color: #777777;
+    color: @pompeii;
+}
+
+/* Notifications: bell, sol when unread, crossed bell in ash while Do not disturb is on */
+#custom-swaync.notification {
+    color: @sol;
+}
+
+#custom-swaync.dnd-none,
+#custom-swaync.dnd-notification,
+#custom-swaync.dnd-inhibited-none,
+#custom-swaync.dnd-inhibited-notification {
+    color: @ash;
+}
+
+tooltip {
+    background: @basalt;
+    border: 1px solid @line;
+    border-radius: 8px;
+}
+
+tooltip label {
+    color: @marble;
 }

@@ -1,0 +1,6 @@
+/* Off: no accent and no slide (transition-time 0 in config.json). The motion switcher copies this
+   over ~/.config/swaync/motion.css. */
+.notification-row .notification,
+.notification-default-action .image {
+    animation: none;
+}

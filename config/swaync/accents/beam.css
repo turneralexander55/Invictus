@@ -1,0 +1,19 @@
+/* Entrance accent, Alexandria: the beam. One pass of lamp light across the card, left
+   to right. Used instead of ../accent.css. Not tested: if GTK 4 does not animate
+   background-position, Alexandria uses ../accent.css (the sunrise bar). */
+@keyframes beam {
+    from { background-position: -100% 0; }
+    to   { background-position: 200% 0; }
+}
+
+.notification-row .notification {
+    background-image: linear-gradient(100deg, alpha(@sol-bright, 0) 30%, alpha(@sol-bright, .10) 50%, alpha(@sol-bright, 0) 70%);
+    background-size: 60% 100%;
+    background-repeat: no-repeat;
+    animation: beam 300ms cubic-bezier(.16, 1, .3, 1) 1;
+}
+
+.notification-row .notification.critical,
+.notification-row .critical .notification {
+    animation: none;
+}

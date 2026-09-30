@@ -15,7 +15,10 @@
 #    Hyprland reload, a failing step gives one notification, a failing
 #    theme changes nothing.
 # 5. pick with a stub rofi.
-# 6. shellcheck of this file.
+# 6. The shipped app configs in config/: no hand-written colours outside the
+#    fallback files, fallbacks equal generated Dusk, every app loads the generated
+#    file, waybar/swaync/rofi/kitty/fastfetch settings from docs/look.md, alert.sh.
+# 7. shellcheck of this file and config/waybar/alert.sh.
 # ------------------------------------------------------------
 set -uo pipefail
 
@@ -280,9 +283,21 @@ export STUB_ROFI_CHOICE=
 "$TOOL" pick >/dev/null 2>&1
 expect "pick on a fresh install has Dusk in place" test -s "$HOME/.config/invictus/current/rofi-picker.rasi"
 
-echo "6. shellcheck"
+echo "6. the shipped app configs (config/)"
+DUSK_OUT="$TMP/dusk-out"
+"$TOOL" generate dusk "$DUSK_OUT" >/dev/null 2>&1
+if config_out=$(python3 "$HERE/config_checks.py" "$REPO" "$DUSK_OUT" 2>&1); then
+    n=$(grep -c '^ok' <<<"$config_out")
+    pass "config checks: $n passed"
+else
+    grep -v '^ok' <<<"$config_out" | sed 's/^/  /'
+    fail "config checks (see FAIL lines above)"
+fi
+
+echo "7. shellcheck"
 if command -v shellcheck >/dev/null 2>&1; then
     expect "shellcheck run.sh" shellcheck -x "${BASH_SOURCE[0]}"
+    expect "shellcheck alert.sh" shellcheck -x "$REPO/config/waybar/alert.sh"
 else
     echo "  note shellcheck not installed"
 fi

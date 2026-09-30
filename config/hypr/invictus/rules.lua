@@ -113,13 +113,30 @@ hl.window_rule({
 -- Layer Rules
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- Rofi launcher
-hl.layer_rule({
-    name  = "rofi",
-    match = { namespace = "rofi" },
+-- Blur the panels that sit on the wallpaper (docs/look.md, Hyprland). ignore_alpha
+-- keeps the blur off the fully transparent parts of a layer.
+local blurred = { "waybar", "rofi", "swaync-notification-window", "swaync-control-center", "moneta-panel" }
+for _, namespace in ipairs(blurred) do
+    local rule = {
+        name  = namespace,
+        match = { namespace = namespace },
 
-    blur       = true,
-    dim_around = true,
+        blur         = true,
+        ignore_alpha = 0.3,
+    }
+    -- The launcher (and the pickers, which are rofi too) dims what is behind it
+    if namespace == "rofi" then rule.dim_around = true end
+    -- swaync animates its own cards; a layer fade on top would double it
+    if namespace:match("^swaync") then rule.no_anim = true end
+    hl.layer_rule(rule)
+end
+
+-- The theme-switch veil animates itself (invictus-theme, docs/look.md, Motion)
+hl.layer_rule({
+    name  = "invictus-veil",
+    match = { namespace = "invictus-veil" },
+
+    no_anim = true,
 })
 
 

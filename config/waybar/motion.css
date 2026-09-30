@@ -1,0 +1,8 @@
+/* Showcase (the default): 150 ms. Calm and Off are in motion/. */
+#workspaces button {
+    transition: box-shadow 150ms cubic-bezier(.25, 1, .5, 1), color 150ms;
+}
+
+#custom-swaync {
+    transition: color 150ms;
+}
