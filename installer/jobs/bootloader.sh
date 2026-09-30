@@ -19,12 +19,12 @@
 #     does not work with systemd hooks). initcpiocfg normally writes this;
 #     the job checks it and fixes it if not.
 #  5. limine-install --no-efi-register (EFI binary, fallback copy), then
-#     limine-mkinitcpio (initramfs and one entry per kernel: linux,
-#     linux-lts), then an NVRAM entry labelled "Invictus" (limine-install
+#     limine-mkinitcpio (initramfs and one entry per kernel; Invictus ships
+#     one, linux-cachyos), then an NVRAM entry labelled "Invictus" (limine-install
 #     would label it "Limine"; it finds ours by path next time and does not
 #     add a second). If the firmware refuses the entry, limine goes in the
 #     removable-media fallback path instead.
-#  6. Check the result: an Invictus entry with a kernel in limine.conf, the
+#  6. Check the result: an Invictus entry with every installed kernel in limine.conf, the
 #     limine EFI binary on the ESP.
 # ------------------------------------------------------------
 set -euo pipefail
@@ -160,8 +160,17 @@ fi
 # ---- 6. check -------------------------------------------------------------------------
 [[ -f "$ROOT/boot/EFI/limine/limine_x64.efi" ]] || die "limine EFI binary missing from the ESP"
 grep -Eq "^/\+?$OS_NAME\b" "$conf" || die "no $OS_NAME entry in limine.conf"
-# limine-entry-tool writes "//linux" entries with "path: boot():/<machine-id>/linux/vmlinuz#<hash>"
-# and our command line (format seen in the first VM install).
-grep -Eq '^[[:space:]]+path: boot\(\):/[^ ]+/vmlinuz' "$conf" || die "no kernel entry in limine.conf"
+# limine-entry-tool writes one "//<pkgbase>" entry per kernel with
+# "path: boot():/<machine-id>/<pkgbase>/vmlinuz#<hash>" and our command line
+# (format seen in the first VM install). Every installed kernel (today only
+# linux-cachyos) must have one.
+kernels=0
+for pb in "$ROOT"/usr/lib/modules/*/pkgbase; do
+    [[ -f "$pb" ]] || continue
+    k="$(<"$pb")"
+    grep -Eq "^[[:space:]]+path: boot\(\):/[^ ]+/$k/vmlinuz" "$conf" || die "no limine.conf entry for the $k kernel"
+    kernels=$((kernels + 1))
+done
+((kernels > 0)) || die "no kernel installed in the target (no usr/lib/modules/*/pkgbase)"
 grep -Fq "cmdline: $cmdline" "$conf" || die "the kernel entries in limine.conf do not carry the command line"
 say "limine installed"

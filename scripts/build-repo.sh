@@ -6,7 +6,7 @@
 #   scripts/build-repo.sh --build-only    build packages, no repo db
 #   scripts/build-repo.sh --repo-only     sign (if a key is given) + repo-add
 #   scripts/build-repo.sh --out DIR       output folder (default out/repo)
-#   scripts/build-repo.sh --no-pinned     leave out the pinned hypr* set
+#   scripts/build-repo.sh --no-pinned     leave out the pinned packages
 #                                         (offline builds; not for publishing)
 #   scripts/build-repo.sh --only NAME     build just this PKGBUILD (repeat for
 #                                         more); implies --build-only, writes
@@ -43,8 +43,9 @@
 # Bump pkgrel whenever one of those files changes, or the old package
 # is reused.
 #
-# The pinned hypr* set (pkgs/pinned/hypr.lock) is fetched from the Arch
-# archive and verified by scripts/fetch-pinned.sh in the build step.
+# The pinned packages (pkgs/pinned/*.lock: the hypr* set from the Arch
+# archive, linux-cachyos from CachyOS) are fetched and verified by
+# scripts/fetch-pinned.sh in the build step.
 #
 # Repo file names only use [A-Za-z0-9._-] (scripts/lib/repo-names.sh):
 # GitHub renames release assets with other characters, such as the ':'

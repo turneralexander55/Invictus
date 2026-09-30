@@ -8,9 +8,9 @@ set -euo pipefail
 #    kernel pacman hook with its own, which needs an ESP and does nothing in
 #    the build chroot, so build archiso's initramfs here with the stock
 #    mkinitcpio and /etc/mkinitcpio.conf.d/archiso.conf.
-kver="$(basename "$(dirname "$(grep -lx linux /usr/lib/modules/*/pkgbase)")")"
-install -Dm644 "/usr/lib/modules/$kver/vmlinuz" /boot/vmlinuz-linux
-/usr/bin/mkinitcpio -k "$kver" -g /boot/initramfs-linux.img
+kver="$(basename "$(dirname "$(grep -lx linux-cachyos /usr/lib/modules/*/pkgbase)")")"
+install -Dm644 "/usr/lib/modules/$kver/vmlinuz" /boot/vmlinuz-linux-cachyos
+/usr/bin/mkinitcpio -k "$kver" -g /boot/initramfs-linux-cachyos.img
 
 # 2. The live user's Hyprland loader (user.lua is already in the image).
 install -d -o 1000 -g 100 /home/liber/.config/hypr

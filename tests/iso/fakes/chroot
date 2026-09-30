@@ -29,7 +29,16 @@ case "$1" in
         name="$(sed -n 's/^TARGET_OS_NAME="\(.*\)"$/\1/p' "$root/etc/default/limine")"
         # The format limine-entry-tool 1.40 writes (seen in the first VM install).
         cmd="$(sed -n 's/^KERNEL_CMDLINE\[default\]=//p' "$root/etc/default/limine")"
-        printf '/+%s\ncomment: machine-id=0123 order-priority=50\n  //linux\n  protocol: linux\n  module_path: boot():/0123/linux/initramfs#abc\n  path: boot():/0123/linux/vmlinuz#def\n  cmdline: %s\n' "$name" "$cmd" >>"$root/boot/limine.conf" ;;
+        printf '/+%s\ncomment: machine-id=0123 order-priority=50\n' "$name" >>"$root/boot/limine.conf"
+        # One entry per installed kernel (its pkgbase), unless the state
+        # file lists a kernel the tool should skip.
+        for pb in "$root"/usr/lib/modules/*/pkgbase; do
+            [[ -f "$pb" ]] || continue
+            k="$(cat "$pb")"
+            grep -qx "$k" "$FAKE_STATE/limine-skips" 2>/dev/null && continue
+            printf '  //%s\n  protocol: linux\n  module_path: boot():/0123/%s/initramfs#abc\n  path: boot():/0123/%s/vmlinuz#def\n  cmdline: %s\n' \
+                "$k" "$k" "$k" "$cmd" >>"$root/boot/limine.conf"
+        done ;;
     efibootmgr)
         if [[ $# -eq 1 ]]; then echo "BootOrder: 0001"; echo "Boot0001* Windows Boot Manager"; exit 0; fi
         [[ ! -f "$FAKE_STATE/efibootmgr-fails" ]] ;;

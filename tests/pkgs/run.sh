@@ -96,6 +96,8 @@ while read -r n src; do
         core|extra|multilib|aur-paru) ;;
         aur) [[ -f "$REPO/pkgs/aur/$n/PKGBUILD" ]] || sbad "$n: sources.txt says aur, but pkgs/aur/$n does not exist" ;;
         invictus) [[ -f "$REPO/pkgs/own/$n/PKGBUILD" || -f "$REPO/pkgs/meta/$n/PKGBUILD" ]] || sbad "$n: sources.txt says invictus, but no PKGBUILD" ;;
+        pinned) grep -hv '^#' "$REPO"/pkgs/pinned/*.lock | cut -d' ' -f1 | grep -x "$n" >/dev/null \
+                    || sbad "$n: sources.txt says pinned, but no pkgs/pinned/*.lock lists it" ;;
         *) sbad "$n: unknown source '$src'" ;;
     esac
 done < "$TMP/sources"

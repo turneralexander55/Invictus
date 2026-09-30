@@ -12,7 +12,8 @@
 #    optdepends) comes from where pkgs/meta/sources.txt says: core, extra
 #    or multilib (pacman -Si), aur (AUR RPC, and pkgs/aur builds it),
 #    aur-paru (AUR RPC; not in pkgs/aur yet, a machine gets it with paru),
-#    or invictus (our own PKGBUILD). tests/pkgs/run.sh checks the same
+#    invictus (our own PKGBUILD), or pinned (not in Arch; a binary pinned in
+#    pkgs/pinned/*.lock, like linux-cachyos). tests/pkgs/run.sh checks the same
 #    file offline; this is what keeps it true.
 # 2. Every command in tests/pkgs/fixtures/commands.txt is a file of the
 #    Arch package it is mapped to (pacman -F), and
@@ -78,6 +79,7 @@ curl -sSf "https://aur.archlinux.org/rpc/v5/info?$args" | jq -r '.results[].Name
 while IFS= read -r n; do
     if ours "$n"; then src=invictus
     elif src="$(awk -v n="$n" '$1 == n { print $2; exit }' "$TMP/arch")" && [[ -n "$src" ]]; then :
+    elif grep -hv '^#' "$SRC"/pkgs/pinned/*.lock | cut -d' ' -f1 | grep -x "$n" >/dev/null; then src=pinned
     elif grep -qx "$n" "$TMP/aur"; then
         if [[ -f "$SRC/pkgs/aur/$n/PKGBUILD" ]]; then src=aur; else src=aur-paru; fi
     else
@@ -93,7 +95,7 @@ if $WRITE; then
         echo "# container on $(date -u +%Y-%m-%d); checked offline by tests/pkgs/run.sh and"
         echo "# live by tests/pkgs/live-arch.sh. Sources: core, extra, multilib (Arch),"
         echo "# aur (built from pkgs/aur), aur-paru (AUR, not in pkgs/aur yet: install it"
-        echo "# with paru), invictus (our own PKGBUILD)."
+        echo "# with paru), invictus (our own PKGBUILD), pinned (pkgs/pinned/*.lock, not in Arch)."
         cat "$TMP/found"
     } > "$MANIFEST"
     ok "wrote $MANIFEST ($(wc -l < "$TMP/found") packages)"

@@ -45,7 +45,9 @@ new_target() {
     echo 'invictus' >"$ROOTDIR/etc/hostname"
     printf 'passwd: files systemd\nhosts: mymachines resolve [!UNAVAIL=return] files myhostname dns\n' >"$ROOTDIR/etc/nsswitch.conf"
     printf 'MODULES=()\nHOOKS=(systemd autodetect microcode modconf kms keyboard sd-vconsole block plymouth filesystems)\n' >"$ROOTDIR/etc/mkinitcpio.conf"
-    for p in invictus-installer-0.1.0-1 calamares-3.4.2-2.1 cage-0.3.1-1 linux-7.2.7-1; do mkdir -p "$ROOTDIR/var/lib/pacman/local/$p"; done
+    for p in invictus-installer-0.1.0-1 calamares-3.4.2-2.1 cage-0.3.1-1 linux-cachyos-7.2.7-1; do mkdir -p "$ROOTDIR/var/lib/pacman/local/$p"; done
+    mkdir -p "$ROOTDIR/usr/lib/modules/7.2.7-1-cachyos"
+    echo linux-cachyos >"$ROOTDIR/usr/lib/modules/7.2.7-1-cachyos/pkgbase"
     cp "$REPO/iso/live-only.txt" "$DATA/live-only.txt"
     cp "$REPO/installer/data/limine-header.conf" "$DATA/limine-header.conf"
     # Mount table: plain btrfs root on sda2, ESP sda1.
@@ -149,7 +151,7 @@ check "bootloader: snapshots path is @snapshots" grep -qx 'ROOT_SNAPSHOTS_PATH="
 check "bootloader: no live ISO parameters in the cmdline" bash -c "! grep -Eq 'archiso|invictus\.(safe|install)' '$dl'"
 check "bootloader: limine.conf starts with the Dusk header" bash -c "head -n 20 '$ROOTDIR/boot/limine.conf' | grep -qx 'term_background: 0014120F'"
 check "bootloader: branding is Invictus in sol" bash -c "grep -qx 'interface_branding: Invictus' '$ROOTDIR/boot/limine.conf' && grep -qx 'interface_branding_colour: E0A64B' '$ROOTDIR/boot/limine.conf'"
-check "bootloader: limine.conf has the kernel entry" grep -q 'path: boot():/0123/linux/vmlinuz' "$ROOTDIR/boot/limine.conf"
+check "bootloader: limine.conf has the linux-cachyos entry" grep -q 'path: boot():/0123/linux-cachyos/vmlinuz' "$ROOTDIR/boot/limine.conf"
 check "bootloader: sd-btrfs-overlayfs added right after filesystems" grep -qx 'HOOKS=(systemd autodetect microcode modconf kms keyboard sd-vconsole block plymouth filesystems sd-btrfs-overlayfs)' "$ROOTDIR/etc/mkinitcpio.conf"
 check "bootloader: limine-install without NVRAM, then limine-mkinitcpio" bash -c "grep -n 'chroot limine' '$FAKE_LOG' | head -2 | tr '\n' ' ' | grep -q 'limine-install --no-efi-register.*limine-mkinitcpio'"
 check "bootloader: firmware entry labelled Invictus on sda partition 1" logged 'chroot efibootmgr --create --disk /dev/sda --part 1 --label Invictus --loader \EFI\limine\limine_x64.efi --unicode'
@@ -159,6 +161,19 @@ cp "$ROOTDIR/etc/mkinitcpio.conf" "$T/mk.before"
 run_job bootloader.sh "$ROOTDIR"
 check "bootloader: second run does not add the hook twice" cmp -s "$T/mk.before" "$ROOTDIR/etc/mkinitcpio.conf"
 check "bootloader: an existing limine.conf is kept aside" test -f "$ROOTDIR/boot/limine.conf.before-invictus"
+
+# Every installed kernel must get an entry (one kernel, linux-cachyos,
+# since 2026-09-30: a missing entry is an unbootable machine).
+new_target boot-kernel-missing
+bash "$JOBS/cleanup-live.sh" "$ROOTDIR" >/dev/null 2>&1
+echo linux-cachyos >"$FAKE_STATE/limine-skips"
+run_job bootloader.sh "$ROOTDIR"; rc=$?
+check "bootloader: fails when the kernel has no limine entry" bash -c "[[ $rc -ne 0 ]] && grep -q 'no limine.conf entry for the linux-cachyos kernel' '$T/out'"
+new_target boot-no-kernel
+bash "$JOBS/cleanup-live.sh" "$ROOTDIR" >/dev/null 2>&1
+rm -rf "$ROOTDIR/usr/lib/modules"
+run_job bootloader.sh "$ROOTDIR"; rc=$?
+check "bootloader: fails when the target has no kernel" bash -c "[[ $rc -ne 0 ]] && grep -q 'no kernel installed' '$T/out'"
 
 new_target boot-luks
 bash "$JOBS/cleanup-live.sh" "$ROOTDIR" >/dev/null 2>&1

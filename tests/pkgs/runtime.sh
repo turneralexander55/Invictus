@@ -265,12 +265,49 @@ if [[ "$(repo_file_name 'proton-ge-custom-bin-1:GE_Proton11_7-1-x86_64.pkg.tar.z
 else
     bad "repo_file_name wrong"
 fi
-if ! grep -v '^[[:space:]]*\(#\|$\)' "$REPO/pkgs/pinned/hypr.lock" | grep -qvE '^[a-z0-9-]+ [0-9:.a-z_+]+-[0-9]+ x86_64 [0-9a-f]{64}$' \
-   && [[ "$(bash "$REPO/scripts/fetch-pinned.sh" --list | wc -l)" == "$n_lock" ]]; then
-    ok "hypr.lock: $n_lock entries, each name version arch sha256; --list names them offline"
+n_all="$(cat "$REPO"/pkgs/pinned/*.lock | grep -cv '^[[:space:]]*\(#\|$\)')"
+if ! cat "$REPO"/pkgs/pinned/*.lock | grep -v '^[[:space:]]*\(#\|$\)' | grep -vE '^[a-z0-9-]+ [0-9:.a-z_+]+-[0-9]+ x86_64 [0-9a-f]{64}$' >/dev/null \
+   && [[ "$(bash "$REPO/scripts/fetch-pinned.sh" --list | wc -l)" == "$n_all" ]] \
+   && [[ "$(PINNED_LOCK="$REPO/pkgs/pinned/hypr.lock" bash "$REPO/scripts/fetch-pinned.sh" --list | wc -l)" == "$n_lock" ]]; then
+    ok "pkgs/pinned/*.lock: $n_all entries ($n_lock hypr), each name version arch sha256; --list names them offline"
 else
-    bad "hypr.lock format or --list wrong"
+    bad "a lock's format or --list wrong"
 fi
+# The kernel (Alex, 2026-09-30): linux-cachyos from CachyOS, verified with
+# CachyOS's key only, generic x86-64 build, never the CachyOS repos in an
+# installed pacman.conf.
+cl="$REPO/pkgs/pinned/cachyos.lock"
+cfpr=882DCFE48E2051D48E2562ABF3B607488DB35A47
+if grep -qx "#@ source https://mirror.cachyos.org/repo/x86_64/cachyos" "$cl" \
+   && grep -qx "#@ key pkgs/pinned/keys/$cfpr.asc $cfpr" "$cl" \
+   && grep -q '^linux-cachyos [0-9.]*-[0-9]* x86_64 ' "$cl" && grep -q '^linux-cachyos-headers [0-9.]*-[0-9]* x86_64 ' "$cl" \
+   && [[ "$(awk '$1 == "linux-cachyos" { print $2 }' "$cl")" == "$(awk '$1 == "linux-cachyos-headers" { print $2 }' "$cl")" ]]; then
+    ok "cachyos.lock: generic x86_64 [cachyos] source, CachyOS's key, kernel and headers at one version"
+else
+    bad "cachyos.lock: source, key or kernel/headers entries wrong"
+fi
+if command -v gpg >/dev/null; then
+    gh="$TMP/gnupg-cachyos"; mkdir -p "$gh"; chmod 700 "$gh"
+    got="$(GNUPGHOME="$gh" gpg --batch --with-colons --show-keys "$REPO/pkgs/pinned/keys/$cfpr.asc" 2>/dev/null | awk -F: '$1 == "fpr" { print $10; exit }')"
+    if [[ "$got" == "$cfpr" ]]; then ok "the CachyOS key file holds key $cfpr"
+    else bad "pkgs/pinned/keys/$cfpr.asc holds '$got'"; fi
+fi
+if ! grep -rqi 'cachyos' "$REPO/iso/airootfs/etc/pacman.conf" "$REPO/iso/pacman.conf"; then
+    ok "no CachyOS repo in the ISO's or the installed pacman.conf"
+else
+    bad "a pacman.conf names a CachyOS repo"
+fi
+# fetch-pinned refuses a lock whose source has no key, or a bad key line.
+for bad_lock in "#@ source https://example.org/x" \
+                $'#@ source https://example.org/x\n#@ key pkgs/pinned/keys/none.asc '"$cfpr" \
+                $'#@ source https://example.org/x\n#@ key /etc/passwd '"$cfpr" \
+                $'#@ source http://example.org/x\n#@ key pkgs/pinned/keys/'"$cfpr.asc $cfpr"; do
+    printf '%s\nlinux-cachyos 1-1 x86_64 %s\n' "$bad_lock" "$(printf '0%.0s' {1..64})" > "$TMP/bad.lock"
+    if PINNED_LOCK="$TMP/bad.lock" bash "$REPO/scripts/fetch-pinned.sh" --list >/dev/null 2>&1; then
+        bad "fetch-pinned accepted a bad lock header: $(head -2 "$TMP/bad.lock" | paste -sd'|')"
+    fi
+done
+ok "fetch-pinned refuses a source without a key, a missing or outside key file, and plain http"
 for p in hyprland aquamarine hyprutils hyprlang hyprgraphics hyprcursor xdg-desktop-portal-hyprland hyprpaper hypridle hyprlock hyprpolkitagent; do
     grep -q "^$p " "$REPO/pkgs/pinned/hypr.lock" || bad "design 1.5 names $p, the lock does not"
 done

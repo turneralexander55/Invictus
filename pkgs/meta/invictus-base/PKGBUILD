@@ -15,9 +15,9 @@
 # installer use it; scripts/dev/adopt.sh never installs it.
 
 pkgname=invictus-base
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
-pkgdesc='Invictus base system: kernels, firmware, btrfs snapshots, limine boot, network, everyday command line'
+pkgdesc='Invictus base system: kernel, firmware, btrfs snapshots, limine boot, network, everyday command line'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
 license=('GPL-3.0-or-later')
@@ -25,11 +25,23 @@ depends=(
   # Arch's minimal system, and the key that trusts our repo
   'base' 'invictus-keyring'
 
-  # kernels (linux-lts is the second boot entry, design 2.1), firmware and
+  # one kernel, linux-cachyos (Alex, 2026-09-30; pinned in
+  # pkgs/pinned/cachyos.lock and served from [invictus]). A bad kernel
+  # update is rolled back from the boot menu: limine-snapper-sync keeps
+  # each snapshot's own kernel and initramfs on the ESP (design 11).
+  'linux-cachyos' 'mkinitcpio'
+
+  # firmware: Arch's linux-firmware split without the NVIDIA part (the
+  # sets are AMD and Intel graphics; the installer adds
+  # linux-firmware-nvidia when it sees an NVIDIA card). Wi-Fi (Intel,
+  # Atheros, MediaTek, Broadcom, Realtek), AMD and Intel graphics stay.
+  'linux-firmware-amd' 'linux-firmware-amdgpu' 'linux-firmware-atheros'
+  'linux-firmware-broadcom' 'linux-firmware-cirrus' 'linux-firmware-intel'
+  'linux-firmware-mediatek' 'linux-firmware-other' 'linux-firmware-radeon'
+  'linux-firmware-realtek' 'linux-firmware-ti'
   # microcode for both CPU makers (friends' laptops are often Intel CPU +
   # AMD or Intel graphics), laptop audio firmware
-  'linux' 'linux-lts' 'mkinitcpio'
-  'linux-firmware' 'sof-firmware' 'amd-ucode' 'intel-ucode'
+  'sof-firmware' 'amd-ucode' 'intel-ucode'
   'fwupd'
 
   # boot: limine with bootable snapshots (hooks from the AUR, pkgs/aur/)
@@ -49,6 +61,10 @@ depends=(
   # everyday command line
   'sudo' 'nano' 'less' 'tree' 'man-db' 'man-pages'
   'unzip' 'zip' '7zip' 'rsync' 'usbutils' 'lm_sensors'
+)
+optdepends=(
+  'linux-cachyos-headers: build kernel modules (DKMS); pulls clang, llvm and lld'
+  'linux-firmware-nvidia: NVIDIA graphics firmware (the installer adds it on NVIDIA machines)'
 )
 
 package() {

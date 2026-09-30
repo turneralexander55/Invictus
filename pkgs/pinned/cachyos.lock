@@ -1,0 +1,21 @@
+# The Invictus kernel: linux-cachyos from CachyOS's [cachyos] repo (Alex,
+# 2026-09-30: one kernel, linux-cachyos, instead of linux + linux-lts).
+# Written by `PINNED_LOCK=pkgs/pinned/cachyos.lock scripts/fetch-pinned.sh
+# --lock linux-cachyos=VER linux-cachyos-headers=VER` after checking the
+# new kernel boots. Columns: name version-pkgrel arch sha256.
+#
+# The generic x86-64 build (the [cachyos] repo, CONFIG_X86_64_VERSION=1,
+# CONFIG_GENERIC_CPU=y), not the x86-64-v3 one ([cachyos-v3]): v3 needs
+# AVX2 (Haswell, 2013, or newer) and friends' older laptops may not have
+# it. The kernel is built with clang (ThinLTO), so the headers pull in
+# clang, llvm and lld for DKMS builds; they stay off the ISO.
+#
+# Signed by CachyOS <admin@cachyos.org>; the key below matches the one in
+# the cachyos-keyring package (cachyos-trusted) and on keyserver.ubuntu.com
+# (checked 2026-09-30). The CachyOS repos are never added to an installed
+# pacman.conf: build-repo.sh re-signs these files into [invictus].
+#@ source https://mirror.cachyos.org/repo/x86_64/cachyos
+#@ key pkgs/pinned/keys/882DCFE48E2051D48E2562ABF3B607488DB35A47.asc 882DCFE48E2051D48E2562ABF3B607488DB35A47
+#@ fallback https://github.com/turneralexander55/invictus/releases/download/invictus-testing
+linux-cachyos 7.2.7-1 x86_64 cb164037efbdc8703580da9cca2a1f067e22a0ffc8a0fc1b7c03d4419e99fd37
+linux-cachyos-headers 7.2.7-1 x86_64 14cdee3a743e7792200331c530bd71eb0b1b244b06c7244308afe3c67b869229
