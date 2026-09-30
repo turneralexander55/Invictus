@@ -1,6 +1,7 @@
 # Checks on every push and pull request: shell and Lua lint, the config and
-# package tests, the package sets checked against Arch and the AUR, an
-# end-to-end signed-repo test in Arch, and a secrets scan
+# package tests, the package sets checked against Arch and the AUR,
+# end-to-end signed-repo tests in Arch (including no-ai-in-base on the
+# built repo, and the one-command container build), and a secrets scan
 # over the full git history.
 name: checks
 
@@ -71,6 +72,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build, sign with a throwaway key, install from the repo
         run: bash tests/pkgs/e2e-arch.sh "$GITHUB_WORKSPACE"
+
+  container-sign-e2e:
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: One command, build in a container, sign on the host
+        run: bash tests/pkgs/e2e-container-sign.sh "$GITHUB_WORKSPACE"
 
   packages-live:
     runs-on: ubuntu-24.04

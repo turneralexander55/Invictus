@@ -15,7 +15,8 @@
 #   3. a tampered package is refused;
 #   4. a second run reuses unchanged packages byte for byte, and a
 #      pkgrel bump rebuilds that package and drops the old file;
-#   5. the sign step rejects a manifest entry that is a path.
+#   5. the sign step rejects a manifest entry that is a path;
+#   6. no-ai-in-base (NA3) passes on the built repo.
 # Never run it on a real machine: it edits /etc/pacman.conf.
 # ------------------------------------------------------------
 set -euo pipefail
@@ -35,7 +36,7 @@ cp -r "$SRC/." "$WORK/src"
 rm -rf "$WORK/src/out"
 # shellcheck source=tests/pkgs/lib/aur-heavy.sh
 . "$SRC/tests/pkgs/lib/aur-heavy.sh"
-drop_heavy_aur "$WORK/src"
+stand_in_heavy_aur "$WORK/src"
 
 # Throwaway key, as Alex will make the real one (docs/checklists/signing-key.md).
 export GNUPGHOME="$WORK/keys"
@@ -55,6 +56,12 @@ bash "$WORK/src/scripts/build-repo.sh" --no-container --build-only --out "$OUT"
 INVICTUS_SIGNING_KEY="$SECRET" INVICTUS_SIGNING_PASSPHRASE="$PASS" \
     bash "$WORK/src/scripts/build-repo.sh" --no-container --repo-only --out "$OUT"
 
+# NA3 on the built repo: no non-AI set pulls the AI set.
+if bash "$SRC/tests/pkgs/no-ai-in-base.sh" "$OUT" > "$WORK/noai.log" 2>&1; then
+    ok "$(grep '^ok' "$WORK/noai.log" | cut -c7-)"
+else
+    bad "no-ai-in-base: $(grep FAIL "$WORK/noai.log" | head -3)"
+fi
 for f in invictus-testing.db invictus-testing.db.sig invictus-testing.files; do
     [[ -f "$OUT/$f" && ! -L "$OUT/$f" ]] || bad "$f missing or a symlink"
 done

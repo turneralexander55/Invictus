@@ -1,5 +1,6 @@
 # AUR pins too big or slow for the e2e tests: e2e-arch.sh and e2e-adopt.sh
-# drop them from their copy of the repo (set E2E_FULL_AUR=1 to keep them).
+# swap them for empty stand-ins in their copy of the repo
+# (tests/pkgs/lib/aur-heavy.sh; E2E_FULL_AUR=1 builds the real ones).
 # CI's aur-pins workflow builds every pin, one job each.
 # name                    why
 calamares                 C++ build, about 10 minutes

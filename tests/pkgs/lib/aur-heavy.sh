@@ -1,14 +1,20 @@
 # shellcheck shell=bash
-# drop_heavy_aur COPY: remove the AUR pins listed in
-# tests/pkgs/fixtures/aur-heavy.txt from a copy of the repo, so the e2e
-# tests do not spend 20 minutes and 1.5 GB on them (CI's aur-pins workflow
-# builds each one). E2E_FULL_AUR=1 keeps them. Prints what it dropped.
-drop_heavy_aur() {
-    local copy="$1" n dropped=()
-    [[ "${E2E_FULL_AUR:-}" == 1 ]] && { echo "E2E_FULL_AUR=1: building every AUR pin"; return 0; }
+# stand_in_heavy_aur COPY: in a copy of the repo, replace each AUR pin
+# listed in tests/pkgs/fixtures/aur-heavy.txt with an empty stand-in
+# package of the same name (version 0), so the e2e tests do not spend 20
+# minutes and 1.5 GB on them but every set still resolves. CI's aur-pins
+# workflow builds the real ones. E2E_FULL_AUR=1 keeps the real ones.
+stand_in_heavy_aur() {
+    local copy="$1" n done_=()
+    if [[ "${E2E_FULL_AUR:-}" == 1 ]]; then echo "E2E_FULL_AUR=1: building every AUR pin"; return 0; fi
     while read -r n _; do
         [[ -n "$n" && "$n" != \#* ]] || continue
-        if [[ -d "$copy/pkgs/aur/$n" ]]; then rm -rf "${copy:?}/pkgs/aur/$n"; dropped+=("$n"); fi
+        [[ -d "$copy/pkgs/aur/$n" ]] || continue
+        rm -rf "${copy:?}/pkgs/aur/$n"
+        mkdir -p "$copy/pkgs/aur/$n"
+        printf "pkgname=%s\npkgver=0\npkgrel=1\npkgdesc='e2e stand-in'\narch=('any')\nlicense=('custom')\npackage() { :; }\n" "$n" \
+            > "$copy/pkgs/aur/$n/PKGBUILD"
+        done_+=("$n")
     done < "$copy/tests/pkgs/fixtures/aur-heavy.txt"
-    [[ ${#dropped[@]} -eq 0 ]] || echo "Left out of this test (E2E_FULL_AUR=1 keeps them): ${dropped[*]}"
+    if [[ ${#done_[@]} -gt 0 ]]; then echo "Empty stand-ins for (E2E_FULL_AUR=1 builds the real ones): ${done_[*]}"; fi
 }

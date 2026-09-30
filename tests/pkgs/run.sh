@@ -142,16 +142,18 @@ for pb in "$REPO"/pkgs/meta/*/PKGBUILD; do
 done
 adopt_metas="$(sed -n 's/^for m in \(.*\); do$/\1/p' "$REPO/scripts/dev/adopt.sh")"
 [[ "$adopt_metas" == "desktop tessera gaming dev" ]] || sbad "adopt.sh installs '$adopt_metas', want 'desktop tessera gaming dev'"
-for f in tessera atrium gaming windows voice assistant; do
+for f in tessera atrium gaming windows voice moneta; do
     field "$REPO/pkgs/meta/invictus-$f/PKGBUILD" depends | grep -x invictus-desktop >/dev/null || sbad "invictus-$f does not depend on invictus-desktop"
 done
 
-# No AI outside the AI sets (Alex, 2026-09-30): a machine set to No AI
-# has no AI package on disk. Only invictus-assistant and invictus-voice may
-# pull one; every other set, followed through the invictus-* sets and our
-# own packages it depends on, must not.
-AI_SETS="invictus-assistant invictus-voice"
-AI_PKGS="claude-code whisper-cpp ggml-vulkan $AI_SETS"
+# No AI outside the AI set (Alex, 2026-09-30; design-no-ai.md N5, NA3): a
+# machine set to No AI has no AI package on disk. Only the AI set's own
+# metas may pull one; every other set and own package, followed through
+# the invictus-* packages it depends on, must not. The built repo gets the
+# same check with pacman's resolver (tests/pkgs/no-ai-in-base.sh).
+# shellcheck source=tests/pkgs/lib/ai-set.sh
+. "$HERE/lib/ai-set.sh"
+AI_SETS="$AI_METAS"
 pb_of() { local d; for d in meta own; do [[ -f "$REPO/pkgs/$d/$1/PKGBUILD" ]] && { echo "$REPO/pkgs/$d/$1/PKGBUILD"; return; }; done; }
 closure() {
     local todo=("$1") seen=" " n pb
@@ -332,6 +334,21 @@ for pb in "$REPO"/pkgs/aur/*/PKGBUILD; do
     done
     [[ "$(field "$pb" arch)" == x86_64 || "$(field "$pb" arch)" == any ]] || abad "$n: arch is not x86_64 or any"
 done
+# claude-code: prepare() refuses a binary the signed manifest does not name
+# (makepkg has already checked the manifest's signature by then).
+CC="$REPO/pkgs/aur/claude-code/PKGBUILD"
+cc_prepare() {  # manifest checksum to write; exit status of prepare()
+    local d="$TMP/cc" ver
+    rm -rf "$d"; mkdir -p "$d"
+    ver="$(field "$CC" pkgver)"
+    printf 'not really claude' > "$d/claude-$ver-x86_64"
+    printf '{"version":"%s","platforms":{"linux-x64":{"checksum":"%s"}}}' "${2:-$ver}" "$1" > "$d/claude-$ver-manifest.json"
+    ( cd "$d" && CARCH=x86_64 bash -c 'set -e; source "$1"; prepare' _ "$CC" ) >/dev/null 2>&1
+}
+good_sum="$(printf 'not really claude' | sha256sum | cut -d' ' -f1)"
+cc_prepare "$good_sum" || abad "claude-code prepare() refused a binary its manifest names"
+if cc_prepare "$(printf '0%.0s' {1..64})"; then abad "claude-code prepare() accepted a binary its signed manifest does not name"; fi
+if cc_prepare "$good_sum" 0.0.1; then abad "claude-code prepare() accepted a manifest for another version"; fi
 # Pins the tests build only in CI's aur-pins job (fixtures/aur-heavy.txt).
 while read -r n _; do
     [[ -f "$REPO/pkgs/aur/$n/PKGBUILD" ]] || abad "fixtures/aur-heavy.txt names $n, which is not in pkgs/aur"

@@ -4,9 +4,17 @@
 #   [invictus-testing]
 #   Server = https://github.com/turneralexander55/invictus/releases/download/invictus-testing
 #
-# Two jobs, so the signing key never shares a job with package build code:
-#   build    runs the PKGBUILDs in an Arch container. No secrets.
-#   publish  signs, indexes with repo-add, uploads. Runs no PKGBUILD code.
+# The signing key never shares a job with package build code:
+#   build           runs the PKGBUILDs in an Arch container. No secrets.
+#   no-ai-in-base   design-no-ai.md NA3: no non-AI set pulls the AI set, in
+#                   the built repo. Publishing waits for it.
+#   publish         signs, indexes with repo-add, uploads. Runs no PKGBUILD
+#                   code.
+# Size and time: proton-ge-custom-bin is about 500 MB (GitHub's limit is
+# 2 GiB per asset; build-repo.sh refuses bigger). A package is rebuilt and
+# uploaded only when its file name is new (pkgver or pkgrel changed); the
+# build job downloads the published set first so unchanged ones are reused,
+# and publish uploads only files the release does not have yet.
 # Signing uses the REPO_SIGNING_KEY and REPO_SIGNING_PASSPHRASE secrets
 # (docs/checklists/signing-key.md). Without them the repo is published
 # unsigned, with a warning on the run.
@@ -40,6 +48,9 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    # A cold build (every AUR pin, calamares and the limine native images
+    # included) took about 15 minutes on 4 cores.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Fetch the published packages (reused when unchanged)
@@ -69,9 +80,26 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  publish:
+  no-ai-in-base:
     needs: build
     runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: repo
+          path: out/repo
+      - name: Index unsigned (resolution only; publish signs)
+        run: bash scripts/build-repo.sh --no-container --repo-only --out out/repo
+      - name: No non-AI set pulls the AI set (NA3)
+        run: bash tests/pkgs/no-ai-in-base.sh out/repo
+
+  publish:
+    needs: [build, no-ai-in-base]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     permissions:
       contents: write
     steps:
@@ -100,11 +128,19 @@ jobs:
               --notes "pacman repo for Alex's machine. Server = https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
           fi
           # Packages first, databases last, so a client never sees a database
-          # that names a package not uploaded yet.
+          # that names a package not uploaded yet. A package file already on
+          # the release has the same bytes (a new build always has a new
+          # name), so only new ones go up; signatures and databases always.
           shopt -s nullglob
           pkgs=(*.pkg.tar.zst *.pkg.tar.zst.sig)
           dbs=(invictus-testing.db* invictus-testing.files*)
-          gh release upload "$TAG" --clobber "${pkgs[@]}"
+          gh release view "$TAG" --json assets --jq '.assets[].name' | sort > /tmp/before.txt
+          upload=()
+          for f in "${pkgs[@]}"; do
+            if [[ "$f" == *.sig ]] || ! grep -qxF "$f" /tmp/before.txt; then upload+=("$f"); fi
+          done
+          echo "Uploading ${#upload[@]} package files; $(( ${#pkgs[@]} - ${#upload[@]} )) already published"
+          if [ ${#upload[@]} -gt 0 ]; then gh release upload "$TAG" --clobber "${upload[@]}"; fi
           gh release upload "$TAG" --clobber "${dbs[@]}"
           # pacman downloads the exact file names in the database. GitHub
           # renames assets with unusual characters, so check every name

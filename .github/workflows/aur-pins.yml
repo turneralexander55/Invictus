@@ -1,0 +1,59 @@
+# The AUR pins in pkgs/aur (docs/packages.md, "AUR pins").
+#   stale  Mondays and by hand: scripts/dev/bump-aur.sh --check. Red when a
+#          pin is behind the AUR; the log names each one and the command
+#          that moves it. Scheduled runs only happen on the default branch
+#          (main), and GitHub emails the repo owner when one fails.
+#   build  on a change to a pin or the build script: builds each pin on
+#          its own (they are too big and slow for the e2e tests, which use
+#          empty stand-ins for them; tests/pkgs/fixtures/aur-heavy.txt).
+name: aur-pins
+
+on:
+  push:
+    paths:
+      - 'pkgs/aur/**'
+      - 'installer/diskcheck/**'
+      - 'scripts/build-repo.sh'
+      - 'scripts/dev/bump-aur.sh'
+      - '.github/workflows/aur-pins.yml'
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stale:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Pins behind the AUR
+        run: scripts/dev/bump-aur.sh --check
+
+  list:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    outputs:
+      names: ${{ steps.names.outputs.names }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: names
+        run: echo "names=$(ls pkgs/aur | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: list
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        name: ${{ fromJSON(needs.list.outputs.names) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build ${{ matrix.name }} in archlinux:base-devel
+        run: scripts/build-repo.sh --in-container --build-only --no-pinned --only "${{ matrix.name }}" --out out/aur
+      - name: Size
+        run: ls -l out/aur
