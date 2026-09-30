@@ -14,6 +14,8 @@ Mockups (`docs/mockups/`, each 1920 x 1080, self-contained HTML, fonts from Goog
 | `desk.html` | The Desk home dashboard |
 | `brand-sheet.html` | Mark, palette and type on one page |
 | `themes.html` | The four themes side by side (bar, a focused terminal, the launcher) and the theme picker open |
+| `motion.html` | Motion, playing: log in, unlock, window open and focus, workspace switch, notification, theme switch. Buttons switch Showcase / Calm / Off and replay one moment |
+| `motion.webm` | A 28 s recording of `motion.html` in Showcase (1280 x 720), for sharing |
 
 Sample content in the mockups (thread names, commit messages, and the Lua in the editor, which is not the real Hyprland API) is made up.
 
@@ -134,7 +136,7 @@ Option names are the Hyprland variable names; Vulcan maps them into the Lua conf
 | `general.gaps_in` | `4` | |
 | `general.gaps_out` | `8` | Enough air to read window edges, less wasted space on three monitors |
 | `general.border_size` | `2` | Thin and precise; 3 read as heavy |
-| `general.col.active_border` | `rgb(E0A64B)` (solid `sol`, no gradient) | The single "you are here" signal |
+| `general.col.active_border` | `rgb(E0A64B)` (solid `sol`) in Calm and Off; in Showcase `sol`, `sol-bright`, `sol` at 45° for the glint (see Motion) | The single "you are here" signal |
 | `general.col.inactive_border` | `rgb(27241F)` (`stone`) | Present but silent |
 | `general.layout` | `master` (unchanged) | |
 | `general.resize_on_border` | `false` (unchanged) | |
@@ -173,32 +175,9 @@ Option names are the Hyprland variable names; Vulcan maps them into the Lua conf
 
 Layer rules (blur the panels that sit on the wallpaper): `blur` and `ignore_alpha 0.3` for namespaces `waybar`, `rofi`, `swaync-notification-window`, `swaync-control-center`, `moneta-panel`.
 
-**Animations.** Snappy: nothing over 250 ms, exits faster than entries. Hyprland speed is in units of 100 ms.
+**Animations.** See **Motion** below. It replaces the single snappy table that was here: everyday changes keep that speed, and a few moments get more.
 
-| Bezier | x0, y0, x1, y1 |
-|---|---|
-| `snap` | 0.2, 0.9, 0.1, 1.0 |
-| `glide` | 0.25, 1.0, 0.5, 1.0 |
-| `linear` | 0, 0, 1, 1 |
-
-| Animation | On | Speed | Curve | Style |
-|---|---|---|---|---|
-| `global` | 1 | 2 | `snap` | |
-| `windowsIn` | 1 | 2.2 | `snap` | `popin 92%` |
-| `windowsOut` | 1 | 1.4 | `linear` | `popin 92%` |
-| `windowsMove` | 1 | 2.2 | `snap` | `slide` |
-| `border` | 1 | 2.5 | `glide` | |
-| `borderangle` | 0 | | | (no rotating gradients) |
-| `fadeIn` | 1 | 1.8 | `glide` | |
-| `fadeOut` | 1 | 1.2 | `linear` | |
-| `fadeDim` | 1 | 2 | `glide` | |
-| `layersIn` | 1 | 1.8 | `snap` | `fade` |
-| `layersOut` | 1 | 1.2 | `linear` | `fade` |
-| `workspaces` | 1 | 2.2 | `snap` | `slide` |
-| `specialWorkspace` | 1 | 2.2 | `snap` | `slidevert` |
-| `zoomFactor` | 1 | 3 | `snap` | |
-
-**Game mode.** A keybind (`Super + G`) and an automatic rule when a Steam/gamescope window goes fullscreen: turn off animations, blur, shadows and dim, set gaps to 0 and border to 0, and turn DND on in swaync. The same key restores. The bar hides on fullscreen as normal. For frame stats in game use MangoHud with its own config coloured `marble` text on `night` at 70%, top-left, not the bar.
+**Game mode.** A keybind (key to be picked; `Super + G` is Steam in `binds.lua`, see the Desk record) and an automatic rule when a Steam/gamescope window goes fullscreen: turn off every animation (motion level Off, see Motion), blur, shadows and dim, set gaps to 0 and border to 0, and turn DND on in swaync. The same key restores. The bar hides on fullscreen as normal. For frame stats in game use MangoHud with its own config coloured `marble` text on `night` at 70%, top-left, not the bar.
 
 ### Waybar (the bar)
 
@@ -279,6 +258,7 @@ See `docs/mockups/lock.html`. Same composition as the login screen, so locking a
 - Input field: 300 x 48, centred, 62% from the top. `inner_color` `rgba(28,26,22,0.9)` (basalt), `outer_color` `rgb(3A352D)` idle, `rgb(E0A64B)` while typing, `outline_thickness 1`, `rounding 12`, `font_color` `rgb(ECE6DA)`, dots size 0.22 spacing 0.3, `placeholder_text` `Password` in `ash`, `fail_color` `rgb(D9725A)` with text `Wrong password`, `check_color` `rgb(94AD7B)`, `fade_on_empty false`.
 - One line from the *Meditations*, bottom centre, Cormorant Garamond italic 18 px `parchment`, attribution 12 px `ash`: "The universe is change; our life is what our thoughts make it." Marcus Aurelius, *Meditations* IV.3 (George Long's 1862 translation, public domain). A short list rotates daily; Clio checks the wording against Long's text before it ships.
 - Cut: user avatar, battery, media, weather, keyboard layout (show layout only when more than one is configured).
+- Unlock animation: see Motion, Ceremonies. The blurred wallpaper dissolves into your desktop.
 
 ### Login (SDDM)
 
@@ -317,9 +297,9 @@ Remove `nordic-darker-theme` (AUR). Its cold blue fights the warm palette and it
 
 Remove `Berserk.jpg` (copyrighted art), `girl.png` and `blossom.png` (source and licence unknown) from the default set. Alex can keep them in his own home folder.
 
-The default set is made by us from the palette, as SVG sources plus 3840 x 2160 and 5120 x 1440 PNG exports, licensed CC BY 4.0 (Alex as author):
+The default set is made by us from the palette, as SVG sources plus a 3840 x 2160 PNG export in `assets/wallpapers/`, licensed CC BY 4.0 (Alex as author; see `assets/wallpapers/LICENSE.md`). Other sizes (5120 x 1440 ultrawide, 2560 x 1440) are rendered from the SVG by the theme generator with `rsvg-convert`; every SVG uses `preserveAspectRatio="xMidYMax slice"`, so a wider screen keeps the horizon and loses sky. Each file has a little grain (`feTurbulence`, 2.8% overlay) so the dark gradients do not band.
 
-1. **Sol** (default): a low sun just above a horizon, `sol` fading through `#5A3F1E` into `night`; the sun sits in the lower third so the bar and the centre stay dark. Mockups use this one.
+1. **Sol** (default, `sol.svg`): a low sun just above a horizon between two low hills, `sol` fading through `#3B2A17` into `night`, a faint reflection on the ground, and the mark's nine rays at about 4%, blurred, fanning up from the sun. The sun sits in the lower third so the bar and the centre stay dark. Mockups use this one.
 2. **Stoa**: a row of column silhouettes in `basalt` against a `night` to `stone` sky; very low contrast.
 3. **Radiate**: the mark's nine rays at huge scale, `line` on `night`, off to one side.
 4. **Night**: flat `night` with 1.5% noise, for anyone who wants nothing.
@@ -386,7 +366,7 @@ Why these four and not more:
 2. **Focus only.** `sol` still means "you are here" and nothing else. The same surfaces use it in every theme. Terminal yellow may equal `sol` (as in Dusk and Alexandria); nothing in the shell may.
 3. **Contrast.** Every text token passes WCAG AA (4.5) on `night`, `basalt` and `stone`, `night` text on a `sol` button passes, terminal bright black passes on the background, and every light token passes on `dawn`, `dawn-surface` and `dawn-raised`. Numbers below; `invictus-theme check` re-measures them and refuses to install a theme that fails.
 4. **Focus stays apart from status.** `sol` must differ from `pompeii` (error), `laurel` (success), `lapis` (info) and `parchment` (secondary text) by a CIE76 ΔE of at least 10 under simulated deuteranopia and protanopia (Machado 2009). All four pass; the closest pair is Porphyry focus against info, 12 under deuteranopia. That check is why Aegean's info colour moved to sea green and Porphyry's to verdigris green.
-5. **ADHD rules hold.** No theme adds motion, gradients on working surfaces, transparency behind text, or a second accent. Only colour and wallpaper change; layout, type, sizes and timings are identical, so a switch never moves anything under your hands.
+5. **ADHD rules hold.** No theme adds motion, gradients on working surfaces, transparency behind text, or a second accent. Only colour, wallpaper and the shape of the one notification accent change (see Motion); layout, type, sizes and timings are identical, so a switch never moves anything under your hands.
 6. **Shell stays dark.** Each theme has its own light set for apps and the Desk; the bar, launcher, notifications and lock stay dark, as with Dusk and Dawn.
 
 ### Contrast, measured (WCAG 2.x)
@@ -463,9 +443,9 @@ Each theme names one wallpaper in its token file. All are ours, made from that t
 | Wallpaper | Theme | Composition |
 |---|---|---|
 | **Sol** | Dusk | As above: a low sun over a horizon. |
-| **Arcade** | Porphyry | A Roman aqueduct arcade across the lower third in `basalt`, round arches open onto a sky that runs from `night` at the top to deep porphyry (`#43222D`) at the horizon, with a faint `sol` glow (16%) behind the arches on the left. |
-| **Selene** | Aegean | A full moon low on the right, `marble` at 88%, over a flat sea in `basalt`, a dark headland on the horizon, and a broken path of short horizontal strokes on the water in `sol-bright` fading from 38% to 10%. |
-| **Pharos** | Alexandria | A lapis sky from `night` to `#1B2142` at the horizon, sparse five-pointed stars in `sol` at 34% (the stars painted on Egyptian tomb ceilings), and the Pharos as a small stepped silhouette on the right with one `sol-bright` lamp and a faint beam (7%). |
+| **Arcade** | Porphyry | A two-tier Roman aqueduct in `basalt`, receding in perspective from the left edge to the right horizon, its round arches open onto a sky that runs from `night` at the top to deep porphyry (`#43222D`) at the horizon, with a faint `sol` glow (16%) behind the arches on the left. |
+| **Selene** | Aegean | A full moon low on the right, `marble` at 88% with faint maria and a soft halo, over a flat sea in `basalt`, a dark headland on the left of the horizon, and a broken path of short horizontal strokes on the water in `sol-bright` fading from 38% to 10%. |
+| **Pharos** | Alexandria | A lapis sky from `night` to `#1B2142` at the horizon, 40 sparse five-pointed stars in `sol` from 14% (high) to 34% (low) (the stars painted on Egyptian tomb ceilings), and the Pharos as a three-tier stepped silhouette on a rock on the right, with one `sol-bright` lamp, a faint beam to the left (10% fading to 0) and its reflection on the water. |
 
 Radiate and Night are drawn from tokens (`line` rays on `night`; flat `night` with noise), so the generator renders them for whichever theme is on; they stay available to anyone who picks them in the wallpaper setting.
 
@@ -569,6 +549,178 @@ Old generated folders stay (a few KB each), so switching back is as fast as swit
 **Adding a theme** is one TOML file in `~/.config/invictus/themes/`. It appears in the picker on the next open, if `check` passes.
 
 
+## Motion
+
+Alex asked for some wow (2026-09-30) without losing the two rules: snappy for gaming, calm for ADHD. The answer is to split motion by how often it happens. **Everyday** changes (focus, borders, dimming, moving and resizing windows, menus) happen hundreds of times a day, so they stay as quick as before. **Moments** (a window opening, a workspace switch, a notification, the launcher) get a little shape. **Ceremonies** (log in, unlock, theme switch) happen a few times a day, so they are allowed to show off. See `docs/mockups/motion.html` (buttons switch the level and replay each moment) and the recording `docs/mockups/motion.webm`.
+
+### Levels
+
+One setting, `motion`, three values. **Showcase** is the default. No key: the launcher entry **Change motion** opens a three-row picker styled like the theme picker (current level preselected, Enter applies). Game mode forces Off and puts the old level back when it ends.
+
+| | Everyday | Moments | Ceremonies | Overshoot, glint, rays, wipe |
+|---|---|---|---|---|
+| **Showcase** (default) | ≤ 150 ms | ≤ 300 ms | ≤ 600 ms | Yes |
+| **Calm** | ≤ 120 ms | ≤ 180 ms, fades and small scales only, no slides | ≤ 300 ms, fades only | No |
+| **Off** (game mode, or chosen) | none | none | none (a cut) | No |
+
+Rules at every level:
+
+1. **Nothing waits for an animation.** Keys and clicks go to the new target on the first frame. Hyprland already retargets a running animation when you act again; our own pieces (the veil, the SDDM rays) must do the same and never block input.
+2. **Nothing loops.** Every animation runs once and stops. No `loop` style on `borderangle`, no pulsing icons, no breathing borders. The only thing that moves continuously is the push-to-talk level bar, and only while the button is held.
+3. **Exits are faster than entries** (about 60%).
+4. **Motion goes where your eyes already are.** Flourishes play on the thing you just acted on (the window you opened, the picker you used). Things in the corner of the eye (notifications) get the smallest motion that still says "new".
+5. **Themes change the shape of an accent, never the timing or the amount of motion.** Timings are the same in all four themes.
+6. Calm and Off also set `org.gnome.desktop.interface enable-animations` to false (Showcase sets it true), so GTK apps follow.
+
+### Curves
+
+Hyprland `speed` is in tenths of a second (1 = 100 ms). Names are ours.
+
+| Curve | Points | Used for |
+|---|---|---|
+| `snap` | 0.2, 0.9, 0.1, 1.0 | Everyday moves, the bar sliding in |
+| `glide` | 0.25, 1.0, 0.5, 1.0 | Fades, workspace slide, dim, border colour |
+| `rise` | 0.3, 1.5, 0.6, 1.0 | Window open: about 6% overshoot of the pop-in, so a big window settles by about 1% of its size (15 px on a 1440 px window) |
+| `unveil` | 0.16, 1.0, 0.3, 1.0 | Ceremonies and the glint: fast start, long soft landing |
+| `sink` | 0.4, 0.0, 1.0, 1.0 | Exits |
+| `linear` | 0, 0, 1, 1 | Fade-outs |
+
+```lua
+hl.curve("snap",   { type = "bezier", points = { { 0.2,  0.9 }, { 0.1, 1 } } })
+hl.curve("glide",  { type = "bezier", points = { { 0.25, 1 },   { 0.5, 1 } } })
+hl.curve("rise",   { type = "bezier", points = { { 0.3,  1.5 }, { 0.6, 1 } } })
+hl.curve("unveil", { type = "bezier", points = { { 0.16, 1 },   { 0.3, 1 } } })
+hl.curve("sink",   { type = "bezier", points = { { 0.4,  0 },   { 1,   1 } } })
+hl.curve("linear", { type = "bezier", points = { { 0,    0 },   { 1,   1 } } })
+```
+
+Springs (`type = "spring"`) exist in 0.56 but we do not use them: how `speed` bounds a spring's duration is not documented, and the budget needs a hard ceiling.
+
+### Hyprland (0.56.2, Lua)
+
+Leaf and style names checked against the v0.56.2 source (`src/config/shared/animation/AnimationTree.cpp` for leaves, `CHyprAnimationManager::styleValidInConfigVar` in `src/animation/AnimationManager.cpp` for styles, `hlAnimation` in `src/config/lua/bindings/LuaBindingsConfigRules.cpp` for the table fields). The curve field is `bezier` (or `spring`); the wiki's "Extras" examples write `curve =`, which 0.56.2 rejects with "bezier or spring is required".
+
+| Leaf | Showcase | Calm | Tier |
+|---|---|---|---|
+| `global` | 1.5 `snap` | 1.2 `snap` | fallback |
+| `windowsIn` | 2.6 `rise`, `popin 88%` | 1.8 `glide`, `popin 96%` | moment |
+| `windowsOut` | 1.4 `sink`, `popin 92%` | 1.0 `sink`, `popin 96%` | moment |
+| `windowsMove` | 1.5 `snap` | 1.2 `snap` | everyday |
+| `fadeIn` | 1.6 `glide` | 1.2 `glide` | moment |
+| `fadeOut` | 1.2 `linear` | 1.0 `linear` | moment |
+| `fadeSwitch` | 1.2 `glide` | 1.2 `glide` | everyday |
+| `fadeShadow` | 1.5 `glide` | 1.2 `glide` | everyday |
+| `fadeDim` | 1.5 `glide` | 1.2 `glide` | everyday |
+| `border` | 1.2 `glide` | 1.2 `glide` | everyday |
+| `borderangle` | 3 `unveil`, style `once` (the glint) | off | moment |
+| `layersIn` | 1.8 `snap`, `popin 94%` | 1.2 `glide`, `fade` | moment |
+| `layersOut` | 1.2 `sink`, `fade` | 1.0 `linear`, `fade` | moment |
+| `fadeLayersIn` | 1.6 `glide` | 1.2 `glide` | moment |
+| `fadeLayersOut` | 1.0 `linear` | 1.0 `linear` | moment |
+| `fadePopupsIn` | 1.0 `glide` | 1.0 `glide` | everyday |
+| `fadePopupsOut` | 0.8 `linear` | 0.8 `linear` | everyday |
+| `workspaces` | 2.8 `glide`, `slidefade 12%` | 1.8 `glide`, `fade` | moment |
+| `specialWorkspace` | 2.6 `glide`, `slidefadevert 16%` | 1.8 `glide`, `fade` | moment (the Desk) |
+| `zoomFactor` | 2.5 `glide` | 1.5 `glide` | everyday |
+| `monitorAdded` | 6 `unveil` | off | ceremony |
+| `fadeDpms` | 3 `glide` | 2 `glide` | ceremony (screen wakes) |
+
+Off: `hl.config({ animations = { enabled = false } })`. That covers every leaf, including `borderangle`.
+
+Example, Showcase window open:
+
+```lua
+hl.animation({ leaf = "windowsIn",   enabled = true, speed = 2.6, bezier = "rise",   style = "popin 88%" })
+hl.animation({ leaf = "borderangle", enabled = true, speed = 3,   bezier = "unveil", style = "once" })
+hl.animation({ leaf = "workspaces",  enabled = true, speed = 2.8, bezier = "glide",  style = "slidefade 12%" })
+```
+
+What each moment looks like:
+
+- **Window open.** The window pops from 88% with a small overshoot and fades in over 160 ms. At the same time a brighter band (`sol-bright`) sweeps once around its gold border: the **glint**, our "sun's rays" (Hyprland rotates the border gradient 360° once on map, `borderangle` style `once`). Showcase sets `general.col.active_border` to the three-stop gradient `sol sol-bright sol` at 45°, so at rest two corners are a shade brighter and the border still reads as one gold. Calm and Off go back to solid `sol`.
+- **Focus change** stays everyday: border colour 120 ms, dim 150 ms. The glint also plays on the newly focused window (Hyprland restarts `borderangle once` on focus as well as on open; they cannot be split). It is 300 ms, once, on the window you just chose, and Calm turns it off.
+- **Workspace switch.** Windows slide 12% of the screen and fade, instead of a full-width slide: direction is clear, the screen does not sweep past your eyes.
+- **Session start** (after the SDDM rays, below). `monitorAdded` is the only built-in that zooms the whole screen: Hyprland plays it on every monitor when it is added, which includes session start, zooming from 2x to 1x while the wallpaper fades in (`Monitor.cpp`, `Renderer.cpp`). 600 ms with `unveil` covers most of the distance in the first 150 ms. It also plays when a monitor is hot-plugged; Calm turns it off.
+
+Layer rules (Hyprland layer rule effect `animation` sets the style per namespace; the value format is assumed to be the same as `style`, not tested):
+
+| Namespace | Rule | Why |
+|---|---|---|
+| `waybar` | `animation = "slide top"` | The bar drops in from the edge at session start |
+| `rofi` (launcher and pickers) | inherits `layersIn` `popin 94%` | Opens where you look |
+| `moneta-panel` | `animation = "slide right"` | Matches where it lives; 180 ms as in the panel spec |
+| `swaync-notification-window`, `swaync-control-center` | `no_anim = true` | swaync animates its own cards; a layer fade on top would double it |
+| `invictus-veil` | `no_anim = true` | The veil animates itself (theme switch, below) |
+
+### Ceremonies
+
+**Log in (SDDM, QML; always Dusk).** On a correct password the field border turns `laurel` (100 ms), then the mark's nine rays light up one by one, left to right, each drawn outward from the disc in `sol-bright` over 220 ms with a 35 ms stagger (500 ms in all) while the disc brightens to `sol-bright`. Then the screen fades to `night` (250 ms) and Hyprland starts: `monitorAdded` zoom, then the bar drops in. The same gesture as the Plymouth splash, where the rays light up as boot progresses, so boot and login rhyme. Calm: laurel, then a 200 ms fade, no rays. Off: laurel, cut. Wrong password: the field turns `pompeii`; no shake (a shake is motion that reads as scolding).
+
+**Unlock (hyprlock 0.9.6).** On a correct password the field turns `laurel` (`check_color`, leaf `inputFieldColors`), then `fadeOut`: every widget fades while the blurred wallpaper cross-fades into a live capture of your desktop, so the lock dissolves into exactly what you left. This is hyprlock's own behaviour: `CBackground::draw` mixes its texture with a screencopy during fade-in and fade-out, and it takes that screencopy only when `fadeIn` or `fadeOut` is enabled. No new code. hyprlock still uses hyprlang (`~/.config/hypr/hyprlock.conf`), and it **stores speed as a whole number** (`int64_t speed` in `ConfigManager::handleAnimation`), so 4.5 becomes 4.
+
+```
+bezier = unveil, 0.16, 1, 0.3, 1
+bezier = glide, 0.25, 1, 0.5, 1
+animation = fadeIn, 1, 3, glide            # lock appears: 300 ms (Calm 2)
+animation = fadeOut, 1, 5, unveil          # unlock reveal: 500 ms (Calm 3)
+animation = inputFieldColors, 1, 1, linear # sol to laurel or pompeii: 100 ms
+animation = inputFieldWidth, 0             # the field never changes size
+animation = inputFieldDots, 1, 1, linear
+```
+
+Off: `animation = global, 0`. hyprlock reads its config at launch, so the level applies from the next lock.
+
+**Theme switch.** `invictus-theme set` gains one step before the reload and one after:
+
+1. Before the reload: `grim` captures every output, and `invictus-veil` shows each capture full-screen as a layer surface (namespace `invictus-veil`, layer overlay, no input, no keyboard focus). It looks identical to the screen, so its appearance is invisible.
+2. The reload runs underneath as specified in Themes.
+3. After the reload (or after 1.5 s at most, so a slow app never holds the screen), the veil animates itself away and exits. **Showcase: sunrise wipe.** A circle opens from the centre of the picker and grows to cover the screen in 520 ms (`unveil`), with the old theme outside it and the new one inside, and a 2 px ring in the new theme's `sol-bright` riding the edge, fading to 60% as it goes. **Calm:** a 250 ms cross-fade. **Off:** the veil closes at once (a cut, as before).
+
+`invictus-veil` is new and small: Python with `python-gobject` and `gtk4-layer-shell` (both in extra), about 80 lines: a `Gtk.Picture` per monitor, and the wipe as a clip in `do_snapshot`. It must exit on any error, on Esc, and after 2 s whatever happens, so it can never leave a frozen screen over the desktop. If `grim` is missing or fails, skip the veil and switch with a cut.
+
+### Bar, notifications, launcher, panel
+
+**Waybar** (GTK 3 CSS supports `transition` and `@keyframes`). A generated `motion.css` beside the colour file sets two durations as the level requires:
+
+```css
+#workspaces button { transition: box-shadow 150ms cubic-bezier(.25,1,.5,1), color 150ms; }
+#workspaces button.active { box-shadow: inset 0 -2px @sol; }
+#custom-swaync .dot { transition: opacity 150ms; }
+```
+
+Calm: 120 ms. Off: `transition: none`. Nothing else in the bar moves. The system alert appears without motion (it is already red).
+
+**swaync 0.12.6** (GTK 4). Cards slide in from the right; the slide is swaync's own, and its length is `"transition-time"` in `config.json` (Showcase 220, Calm 150, Off 0). On top of the slide, a one-shot CSS accent per theme, 300 ms, on `.notification-row .notification` (GTK 4 CSS supports `@keyframes`). The accent is the only part that differs between themes:
+
+| Theme | Accent | How (cheap: one keyframe, opacity and box-shadow only) |
+|---|---|---|
+| Dusk | **Sunrise bar**: the 3 px left bar rises from the bottom, and a warm light washes in from the left edge and fades | `box-shadow: inset 3px 0 @sol, inset 24px 0 32px -24px alpha(@sol,.5)` to `inset 3px 0 @sol` |
+| Porphyry | **Dye**: the card border starts Tyrian and bleeds back to `line` | `border-color` from `@sol` to `@line` |
+| Aegean | **Ripple**: one ring spreads from the app icon and fades | `box-shadow: 0 0 0 0 alpha(@sol,.6)` to `0 0 0 14px alpha(@sol,0)` on `.notification-default-action .image` |
+| Alexandria | **Beam**: one pass of lamp light across the card, left to right | `background-position` of a faint `@sol-bright` linear gradient from -100% to 200% |
+
+Calm and Off: no accent (`animation: none`). Critical notifications get no accent in any theme: the `pompeii` bar is already there and they must not look festive. The mockup shows Dusk's bar and Aegean's ripple. Whether GTK 4 animates `background-position` (Alexandria) is not tested; if it does not, Alexandria uses Dusk's sunrise bar.
+
+**Rofi 2.0** (launcher and the theme and motion pickers) has no animation of its own. It opens with the Hyprland `layersIn` pop (94%, 180 ms) and closes with the 120 ms fade. The selection moves instantly, which is right for a list you drive with arrow keys.
+
+**Moneta panel and Desk.** Panel: `slide right`, 180 ms in, 120 ms out. Desk: the special workspace `slidefadevert 16%`, 260 ms. New lines in the panel conversation fade in over 120 ms (Calm: none). The "Working on it" status never animates dots or spinners; it changes the word only.
+
+### Timing budget, checked
+
+| Moment | Showcase | Calm | Budget |
+|---|---|---|---|
+| Focus change | 120 ms (+300 ms glint on the focused window) | 120 ms | Everyday ≤ 150 ms; the glint is the one exception, on the window you just chose, and off in Calm |
+| Window move, resize, menus | 150 ms / 100 ms | 120 ms / 100 ms | Everyday |
+| Window open / close | 260 / 140 ms | 180 / 100 ms | Moment ≤ 300 |
+| Workspace | 280 ms | 180 ms | Moment |
+| Launcher, pickers | 180 / 120 ms | 120 / 100 ms | Moment |
+| Notification | 220 ms slide + 300 ms accent | 150 ms | Moment |
+| Unlock | 500 ms | 300 ms | Ceremony ≤ 600 |
+| Log in | 500 ms rays + 250 ms fade, then 600 ms zoom | 200 ms fade | Ceremony; the two halves run in different processes (SDDM, then Hyprland) |
+| Theme switch | 520 ms wipe | 250 ms | Ceremony |
+
+Cost: none of this adds a daemon that stays running. The glint is part of the border shader Hyprland runs anyway. The only new program is `invictus-veil`, which lives for under two seconds per theme switch.
+
 ## Cut, and why
 
 | Cut | Why |
@@ -590,3 +742,5 @@ Old generated folders stay (a few KB each), so switching back is as fast as swit
 Reused: IBM Plex Mono and the kitty font settings, the block cursor and blink curve, the master layout and its values, `resize_on_border false`, the persistent workspace split per monitor, the updates module and its script, pavucontrol and nm-connection-editor actions, Papirus, nwg-look, the SDDM compositor setup (`d43490a`), the cursor fix (`0a579b7`), and the Desk idea from Alex's Liberalitas Desk (sections Now, Waiting on you, Threads). New: the palette, the mark, the Plymouth, SDDM and btop themes, the system-alert module (replaces three stats modules), the Now module and Moneta panel (nothing like them exists), and the wallpapers (the old ones cannot ship). No shared theming tool exists yet; the engineer should generate every app's colour file from one tokens file per theme (`theme/<id>.toml`, see Themes) so a colour change is made once.
 
 Themes (2026-09-30). Reused: the Dusk token names and every surface spec above (the themes change values only), the launcher's rofi layout and selection style for the picker, the keybinding description convention in `binds.lua`, the existing `hyprpaper` daemon, and each app's own reload signal. New: `theme/<id>.toml` files, the templates, `invictus-theme` and the picker. Nothing in the repo generated app colours from one source before (`scripts/` has install, deploy and update scripts only; `config/` holds hand-written colours per app), so the generator is new; it replaces those hand-written colours rather than sitting beside them.
+
+Motion and wallpapers (2026-09-30). Reused: the existing Hyprland curves `snap`, `glide`, `linear` and the old snappy timings (now the everyday tier), Hyprland's own `borderangle once`, `monitorAdded` and `popin`/`slidefade` styles, hyprlock's built-in screencopy cross-fade for the unlock, swaync's own slide (`transition-time`), rofi's existing layer pop, the mark's ray geometry for the login and the Sol rays, the wallpaper compositions already drawn in `themes.html`, and the theme picker's layout for the motion picker. New: the three levels and the `motion` setting, curves `rise`, `unveil` and `sink`, the per-theme notification accents (four CSS keyframes), `invictus-veil` for the theme switch (nothing on the system can show a still image as an overlay layer and animate it away; `hyprpaper` only changes the wallpaper), the SDDM ray sequence (the SDDM theme is new anyway), and the four wallpaper files.

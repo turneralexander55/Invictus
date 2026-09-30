@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3840 2160" width="3840" height="2160" preserveAspectRatio="xMidYMax slice">
+<title>Sol</title>
+<desc>A low sun over a horizon at dusk, nine faint rays, for the Dusk theme. Invictus default wallpaper by Alex. CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ (see LICENSE.md).</desc>
+<defs>
+<filter id="grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1730" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#14120F"/><stop offset=".5" stop-color="#16130F"/><stop offset=".8" stop-color="#241B12"/><stop offset="1" stop-color="#3B2A17"/></linearGradient>
+<radialGradient id="glow" cx="2688" cy="1662" r="1500" gradientUnits="userSpaceOnUse" gradientTransform="translate(2688 1662) scale(1 .5) translate(-2688 -1662)"><stop offset="0" stop-color="#E0A64B" stop-opacity=".42"/><stop offset=".3" stop-color="#A0682C" stop-opacity=".16"/><stop offset="1" stop-color="#14120F" stop-opacity="0"/></radialGradient>
+<radialGradient id="halo" cx="2688" cy="1622" r="300" gradientUnits="userSpaceOnUse"><stop offset=".3" stop-color="#F0C274" stop-opacity=".35"/><stop offset="1" stop-color="#F0C274" stop-opacity="0"/></radialGradient>
+<radialGradient id="rayfade" cx="2688" cy="1622" r="2600" gradientUnits="userSpaceOnUse"><stop offset=".04" stop-color="#F0C274" stop-opacity=".045"/><stop offset=".62" stop-color="#F0C274" stop-opacity="0"/></radialGradient>
+<linearGradient id="ground" x1="0" y1="1730" x2="0" y2="2160" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1D1913"/><stop offset="1" stop-color="#14120F"/></linearGradient>
+<radialGradient id="refl" cx="2688" cy="1730" r="420" gradientUnits="userSpaceOnUse" gradientTransform="translate(2688 1730) scale(.32 1) translate(-2688 -1730)"><stop offset="0" stop-color="#E0A64B" stop-opacity=".16"/><stop offset="1" stop-color="#E0A64B" stop-opacity="0"/></radialGradient>
+<filter id="soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="22"/></filter>
+<clipPath id="above"><rect width="3840" height="1730"/></clipPath>
+</defs>
+<rect width="3840" height="1730" fill="url(#sky)"/>
+<rect width="3840" height="1730" fill="url(#glow)"/>
+<g clip-path="url(#above)"><g filter="url(#soft)" fill="url(#rayfade)"><polygon points="2688,1622 112,1975 147,2171"/><polygon points="2688,1622 204,853 153,1046"/><polygon points="2688,1622 762,-124 634,28"/><polygon points="2688,1622 1680,-775 1500,-690"/><polygon points="2688,1622 2788,-976 2588,-976"/><polygon points="2688,1622 3876,-690 3696,-775"/><polygon points="2688,1622 4742,28 4614,-124"/><polygon points="2688,1622 5223,1046 5172,853"/><polygon points="2688,1622 5229,2171 5264,1975"/></g></g>
+<circle cx="2688" cy="1622" r="300" fill="url(#halo)"/>
+<circle cx="2688" cy="1622" r="92" fill="#F0C274"/>
+<path fill="#1B1712" d="M0 1730 L0 1660 C 500 1610 900 1690 1400 1670 C 1800 1652 2100 1710 2400 1730 Z"/><path fill="#1A1611" d="M2900 1730 C 3200 1680 3500 1635 3840 1670 L3840 1730 Z"/>
+<rect y="1730" width="3840" height="430" fill="url(#ground)"/>
+<rect x="2188" y="1730" width="1000" height="440" fill="url(#refl)"/>
+<rect y="1729" width="3840" height="2" fill="#E0A64B" opacity=".28"/>
+<rect width="3840" height="2160" filter="url(#grain)" opacity="0.028" style="mix-blend-mode:overlay"/>
+</svg>
