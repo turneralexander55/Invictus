@@ -19,6 +19,8 @@ Mockups (`docs/mockups/`, each 1920 x 1080, self-contained HTML, fonts from Goog
 
 Sample content in the mockups (thread names, commit messages, and the Lua in the editor, which is not the real Hyprland API) is made up.
 
+The Classic desktop (Simple mode, for friends who don't use keyboard shortcuts) has its own design and mockups: `docs/simple-mode.md` and `docs/mockups/simple-*.html`. It uses the tokens, themes and rules below unchanged.
+
 ## Concept
 
 **Dusk in the stoa.** Warm dark stone, marble-white text, and one gold: the sun. Gold means one thing on this desktop: *you are here*. It marks the focused window, the active workspace, the selected launcher row and the field you are typing in. On a screen with a single job (the ISO's Install card) it also marks the one next step. Nothing else is gold, so the eye always finds its place in one glance.
