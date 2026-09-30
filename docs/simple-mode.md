@@ -13,7 +13,7 @@ Mockups (`docs/mockups/`, 1920 x 1080, self-contained HTML, same fonts and scale
 | `simple-start-open.html` | Start open over the desktop |
 | `simple-quick-settings-open.html` | Wi-Fi, sound and battery panel open from the taskbar |
 | `simple-help-open.html` | The Help panel, mid-conversation, with a "May I?" card and Ask Alex |
-| `simple-update-notice.html` | "Updates are ready" notice over an open app |
+| `simple-update-notice.html` | "Restart when you're ready" notice over an open app |
 | `simple-messages.html` | Every message pattern in section 4 on one sheet, for Clio |
 | `simple-install-1-welcome.html` | Installer 1 of 4: Welcome |
 | `simple-install-2-disk.html` | Installer 2 of 4: Erase this computer (the one hard question) |
@@ -245,8 +245,7 @@ Clio polishes the words; these are the patterns. Every message is a card (swaync
 | When | Title | Body | Buttons | Bar |
 |---|---|---|---|---|
 | Updates installed, no restart needed | `Your computer is up to date` | `Updates were installed while you worked.` | none (8 s) | laurel |
-| Updates installed, restart needed | `Updates are ready` | `Restart to finish. It takes about a minute, and your apps will open again.` | `Restart now` · `Later` | lapis |
-| Restart needed, 3 days of "Later" | `Please restart soon` | `An important update is waiting. Restart when you finish what you're doing.` | `Restart now` · `Tonight` | lapis |
+| Updates installed, restart needed (at most once a day, never forcing; Alex, 2026-09-30: no automatic restarts, ever) | `Restart when you're ready` | `An update finishes when the computer restarts. It takes about a minute, and your apps will open again.` | `Restart now` · `Later` | lapis |
 | An update failed and was undone **[M2]** | `An update didn't work` | `Your computer put things back the way they were. Nothing is lost. Alex has been told.` (last sentence only if the report was really sent **[M8]**) | `Ask Help` | lapis |
 | Computer started from the backup copy after a bad update **[M2]** | `Your computer went back to before the last update` | `Something went wrong after an update, so it started from the copy made just before it. Your files are fine.` | `Got it` · `Ask Help` | lapis |
 | An app crashed | `Photos closed unexpectedly` | `Anything you saved is safe.` | `Open it again` · `Ask Help` | lapis (it already happened; nothing needs you now) |
@@ -344,7 +343,7 @@ Section numbers are `design-simple-mode.md`'s. This table predates DS1 and the g
 | # | Answered by | What it means here | Still open |
 |---|---|---|---|
 | M1 | 0 (Admin), 1.3, 3.1, DS1 | The person is not an admin and is never asked for a password; `custos` is the admin and only Alex knows it. App installs are per-user Flatpaks with no password. So the password card in 4.2 never appears on a Simple machine, and the Atrium polkit prompt is only seen by Alex as `custos` in a help session | Where the Simple switch and the one-time `custos` password screen ("write this on the card", DS4) go in the four installer screens. Whether Atrium draws the polkit prompt in Quickshell (4.2 here) or `hyprpolkitagent` shows it (Minerva 5.2 step 4, which also needs it to let Alex pick `custos`). The polkit `<message>` texts |
-| M2 | 2.1 to 2.4, DS2 | Updates run by themselves behind gates; a restart happens on its own only between 02:00 and 06:00, idle, on mains, not in a game, so never while someone is using it. A failed doctor undoes the update from the cache (`An update didn't work`); two bad boots start the pre-update snapshot (`Your computer went back to before the last update`) | Whether `Updates are ready` (`Restart now` · `Later`) and `Please restart soon` count as questions under SM6, which allows none |
+| M2 | 2.1 to 2.4, DS2 | Updates run by themselves behind gates. Superseded by Alex (2026-09-30, DS2 denied): the computer never restarts itself; after an update that needs it, `Restart when you're ready` at most once a day. A failed doctor undoes the update from the cache (`An update didn't work`); two bad boots start the pre-update snapshot (`Your computer went back to before the last update`) | Whether `Restart when you're ready` (`Restart now` · `Later`) counts as a question under SM6, which allows none |
 | M3 | 5.1 to 5.3, DS7 | RustDesk, started only when the person presses **Get help**, accepting only the helper's ID and only on a click. The strip `Alex is using your computer` with `Stop` is Minerva's banner (one text, one button name). It ends on Stop, closing the window, Alex disconnecting, or 10 minutes idle. **Ask Alex** is Minerva's helper request | Where Get help sits in Atrium: Minerva puts it on a Desk card and Super+H, and Atrium has neither (Moneta's `help_start` tool is the only path today). Who starts: Minerva has the person start and Alex connect; the card `Alex wants to see your screen` / `Let Alex in` reads as Alex starting, and may be RustDesk's own Accept dialog rather than ours. `helper_person`: Minerva whitelists one RustDesk ID and names no config key. The installer consent line |
 | M4 | 3.1, DS5 | Per-user Flatpak from Flathub's verified subset. `Get apps` opens Bazaar (fallback: GNOME Software, Flatpak only). Email is Thunderbird from the DS5 set | LibreOffice is a native package in `invictus-everyday` (2.4) and a user Flatpak in DS5: pick one |
 | M5 | 4.1 | Claude Code with the person's own account (D13), a home AI system through the chat-only provider, or none. `generic-cli` is not offered | What the Claude account costs the friend and who pays |
@@ -363,7 +362,7 @@ For Moneta's planning, not a brief. All in the Atrium path; Tessera is unchanged
 2. `invictus-hyprbars` package against the pinned Hyprland. Small, with the hardware risk in 2.2.
 3. `invictus-atrium-minimise` listener. Small.
 4. The Quickshell Atrium shell: taskbar, Start, Quick settings, Help panel, polkit prompt, "Keep this?" card. The bulk of the work. The Help panel shares its conversation and approval components with the Moneta panel for Tessera; build them once.
-5. Settings (Quickshell): Wi-Fi, Sound, Screen (text size, brightness, arrangement), Look (theme, wallpaper, motion), Desktop style, Updates, About. Nothing on the system does this for a non-technical person today: `nwg-look`, `pavucontrol` and `nm-connection-editor` are the jargon this mode removes. Considered GNOME Settings: many of its panels depend on GNOME's own session services (which ones fail under Hyprland is unchecked), and it would bring GNOME's look and words with it.
+5. Settings: designed in `settings.md` (eleven pages including Guard rails and Safety copies, built in Quickshell). Nothing on the system does this for a non-technical person today: `nwg-look`, `pavucontrol` and `nm-connection-editor` are the jargon this mode removes; they stay as Options links.
 6. Calamares configuration, QML pages and branding for the 4 screens. Medium.
 7. First start (Atrium path) inside Minerva's wizard. Small, once the wizard exists.
 8. `invictus-everyday` meta package (2.4).
@@ -395,7 +394,7 @@ Not verified:
 
 Reused: the tokens and all four themes, the theme picker's generated swatches (Settings > Look), the "gold means you are here" rule, status colours, motion levels (Calm as default), the lock, login and boot screens unchanged, the launcher's search field and selection style (Start), the Moneta panel's layout and its equal-button approval card (Help), swaync with a second config (messages), the Hyprland loader and module pattern (`invictus.atrium`), the Lua test harness, the local speech pipeline (Help's microphone), Calamares and Minerva's Quickshell first-boot wizard, Hyprland's own `monocle` layout and hyprbars from hyprwm, and `hyprlock`, `hypridle` and logind for lock and sleep.
 
-New, because nothing does the job: the Quickshell Atrium shell (taskbar, Start, Quick settings, Help, polkit prompt; waybar and rofi can't share state or draw a power footer), Settings (section 8.5), the minimise listener (Hyprland has no minimised state), the Atrium bind set, the `invictus-everyday` meta, and the Atrium Calamares pages.
+New, because nothing does the job: the Quickshell Atrium shell (taskbar, Start, Quick settings, Help, polkit prompt; waybar and rofi can't share state or draw a power footer), Settings (`settings.md`), the minimise listener (Hyprland has no minimised state), the Atrium bind set, the `invictus-everyday` meta, and the Atrium Calamares pages.
 
 ---
 
