@@ -9,6 +9,7 @@
 #    each call against the Hyprland Lua API, and compares the result
 #    with the old hyprlang config in fixtures/.
 # 3. Feeds fake `hyprctl binds` output to scripts/show-keybindings.sh.
+# 4. Runs scripts/confirm-poweroff.sh against a fake rofi.
 #
 # API source: /usr/share/hypr/stubs/hl.meta.lua when Hyprland is
 # installed (so it tracks the installed version), else the vendored
@@ -92,6 +93,7 @@ expect "to workspace 10"
 expect "Shift + Print"
 expect "XF86AudioRaiseVolume"
 expect "Super + mouse:272"
+expect "power off with confirm"
 
 total=$(grep -c "→" <<< "$out" || true)
 binds=$(grep -c "^bind" "$FAKE_BINDS" || true)
@@ -99,6 +101,36 @@ if [[ "$total" != "$binds" ]]; then echo "FAIL  $total rows shown for $binds bin
 if grep -q "(no description)" <<< "$out"; then echo "FAIL  a bind has no description"; sk_fail=1; fi
 
 if [[ $sk_fail == 0 ]]; then echo "ok    $total binds listed, grouped by section"; else fail=1; fi
+echo
+
+# ---- 4. confirm-poweroff.sh ------------------------------------------------
+echo "== confirm-poweroff.sh"
+cp_fail=0
+FAKE_DIR="$(mktemp -d)"
+export FAKE_DIR
+trap 'rm -rf "$FAKE_DIR"; rm -f "$FAKE_BINDS" "$FAKE_BINDS.hyprctl"' EXIT
+# Fake rofi: records its arguments and menu, answers with $FAKE_ANSWER (exit 1 = Escape).
+cat > "$FAKE_DIR/rofi" <<'EOF'
+#!/usr/bin/env bash
+echo "$*" > "$FAKE_DIR/args"
+cat > "$FAKE_DIR/menu"
+[[ -n "${FAKE_ANSWER:-}" ]] || exit 1
+echo "$FAKE_ANSWER"
+EOF
+chmod +x "$FAKE_DIR/rofi"
+run_confirm() {
+    rm -f "$FAKE_DIR/powered"
+    FAKE_ANSWER="$1" ROFI="$FAKE_DIR/rofi" POWEROFF_CMD="touch $FAKE_DIR/powered" \
+        bash "$REPO/scripts/confirm-poweroff.sh" || true
+}
+run_confirm "Yes"; [[ -e "$FAKE_DIR/powered" ]] || { echo "FAIL  Yes did not power off"; cp_fail=1; }
+run_confirm "No";  [[ ! -e "$FAKE_DIR/powered" ]] || { echo "FAIL  No powered off"; cp_fail=1; }
+run_confirm "";    [[ ! -e "$FAKE_DIR/powered" ]] || { echo "FAIL  Escape powered off"; cp_fail=1; }
+run_confirm "yes please"; [[ ! -e "$FAKE_DIR/powered" ]] || { echo "FAIL  free text powered off"; cp_fail=1; }
+[[ "$(head -1 "$FAKE_DIR/menu")" == "No" ]] || { echo "FAIL  first row is not No"; cp_fail=1; }
+grep -q -- "-selected-row 0" "$FAKE_DIR/args" || { echo "FAIL  default row is not No"; cp_fail=1; }
+grep -q -- "-no-custom" "$FAKE_DIR/args" || { echo "FAIL  free text is allowed"; cp_fail=1; }
+if [[ $cp_fail == 0 ]]; then echo "ok    only Yes powers off; No, Escape and other text do nothing; default is No"; else fail=1; fi
 echo
 
 if [[ $fail == 0 ]]; then echo "ALL PASSED"; else echo "SOME TESTS FAILED"; fi

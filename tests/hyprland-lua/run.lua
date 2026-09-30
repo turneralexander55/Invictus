@@ -219,10 +219,13 @@ local EXCEPTIONS = {
     end,
     -- hyprctl keyword is gone; the layout toggle is a Lua function
     ["72+space"] = function() return { "<lua function>" } end,
+    -- power off now asks first: the bind runs scripts/confirm-poweroff.sh (rofi yes/no, default No)
+    ["76+escape"] = function() return { "exec_cmd", "$HOME/hyprdots/scripts/confirm-poweroff.sh" } end,
 }
 local KEY_RENAMES = { ESC = "Escape" } -- ESC is not an xkb keysym; the old bind never fired
--- Old binds deliberately left out of the port (disabled pending Alex's call).
-local DISABLED = { ["shutdown +0"] = true }
+-- Old binds deliberately left out of the port. Empty now: the power-off bind is back
+-- (Alex, 2026-09-30) with a confirm step, so it is an EXCEPTION above instead.
+local DISABLED = {}
 
 test("every old keybind exists with the same keys, action and flags", function(check)
     local byCombo = {}
