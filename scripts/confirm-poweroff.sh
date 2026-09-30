@@ -18,7 +18,7 @@ ROFI="${ROFI:-rofi}"
 POWEROFF_CMD="${POWEROFF_CMD:-systemctl poweroff}"
 
 # rofi exits non-zero on Escape; treat that as an empty answer.
-answer=$(printf 'No\nYes\n' | "$ROFI" -dmenu -i -no-custom -selected-row 0 -p "Power off?" -lines 2 2>/dev/null) || answer=""
+answer=$(printf 'No\nYes\n' | "$ROFI" -dmenu -i -no-custom -selected-row 0 -p "Power off?" -l 2 2>/dev/null) || answer=""
 
 if [[ "$answer" == "Yes" ]]; then
   # shellcheck disable=SC2086  # POWEROFF_CMD is a command plus arguments
