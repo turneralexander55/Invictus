@@ -468,3 +468,15 @@ Proposed: Invictus (the distro), Forum (dashboard), Tribune (assistant), Acta (a
 | D14 | What friends connect to: Alex's scrubbed export repo (recommended) or a hand-maintained shared repo; never the live team repo with `projects/` | Export repo |
 | D15 | Ship a local-model provider (llama.cpp Vulkan) preinstalled in v1, or as an opt-in package | Opt-in package, Phase 7 |
 | D16 | Secure Boot: not supported in v1 (limine enrolment can brick boot per the wiki's warning) | Agree, revisit later |
+
+### 10.1 Alex's answers (2026-09-30, on the Desk)
+
+| # | Answer |
+|---|---|
+| D2 | Renamed to `invictus` (GitHub shows `Invictus`). |
+| D3 | Package repo public. Before the repo goes public, Phase 0 scans the full history for secrets. |
+| D4, D5, D7 to D12, D15, D16 | Team defaults approved as one bundle. D11: the old wallpapers are deleted from the repo. |
+| D6 | Encryption offered, off by default. |
+| D13 | Approved: each person uses their own account, never a shared one. Claude is the default, but the choice of provider **must include home AI systems** (a local model on the user's GPU, or a server on their LAN) as a first-class option in the first-boot wizard, not a hidden add-on. The local provider package stays optional to install, but it is offered at first boot. |
+| D14 | **Denied, replaced.** No export of Alex's repo, ever. A friend gets a Collegium built from the default template by a script: `invictus-collegium new` creates a repo on their own GitHub (or locally) from the shipped template, so none of Alex's data is ever copied. The `export` command and its scrubber are dropped from 2b. Connecting to someone else's repo (C-rules, trust screen) stays for people who choose to. |
+| D1 | Waiting on `findmnt` output. |
