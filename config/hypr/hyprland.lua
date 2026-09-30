@@ -12,6 +12,8 @@
 -- load. Modules share values through return tables (see lua/variables.lua).
 --
 -- Order matters only where two modules set the same thing; none do today.
+-- lua/gaming.lua holds the gaming additions and can be disabled on its own
+-- by commenting out its line.
 --------------------------------------------------------------------------------
 
 require("lua.look")
@@ -24,3 +26,4 @@ require("lua.permissions")
 require("lua.binds")
 require("lua.rules")
 require("lua.workspaces")
+require("lua.gaming")
