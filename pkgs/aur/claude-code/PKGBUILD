@@ -1,0 +1,88 @@
+# Copied from the AUR: https://aur.archlinux.org/claude-code.git
+# aur-commit: 5f4ea221a388adc3d500fcf05d1e2d528524aee6 (2.1.285, 2026-09-29)
+# Reviewed 2026-09-30 by Vulcan: installs Anthropic's prebuilt x86_64
+# binary from downloads.claude.ai into /opt with a /usr/bin wrapper that
+# turns off Claude Code's self-update (pacman updates it). No build step,
+# no install scripts. The AUR repo is updated by a bot every release
+# (github.com/fabifont/claude-code-aur).
+# Changes from the AUR copy:
+#   - the release's signed manifest is checked: manifest.json and its
+#     .sig are sources, makepkg verifies the signature against Anthropic's
+#     release key (keys/pgp/, from downloads.claude.ai/keys/claude-code.asc;
+#     fingerprint also on keys.openpgp.org), and prepare() checks that the
+#     binary's sha256 is the one the signed manifest names. The binary's
+#     own sha256 stays pinned as before;
+#   - the licence text is a committed copy (cc-legal.md, fetched
+#     2026-09-30) instead of a SKIP download of a live web page, so the
+#     build is the same every time;
+#   - x86_64 only (arch and the aarch64 source dropped): AMD PCs only;
+#   - makedepends jq (reads the manifest).
+# Update: scripts/dev/bump-aur.sh claude-code (docs/packages.md, "AUR
+# pins"). Weekly; Anthropic releases most days.
+#
+# Maintainer: Christopher Cooper <christopher@cg505.com>
+# Maintainer: Jérôme Poulin <jeromepoulin@gmail.com>
+# Maintainer: Fabio Fontana (fabifont) <me@fabifont.dev>
+# Automation repository: https://github.com/fabifont/claude-code-aur
+
+pkgname=claude-code
+pkgver=2.1.285
+pkgrel=1
+pkgdesc="An agentic coding tool that lives in your terminal"
+arch=('x86_64')
+url="https://github.com/anthropics/claude-code"
+license=('LicenseRef-claude-code')
+depends=('bash')
+makedepends=('jq')
+# Binary is a self-contained Bun executable with embedded JS/resources - stripping breaks it
+options=('!strip')
+
+optdepends=(
+	'git: allow Claude to use git'
+	'github-cli: interact with GitHub'
+	'glab: interact with GitLab'
+	'ripgrep: enhanced file search'
+	'tmux: agent team split panes'
+	'bubblewrap: sandboxing'
+	'socat: sandboxing'
+)
+
+_dl="https://downloads.claude.ai/claude-code-releases/${pkgver}"
+source=("cc-legal.md"
+        "claude-${pkgver}-manifest.json::${_dl}/manifest.json"
+        "claude-${pkgver}-manifest.json.sig::${_dl}/manifest.json.sig")
+source_x86_64=("claude-${pkgver}-x86_64::${_dl}/linux-x64/claude")
+validpgpkeys=('31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE') # Anthropic Claude Code Release Signing <security@anthropic.com>
+
+sha256sums=('4a4cc1762fb1d992a66347dcf94c60a27d328391d8074c13e8ae9d5c4182413b'
+            'ab45eee79e59db6c01147e19b83074df8773304d790f5553b03c2a495eaa8297'
+            'e68646c8a718f003a0c60fde9ebf1ae76646f092cc1f9484c3fab1f93015501a')
+sha256sums_x86_64=('33dad1ec615a2e08cc78b494f05c110e49916de2c79d78ec8799ebf46b233d29')
+
+prepare() {
+	# Invictus: the binary must be the one the signed manifest names.
+	local manifest="claude-${pkgver}-manifest.json" want got
+	[[ "$(jq -r .version "$manifest")" == "$pkgver" ]] || { echo "manifest is not for $pkgver" >&2; return 1; }
+	want="$(jq -r '.platforms["linux-x64"].checksum' "$manifest")"
+	got="$(sha256sum "claude-${pkgver}-${CARCH}" | cut -d' ' -f1)"
+	[[ -n "$want" && "$want" == "$got" ]] || { echo "binary sha256 $got is not the signed manifest's $want" >&2; return 1; }
+}
+
+package() {
+	install -Dm755 "${srcdir}/claude-${pkgver}-${CARCH}" "${pkgdir}/opt/claude-code/bin/claude"
+
+	# Create wrapper script to disable upstream update paths, and to suppress the
+	# native-install health check. Claude Code expects the native installer layout
+	# (~/.local/bin/claude); since we install to /opt + /usr/bin it would otherwise
+	# warn on every startup: "claude command at ~/.local/bin/claude missing or broken".
+	install -dm755 "${pkgdir}/usr/bin"
+	cat > "${pkgdir}/usr/bin/claude" << 'EOS'
+#!/bin/sh
+export DISABLE_UPDATES=1
+export DISABLE_INSTALLATION_CHECKS=1
+exec /opt/claude-code/bin/claude "$@"
+EOS
+	chmod 755 "${pkgdir}/usr/bin/claude"
+
+	install -Dm644 "${srcdir}/cc-legal.md" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

@@ -1,0 +1,101 @@
+# Copied from the AUR: https://aur.archlinux.org/limine-mkinitcpio-hook.git
+# aur-commit: 94ffde9c60808595b287edf9d4219da202a85a7a (1.40.0, 2026-09-27)
+# Reviewed 2026-09-30 by Vulcan (first copy by Vulcan 2 for the ISO):
+# builds limine-entry-tool from Zesko's GitLab tag with the GraalVM
+# native-image compiler (a bundled JDK, not a system one), installs shell
+# hooks under /etc/boot and /usr/bin and one binary. No install scripts.
+# Changes from the AUR copy:
+#   - the git tag must carry Zesko's signature (?signed, validpgpkeys; his
+#     key in keys/pgp/, from his GitLab account, gitlab.com/Zesko.gpg). The
+#     tree checksum was already pinned;
+#   - the GraalVM JDK download is pinned by the AUR's sha256, which matches
+#     the .sha256 GraalVM publishes next to the tarball (checked 2026-09-30);
+#   - Gradle fetches its plugin and libraries from Maven at build time. The
+#     AUR build trusts whatever it gets; ours ships
+#     gradle-verification-metadata.xml (sha256 of every artifact, made with
+#     `gradle --write-verification-metadata sha256` on this commit) and
+#     prepare() puts it in gradle/, so Gradle refuses a changed artifact;
+#   - x86_64 only (arch and the aarch64 source dropped): AMD PCs only.
+# Update: scripts/dev/bump-aur.sh limine-mkinitcpio-hook (docs/packages.md, "AUR pins").
+# A new upstream version needs a new gradle-verification-metadata.xml.
+#
+# Maintainer: Zesko
+
+_pkgname="limine-entry-tool"
+pkgname="limine-mkinitcpio-hook"
+_pkgver=1.40.0
+_extver=""
+pkgver="${_pkgver}${_extver}"
+pkgrel=1
+pkgdesc="Install kernels for the Limine bootloader."
+arch=('x86_64')
+url="https://gitlab.com/Zesko/limine-entry-tool"
+source=("${_pkgname}::git+${url}.git#tag=${pkgver}?signed"
+        "gradle-verification-metadata.xml")
+source_x86_64=("https://github.com/graalvm/graalvm-ce-builds/releases/download/graal-25.2.4/graalvm-community-jdk-25i2-25.0.4_linux-x64_bin.tar.gz")
+license=("GPL3")
+validpgpkeys=('89280156899B7A41ECEA6ABB7C0828609116727F') # Zesko <ZeskoTron@gmail.com>
+provides=('limine-entry-tool')
+options=(!debug !strip)
+_graalvm_version=graalvm_ce_jdk25
+depends=(
+	'bash'
+	'grep'
+	'tar'
+	'limine'
+	'mkinitcpio'
+	'efibootmgr')
+optdepends=(
+	'kernel-modules-hook: Safely keeps kernel on upgrade failure'
+	'sbctl: Signs UEFI boot files for Secure Boot when enabled'
+	'journalctl-desktop-notification: Sends desktop notifications when errors occur'
+)
+makedepends=('git' 'gradle')
+backup=(etc/limine-entry-tool.conf)
+conflicts=('limine-entry-tool')
+sha256sums=('267e0496d863b01903d6b99dae8c222a0ec33c4108a8a5d6e9b38eaa4a4a2edf'
+            '21da5ae5c465496f3513b3072d389be21b7b954a3020d747d1cff3dfe59fa70f')
+sha256sums_x86_64=('3f4a89de8eaa96f2ed677f09957c7e872cd8467aad3537f8b5394c1b8c4b942e')
+
+prepare() {
+	[[ -d "${_graalvm_version}" ]] && rm -rf "${_graalvm_version}"
+	mv graalvm-community-*/ "${_graalvm_version}"
+	if ! command -v "${_graalvm_version}"/bin/javac >/dev/null 2>&1; then
+		echo "Error: ${_graalvm_version}/bin/javac not found." >&2
+		return 1
+	fi
+	# Invictus: Gradle checks every artifact it downloads against this.
+	install -Dm644 gradle-verification-metadata.xml "${_pkgname}/gradle/verification-metadata.xml"
+}
+
+build() {
+	cd "$srcdir/${_pkgname}"
+	export GRAALVM_HOME="$srcdir/${_graalvm_version}"
+	export JAVA_HOME="${GRAALVM_HOME}"
+	export NATIVE_IMAGE_OPTIONS="-march=compatibility --future-defaults=all"
+	/usr/bin/gradle clean nativeCompile -Dorg.gradle.java.home="${JAVA_HOME}"
+}
+
+package() {
+	cd "$srcdir/${_pkgname}"
+	local src="install/arch-linux"
+
+	# directories
+	install -dm 755 \
+		"$pkgdir/usr/share/doc/limine-entry-tool" \
+		"$pkgdir/etc/boot/hooks/pre.d" \
+		"$pkgdir/etc/boot/hooks/post.d" \
+		"$pkgdir/usr/lib/limine"
+
+	# docs
+	install -Dm 644 README.md CHANGELOG.md -t "$pkgdir/usr/share/doc/limine-entry-tool/"
+
+	# files
+	cp -a "$src/limine-entry-tool/etc" "$src/limine-entry-tool/usr" "$pkgdir/"
+	cp -a "$src/limine-mkinitcpio-hook/etc" "$src/limine-mkinitcpio-hook/usr" "$pkgdir/"
+	install -Dm 755 "build/native/nativeCompile/limine-entry-tool" "$pkgdir/usr/lib/limine/"
+
+	# limine hook symlinks
+	ln -sf /usr/bin/limine-reset-enroll "$pkgdir/etc/boot/hooks/pre.d/10-limine-reset-enroll"
+	ln -sf /usr/bin/limine-enroll-config "$pkgdir/etc/boot/hooks/post.d/90-limine-enroll-config"
+}

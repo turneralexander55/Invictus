@@ -19,7 +19,7 @@ btop extra
 btrfs-progs core
 capitaine-cursors extra
 cava extra
-claude-code aur-paru
+claude-code aur
 cliphist extra
 code extra
 crun extra
@@ -90,8 +90,8 @@ libsecret core
 libva-utils extra
 libxkbcommon extra
 limine extra
-limine-mkinitcpio-hook aur-paru
-limine-snapper-sync aur-paru
+limine-mkinitcpio-hook aur
+limine-snapper-sync aur
 linux core
 linux-firmware core
 linux-lts core
@@ -132,7 +132,7 @@ podman-compose extra
 polkit extra
 power-profiles-daemon extra
 procps-ng core
-proton-ge-custom-bin aur-paru
+proton-ge-custom-bin aur
 python core
 qt6-svg extra
 qt6-wayland extra
@@ -185,7 +185,7 @@ xdg-utils extra
 xwaylandvideobridge aur
 yazi extra
 zed extra
-zen-browser-bin aur-paru
+zen-browser-bin aur
 zip extra
 zsh extra
 zsh-autosuggestions extra

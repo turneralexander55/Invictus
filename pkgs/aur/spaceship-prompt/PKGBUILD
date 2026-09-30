@@ -1,6 +1,6 @@
-# Copied from the AUR (https://aur.archlinux.org/spaceship-prompt.git)
-# at commit 876c787938f31b01725b277f53e654745907f439 (v4.22.5, 2026-07-02),
-# reviewed 2026-09-30 by Vulcan: fetches one GitHub release tarball
+# Copied from the AUR: https://aur.archlinux.org/spaceship-prompt.git
+# aur-commit: 876c787938f31b01725b277f53e654745907f439 (4.22.5-1, 2026-07-02)
+# Reviewed 2026-09-30 by Vulcan: fetches one GitHub release tarball
 # (sha256 checked against the AUR's, which matched), installs zsh files.
 # No build step, no network after the download.
 # Changes from the AUR copy:
@@ -9,8 +9,8 @@
 #   - the .install file is dropped: it only told people to edit .zshrc,
 #     and the shipped ~/.zshrc already runs `prompt spaceship`;
 #   - makedepends git dropped (nothing uses it).
-# Update: copy the new AUR commit over this file, review the diff, keep
-# the changes above, bump in one commit.
+# Update: scripts/dev/bump-aur.sh spaceship-prompt (docs/packages.md,
+# "AUR pins").
 #
 # Maintainer: Violeta Veras <vverasagreda at gmail dot com>
 # Contributor: Alexey Peschany <archlinux at sandboiii dot xyz>

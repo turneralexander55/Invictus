@@ -33,6 +33,9 @@ pacman -Syu --noconfirm --needed >/dev/null
 WORK="$(mktemp -d)"
 cp -r "$SRC/." "$WORK/src"
 rm -rf "$WORK/src/out"
+# shellcheck source=tests/pkgs/lib/aur-heavy.sh
+. "$SRC/tests/pkgs/lib/aur-heavy.sh"
+drop_heavy_aur "$WORK/src"
 
 # Throwaway key, as Alex will make the real one (docs/checklists/signing-key.md).
 export GNUPGHOME="$WORK/keys"
@@ -95,10 +98,13 @@ fi
 victim="$(find "$OUT" -name 'invictus-dev-*.pkg.tar.zst' | head -1)"
 printf 'x' >> "$victim"
 rm -f /var/cache/pacman/pkg/invictus-dev-*
-if pacman -Sw --noconfirm invictus-dev >"$WORK/tamper.log" 2>&1; then
+# -dd: fetch only this package, so the refusal can only be its signature
+if pacman -Sw --noconfirm -dd invictus-dev >"$WORK/tamper.log" 2>&1; then
     bad "a tampered package was accepted"
+elif grep -qiE 'invalid or corrupted package|signature .* is invalid' "$WORK/tamper.log"; then
+    ok "a tampered package is refused (bad signature)"
 else
-    ok "a tampered package is refused"
+    bad "tampered package refused for another reason: $(tail -3 "$WORK/tamper.log")"
 fi
 
 # 4. reuse and rebuild

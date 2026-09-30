@@ -21,6 +21,8 @@
 # 9. Pinned set and repo file names.
 # 10. The hyprlang porter (adopt's monitors.lua and user.lua) on a fake
 #    legacy home; its output loads in the stub check.
+# 11. AUR pins: header lines, no SKIP, signers' keys; scripts/dev/bump-aur.sh
+#    against a fake AUR repo.
 #
 # Needs lua 5.4+ for groups 7 and 10 (LUA=...).
 # ------------------------------------------------------------
@@ -97,8 +99,15 @@ while read -r n src; do
         *) sbad "$n: unknown source '$src'" ;;
     esac
 done < "$TMP/sources"
+# Live-ISO-only pins: in the repo for the ISO build, in no set (the
+# installer's cleanup job removes them from the installed system).
+ISO_ONLY_AUR="calamares"
 for d in "$REPO"/pkgs/aur/*/; do
     n="$(basename "$d")"
+    if [[ " $ISO_ONLY_AUR " == *" $n "* ]]; then
+        grep -q "^$n " "$TMP/sources" && sbad "$n is live-ISO only, but a set names it"
+        continue
+    fi
     grep -qx "$n aur" "$TMP/sources" || sbad "pkgs/aur/$n is built but no set names it"
 done
 
@@ -290,6 +299,89 @@ echo "not a key" > "$TMP/junk.asc"
 if run_keyring "$TMP/junk.asc"; then bad "a file with no key built"; k_fail=1; fi
 if grep -q 'PRIVATE KEY' "$KR/invictus.gpg"; then bad "the committed invictus.gpg holds a private key"; k_fail=1; fi
 [[ $k_fail == 0 ]] && ok "trusted fingerprint derived from the key; placeholder and private keys refused"
+echo
+
+# ---- AUR pins ------------------------------------------------------------------
+echo "== AUR pins"
+a_fail=0
+abad() { bad "$1"; a_fail=1; }
+for pb in "$REPO"/pkgs/aur/*/PKGBUILD; do
+    d="$(dirname "$pb")"; n="$(basename "$d")"
+    grep -qE '^# aur-commit: [0-9a-f]{40} \(' "$pb" || abad "$n: no '# aur-commit: <40-hex sha> (...)' line (scripts/dev/bump-aur.sh reads it)"
+    grep -qE '^# Reviewed [0-9]{4}-[0-9]{2}-[0-9]{2} by [A-Z]' "$pb" || abad "$n: no '# Reviewed YYYY-MM-DD by <name>' line"
+    grep -qF "# Update: scripts/dev/bump-aur.sh $n" "$pb" || abad "$n: header does not say how to update (scripts/dev/bump-aur.sh $n)"
+    # Every source pinned: no SKIP (our git sources carry tree checksums).
+    sums="$(bash -c 'source "$1" >/dev/null; for v in ${!sha*} ${!b2*} ${!md5*}; do declare -n a=$v; printf "%s\n" "${a[@]}"; done' _ "$pb")"
+    grep -qx SKIP <<< "$sums" && abad "$n: a checksum is SKIP; pin every source"
+    srcs="$(bash -c 'source "$1" >/dev/null; for v in ${!source*}; do declare -n a=$v; printf "%s\n" "${a[@]}"; done' _ "$pb")"
+    keys="$(field "$pb" validpgpkeys)"
+    signed=false
+    grep -qE '(\.(sig|asc)$|\?signed$)' <<< "$srcs" && signed=true
+    if $signed; then
+        [[ -n "$keys" ]] || abad "$n: signed sources but no validpgpkeys"
+        for k in $keys; do
+            f="$d/keys/pgp/$k.asc"
+            [[ -f "$f" ]] || { abad "$n: validpgpkeys $k has no keys/pgp/$k.asc"; continue; }
+            gpg --batch --show-keys --with-colons "$f" 2>/dev/null | awk -F: '/^fpr:/ { print $10 }' | grep -qx "$k" \
+                || abad "$n: keys/pgp/$k.asc does not hold key $k"
+        done
+    fi
+    for f in "$d"/keys/pgp/*.asc; do
+        [[ -f "$f" ]] || continue
+        grep -qx "$(basename "$f" .asc)" <<< "$keys" || abad "$n: $(basename "$f") is not in validpgpkeys"
+    done
+    [[ "$(field "$pb" arch)" == x86_64 || "$(field "$pb" arch)" == any ]] || abad "$n: arch is not x86_64 or any"
+done
+# Pins the tests build only in CI's aur-pins job (fixtures/aur-heavy.txt).
+while read -r n _; do
+    [[ -f "$REPO/pkgs/aur/$n/PKGBUILD" ]] || abad "fixtures/aur-heavy.txt names $n, which is not in pkgs/aur"
+done < <(grep -v '^[[:space:]]*\(#\|$\)' "$HERE/fixtures/aur-heavy.txt")
+
+# scripts/dev/bump-aur.sh against a fake AUR repo (file://), no network.
+B="$TMP/bump"
+mkdir -p "$B/root/scripts/dev" "$B/root/pkgs/aur/demo" "$B/aur"
+cp "$REPO/scripts/dev/bump-aur.sh" "$B/root/scripts/dev/"
+git -C "$B" init -q aur/demo.git
+g() { git -C "$B/aur/demo.git" -c user.name=t -c user.email=t@t "$@"; }
+aur_pb() {  # version, sha256, extra line
+    printf "pkgname=demo\npkgver=%s\npkgrel=1\narch=('x86_64')\nsource=('https://example.org/demo-\$pkgver.tar.gz'%s)\nsha256sums=('%s')\npackage() { :; }\n" "$1" "$3" "$2" > "$B/aur/demo.git/PKGBUILD"
+    printf "pkgbase = demo\n\tpkgver = %s\n" "$1" > "$B/aur/demo.git/.SRCINFO"
+    g add -A && g commit -qm "$1"
+}
+S1="$(printf 'a%.0s' {1..64})"; S2="$(printf 'b%.0s' {1..64})"
+aur_pb 1.0 "$S1" ""; C1="$(g rev-parse HEAD)"
+aur_pb 1.1 "$S2" ""; C2="$(g rev-parse HEAD)"
+aur_pb 1.2 "$S2" " 'helper.sh'"; C3="$(g rev-parse HEAD)"
+{ printf "# Copied from the AUR: https://aur.archlinux.org/demo.git\n# aur-commit: %s (1.0-1, 2026-01-01)\n# Reviewed 2026-01-01 by Vulcan: test.\n# Update: scripts/dev/bump-aur.sh demo\n" "$C1"
+  git -C "$B/aur/demo.git" show "$C1:PKGBUILD"; } > "$B/root/pkgs/aur/demo/PKGBUILD"
+cp "$B/root/pkgs/aur/demo/PKGBUILD" "$B/pinned"
+BUMP="$B/root/scripts/dev/bump-aur.sh"
+bump() { AUR_URL="file://$B/aur" bash "$BUMP" "$@" > "$B/out" 2>&1; }
+rc=0; bump --check demo || rc=$?
+if ! { [[ $rc == 1 ]] && grep -q "BEHIND  demo: pinned ${C1:0:7}.*2 newer" "$B/out"; }; then abad "bump --check: want BEHIND and exit 1, got $rc: $(cat "$B/out")"; fi
+rc=0; bump demo --commit "$C2" --yes || rc=$?
+if ! { [[ $rc == 2 ]] && grep -q -- "--reviewer" "$B/out"; }; then abad "bump without --reviewer: want exit 2, got $rc"; fi
+# our download disagrees with the AUR's checksum: refuse
+rc=0; BUMP_SUMS_CMD=':' bump demo --reviewer Tester --commit "$C2" --yes || rc=$?
+if ! { [[ $rc == 4 ]] && grep -q "is not what we downloaded" "$B/out"; }; then abad "bump with a checksum that disagrees: want exit 4, got $rc: $(tail -3 "$B/out")"; fi
+cp "$B/pinned" "$B/root/pkgs/aur/demo/PKGBUILD"
+# version and checksum only: applied, sums recomputed (simulated), header moved
+rc=0; BUMP_SUMS_CMD="sed -i 's/$S1/$S2/' \"\$1/PKGBUILD\"" bump demo --reviewer Tester --commit "$C2" --yes || rc=$?
+P="$B/root/pkgs/aur/demo/PKGBUILD"
+if [[ $rc == 0 ]] && grep -qx 'pkgver=1.1' "$P" && grep -q "^# aur-commit: $C2 (1.1-1, " "$P" \
+    && grep -q "^# Reviewed $(date -u +%Y-%m-%d) by Tester: test.$" "$P" && grep -qF "'$S2'" "$P" \
+    && grep -q "AUR's diff" "$B/out"; then :; else
+    abad "bump of version and checksum: rc $rc; $(head -4 "$P" | paste -sd'|'); $(tail -3 "$B/out")"
+fi
+rc=0; AUR_URL="file://$B/aur" bash "$BUMP" --check demo > "$B/out" 2>&1 || rc=$?
+if ! { [[ $rc == 1 ]] && grep -q "1 newer" "$B/out"; }; then abad "bump --check after moving to C2: want 1 newer commit, got $rc: $(cat "$B/out")"; fi
+# the AUR added a source: stop for a hand merge, change nothing
+cp "$P" "$B/before"
+rc=0; BUMP_SUMS_CMD=':' bump demo --reviewer Tester --commit "$C3" --yes || rc=$?
+if ! { [[ $rc == 3 ]] && grep -q "more than the version and checksums" "$B/out" && grep -q "helper.sh" "$B/out" && cmp -s "$P" "$B/before"; }; then
+    abad "bump of a structural change: want exit 3 and no edit, got $rc: $(tail -4 "$B/out")"
+fi
+[[ $a_fail == 0 ]] && ok "$(find "$REPO/pkgs/aur" -name PKGBUILD | wc -l) AUR pins: commit, review and update lines, no SKIP, signers' keys match; bump-aur.sh check, apply, refusals"
 echo
 
 # shellcheck source=tests/pkgs/runtime.sh

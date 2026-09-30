@@ -49,6 +49,9 @@ WORK="$(mktemp -d)"
 chmod 755 "$WORK"
 cp -r "$SRC/." "$WORK/src"
 rm -rf "$WORK/src/out" "$WORK/src/.git"
+# shellcheck source=tests/pkgs/lib/aur-heavy.sh
+. "$SRC/tests/pkgs/lib/aur-heavy.sh"
+drop_heavy_aur "$WORK/src"
 
 # ---- throwaway key, as Alex will make the real one ----------------------------
 export GNUPGHOME="$WORK/keys"
@@ -62,7 +65,9 @@ SECRET="$(gpg --batch --pinentry-mode loopback --passphrase "$PASS" --armor --ex
 gpgconf --kill gpg-agent
 unset GNUPGHOME
 
-# A package with an epoch, served from our repo (proton-ge-custom-bin has one).
+# A package with an epoch, served from our repo (proton-ge-custom-bin has
+# one; the real pin is dropped above unless E2E_FULL_AUR=1).
+rm -rf "$WORK/src/pkgs/aur/proton-ge-custom-bin"
 mkdir -p "$WORK/src/pkgs/aur/proton-ge-custom-bin"
 cat > "$WORK/src/pkgs/aur/proton-ge-custom-bin/PKGBUILD" <<'EOF'
 pkgname=proton-ge-custom-bin

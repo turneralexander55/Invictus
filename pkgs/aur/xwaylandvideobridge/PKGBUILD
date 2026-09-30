@@ -1,14 +1,14 @@
-# Copied from the AUR (https://aur.archlinux.org/xwaylandvideobridge.git)
-# at commit 6682410be6998939d22be49c4c1b13c8d9da6ae7 (v0.5.3, 2026-09-27), reviewed
-# 2026-09-30 by Vulcan: fetches one KDE release tarball, verifies its
-# signature and sha256, builds with cmake, installs with DESTDIR. No
+# Copied from the AUR: https://aur.archlinux.org/xwaylandvideobridge.git
+# aur-commit: 6682410be6998939d22be49c4c1b13c8d9da6ae7 (0.5.3-1, 2026-09-27)
+# Reviewed 2026-09-30 by Vulcan: fetches one KDE release tarball, verifies
+# its signature and sha256, builds with cmake, installs with DESTDIR. No
 # install scripts, no network at build time.
 # Changes from the AUR copy: the signature's sha256 is pinned too (was
 # SKIP), and the signer's public key is kept in keys/pgp/ (fetched from
 # keys.openpgp.org by fingerprint; scripts/build-repo.sh imports it
 # before makepkg verifies the tarball).
-# Update: copy the new AUR commit over this file, review the diff, keep
-# the two changes above, bump in one commit.
+# Update: scripts/dev/bump-aur.sh xwaylandvideobridge (docs/packages.md,
+# "AUR pins").
 #
 # Maintainer:
 # Contributor: Tomaz Canabrava <tcanabrava@archlinux.org>
