@@ -45,9 +45,9 @@
   "custom/updates": {
     "format": "󰮯 {}",
     "interval": 600,
-    "exec": "$HOME/invictus/scripts/waybar/updates.sh",
+    "exec": "/usr/lib/invictus/waybar/updates",
     "return-type": "json",
-    "on-click": "kitty --hold $HOME/invictus/scripts/update.sh && pkill -RTMIN+8 waybar",
+    "on-click": "kitty --hold invictus-update && pkill -RTMIN+8 waybar",
     "signal": 8,
     "tooltip": true
   },
@@ -55,7 +55,7 @@
   "custom/gpu": {
     "format": "󰢮 {}",
     "interval": 2,
-    "exec": "$HOME/invictus/scripts/waybar/gpu.sh",
+    "exec": "/usr/lib/invictus/waybar/gpu",
     "return-type": "json",
     "tooltip": true
   },
@@ -63,7 +63,7 @@
   "custom/cpu": {
     "format": "󰻠 {}",
     "interval": 2,
-    "exec": "$HOME/invictus/scripts/waybar/cpu.sh",
+    "exec": "/usr/lib/invictus/waybar/cpu",
     "return-type": "json",
     "tooltip": true
   },
@@ -71,7 +71,7 @@
   "custom/memory": {
     "format": "󰘚 {}",
     "interval": 2,
-    "exec": "$HOME/invictus/scripts/waybar/memory.sh",
+    "exec": "/usr/lib/invictus/waybar/memory",
     "return-type": "json",
     "tooltip": true
   },

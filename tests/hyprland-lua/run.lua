@@ -75,46 +75,11 @@ end
 local hl, state = mock.new({ stubs = stubsPath, keysyms = keysymsPath })
 _G.hl = hl
 
--- Hyprland's require() (src/config/lua/ConfigManager.cpp, 0.56.2):
---   * a name starting with "/", "./", "../" or "~/" is a file path, tried as
---     given, with ".lua" added, then as <path>/init.lua;
---   * a module that is not found raises an error the caller can pcall;
---   * any other error in a module is reported and require returns {}.
+-- Hyprland's require(), emulated (hyprrequire.lua, shared with invictus-doctor).
 local realRequire = require
-local function explicitPath(name)
-    if name:match("^/") or name:match("^%.%.?/") or name:match("^~/") then
-        local base = name:gsub("^~/", (os.getenv("HOME") or "") .. "/")
-        for _, c in ipairs({ base, base .. ".lua", base .. "/init.lua" }) do
-            local f = io.open(c)
-            if f then f:close(); return c end
-        end
-    end
-end
+local hyprrequire = require("hyprrequire")
 local function makeRequire(onRequire, onError)
-    return function(name)
-        if package.loaded[name] ~= nil then return package.loaded[name] end
-        local file = explicitPath(name)
-        local ok, res
-        if file then
-            onRequire(name)
-            local chunk, e = loadfile(file)
-            if chunk then ok, res = pcall(chunk, name, file) else ok, res = false, e end
-        elseif package.preload[name] or package.searchpath(name, package.path) then
-            onRequire(name)
-            ok, res = pcall(realRequire, name)
-            if ok then return res end
-        else
-            error("module '" .. name .. "' not found", 2)
-        end
-        if not ok then
-            onError("require(\"" .. name .. "\"): " .. tostring(res))
-            package.loaded[name] = {}
-            return {}
-        end
-        if res == nil then res = true end
-        package.loaded[name] = res
-        return res
-    end
+    return hyprrequire.make(realRequire, onRequire, onError)
 end
 
 local requiredModules = {}
@@ -632,6 +597,8 @@ local COMMAND_PACKAGES = {
     ["$HOME/invictus/scripts/show-keybindings.sh"] = false, -- repo script; invictus-tools in Phase 1
     ["$HOME/invictus/scripts/confirm-poweroff.sh"] = false, -- same
     ["~/.local/bin/dashboard-tmux"] = false, -- Alex's own script, not in the repo
+    ["/usr/lib/invictus/show-keybindings"] = "invictus-tools",
+    ["/usr/lib/invictus/confirm-poweroff"] = "invictus-tools",
 }
 -- Pulled in by every Arch install, so no meta lists them.
 local BASE_SYSTEM = { systemd = true }

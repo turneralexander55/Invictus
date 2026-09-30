@@ -1,0 +1,14 @@
+# Repo paths that configs deployed from main (before Invictus) call.
+# Alex's machine runs main through legacy/update.sh (git pull), so every
+# one of these must still exist, and scripts must stay executable, until
+# the machine is adopted (scripts/dev/adopt.sh). tests/pkgs/run.sh checks.
+# Made with:
+#   git grep -ohE '(\$HOME|~)/hyprdots/[A-Za-z0-9_./-]+' origin/main -- config shell
+# Format: path relative to the clone [reason it may be missing]
+assets/wallpapers/Berserk.jpg  gone: D11 deleted the old wallpapers; adopt copies it into its backup, and the adopted hyprpaper.conf uses the shipped wallpaper
+scripts/show-keybindings.sh
+scripts/update.sh
+scripts/waybar/cpu.sh
+scripts/waybar/gpu.sh
+scripts/waybar/memory.sh
+scripts/waybar/updates.sh

@@ -1,0 +1,25 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# Wallpapers, the Invictus mark, and the theme tokens and templates that
+# invictus-theme reads. Files come from this repo (assets/, docs/brand/,
+# theme/) at the same commit as this PKGBUILD: bump pkgrel when any of
+# them changes, or the published package is reused.
+
+pkgname=invictus-branding
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Invictus wallpapers, mark and theme files'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('CC-BY-4.0' 'GPL-3.0-or-later')
+
+package() {
+  local root="$startdir/../../.."
+  local share="$pkgdir/usr/share/invictus"
+
+  install -Dm644 -t "$share/wallpapers" "$root"/assets/wallpapers/*.png "$root"/assets/wallpapers/*.svg
+  install -Dm644 "$root/assets/wallpapers/LICENSE.md" "$pkgdir/usr/share/licenses/$pkgname/wallpapers.md"
+  install -Dm644 -t "$share/brand" "$root"/docs/brand/*.svg
+  install -Dm644 -t "$share/theme" "$root"/theme/*.toml
+  install -Dm644 -t "$share/theme/templates" "$root"/theme/templates/*
+}

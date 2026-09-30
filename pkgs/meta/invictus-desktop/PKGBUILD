@@ -6,8 +6,22 @@
 # tests/hyprland-lua checks that every command the Hyprland config runs is
 # provided by one of the metas.
 
-# The Hyprland desktop. Phase 1 adds the shipped config under
-# /usr/share/invictus and moves the hypr* set to pinned copies (pkgs/pinned/).
+# The Hyprland desktop, and (since Phase 1) its config:
+#   /usr/share/invictus/hypr/invictus/*.lua   the shipped Hyprland modules,
+#                                             loaded by ~/.config/hypr/hyprland.lua
+#   /usr/share/invictus/config/               defaults copied once into a home
+#                                             (laid out like ~/.config; shell/zshrc
+#                                             is ~/.zshrc)
+#   /usr/share/invictus/pinned-hypr.txt       the tested hypr* versions, for
+#                                             invictus-doctor
+#   invictus-first-login user unit            copies the defaults on first login;
+#                                             enabled for every user
+# Files come from this repo (config/, pkgs/pinned/, scripts/) at the same
+# commit as this PKGBUILD: bump pkgrel when any of them changes.
+#
+# The hypr* set itself comes from pkgs/pinned/ (exact Arch files, served
+# from [invictus] ahead of [extra]); the names below stay plain so any
+# repo can satisfy them.
 #
 # Fixes from design 1.2: mako dropped (swaync is the notification daemon);
 # added what binds, autostart and the waybar scripts call but the old list
@@ -15,13 +29,16 @@
 # pacman-contrib (checkupdates), lm_sensors (sensors) and libnotify.
 
 pkgname=invictus-desktop
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc='Invictus Hyprland desktop'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
 license=('GPL-3.0-or-later')
 depends=(
+  # our commands and branding
+  'invictus-tools' 'invictus-branding'
+
   # Hyprland and its tools (pinned set in [invictus] from Phase 1)
   'hyprland' 'hyprpaper' 'hypridle' 'hyprlock' 'hyprpolkitagent'
   'xdg-desktop-portal' 'xdg-desktop-portal-hyprland' 'xdg-desktop-portal-gtk'
@@ -59,5 +76,30 @@ optdepends=(
 )
 
 package() {
-  :
+  local root="$startdir/../../.."
+  local share="$pkgdir/usr/share/invictus"
+
+  # Shipped Hyprland modules: replaced on every update.
+  install -Dm644 -t "$share/hypr/invictus" "$root"/config/hypr/invictus/*.lua
+
+  # Copy-once defaults: everything in config/ except the shipped modules.
+  local f rel
+  while IFS= read -r -d '' f; do
+    rel="${f#"$root"/config/}"
+    [[ "$rel" == hypr/invictus/* ]] && continue
+    install -Dm644 "$f" "$share/config/$rel"
+  done < <(find "$root/config" -type f -print0)
+
+  # Tested hypr* versions (name version), for invictus-doctor.
+  install -dm755 "$share"
+  grep -v '^[[:space:]]*\(#\|$\)' "$root/pkgs/pinned/hypr.lock" | cut -d' ' -f1,2 > "$share/pinned-hypr.txt"
+  chmod 644 "$share/pinned-hypr.txt"
+
+  # First login: the script and a user unit enabled for every user.
+  install -Dm755 "$root/scripts/first-login.sh" "$pkgdir/usr/lib/invictus/first-login"
+  install -Dm644 "$root/scripts/systemd/invictus-first-login.service" \
+    "$pkgdir/usr/lib/systemd/user/invictus-first-login.service"
+  install -dm755 "$pkgdir/usr/lib/systemd/user/default.target.wants"
+  ln -s ../invictus-first-login.service \
+    "$pkgdir/usr/lib/systemd/user/default.target.wants/invictus-first-login.service"
 }

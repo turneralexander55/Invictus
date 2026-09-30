@@ -1,0 +1,57 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# The runtime commands the desktop calls, plus invictus-update and
+# invictus-doctor. Files come from this repo (scripts/, theme/,
+# tests/hyprland-lua/) at the same commit as this PKGBUILD: bump pkgrel
+# when any of them changes, or the published package is reused.
+#
+#   /usr/bin/invictus-theme, invictus-update, invictus-doctor
+#   /usr/lib/invictus/show-keybindings, confirm-poweroff   (Hyprland binds)
+#   /usr/lib/invictus/waybar/{cpu,gpu,memory,updates}      (waybar modules)
+#   /usr/lib/invictus/lib/defaults.sh                      (shared shell code)
+#   /usr/lib/invictus/doctor/                              (the stub config check:
+#       the same mock of `hl` the tests use, checked against the API stubs
+#       /usr/share/hypr/stubs/hl.meta.lua that the hyprland package ships)
+
+pkgname=invictus-tools
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Invictus commands: theme, update, doctor, and the scripts the desktop runs'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=(
+  'bash' 'python' 'lua' 'invictus-branding'
+  # waybar modules and the cheatsheet
+  'pacman-contrib' 'lm_sensors' 'sysstat' 'libnotify' 'rofi' 'util-linux' 'procps-ng'
+  # doctor: diff, findmnt, the keysym list for the stub check
+  'diffutils' 'libxkbcommon'
+)
+optdepends=(
+  'hyprland: invictus-doctor runs Hyprland --verify-config'
+  'snapper: invictus-doctor lists root snapshots'
+  'paru: invictus-update --aur'
+)
+
+package() {
+  local root="$startdir/../../.."
+  local lib="$pkgdir/usr/lib/invictus"
+
+  install -Dm755 "$root/theme/invictus-theme" "$pkgdir/usr/bin/invictus-theme"
+  install -Dm755 "$root/scripts/invictus-update.sh" "$pkgdir/usr/bin/invictus-update"
+  install -Dm755 "$root/scripts/invictus-doctor.sh" "$pkgdir/usr/bin/invictus-doctor"
+
+  install -Dm755 "$root/scripts/show-keybindings.sh" "$lib/show-keybindings"
+  install -Dm755 "$root/scripts/confirm-poweroff.sh" "$lib/confirm-poweroff"
+  local f
+  for f in cpu gpu memory updates; do
+    install -Dm755 "$root/scripts/waybar/$f.sh" "$lib/waybar/$f"
+  done
+
+  install -Dm644 "$root/scripts/lib/defaults.sh" "$lib/lib/defaults.sh"
+  install -Dm644 -t "$lib/doctor" \
+    "$root/scripts/doctor/hypr-check.lua" \
+    "$root/tests/hyprland-lua/mock_hl.lua" \
+    "$root/tests/hyprland-lua/api.lua" \
+    "$root/tests/hyprland-lua/hyprrequire.lua"
+}

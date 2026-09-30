@@ -1,0 +1,11 @@
+[Unit]
+Description=Invictus first login: copy the desktop defaults this home does not have yet
+Documentation=file:///usr/lib/invictus/first-login
+ConditionPathExists=!%h/.local/state/invictus/first-login.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/invictus/first-login
+
+[Install]
+WantedBy=default.target

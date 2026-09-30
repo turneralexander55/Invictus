@@ -18,6 +18,15 @@ set -euo pipefail
 
 HYPRCTL="${HYPRCTL:-hyprctl}"
 
+# A machine still on the old hyprlang config (not adopted yet) has no
+# bind descriptions; the old parser in legacy/ reads keybindings.conf.
+# Only in a repo checkout: the installed copy has no legacy/ next to it.
+LEGACY="$(dirname -- "$(readlink -f -- "$0")")/../legacy/show-keybindings.sh"
+if [[ -z "${HYPRCTL_NO_LEGACY:-}" && -x "$LEGACY" && ! -f "$HOME/.config/hypr/hyprland.lua" \
+      && -f "$HOME/.config/hypr/config/keybindings.conf" ]]; then
+    exec "$LEGACY" "$@"
+fi
+
 if ! BINDS=$("$HYPRCTL" binds 2>/dev/null); then
     notify-send "Keybindings" "Could not read binds from hyprctl" || true
     exit 1
