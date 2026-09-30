@@ -1,0 +1,29 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# Meta package: depends only, no files. What each set is for and why each
+# package is in it: docs/packages.md.
+#
+# The AI set. Installed only when someone picks an AI at first start or in
+# Settings; a machine set to No AI has none of it on disk (Alex,
+# 2026-09-30). No other set may depend on it or on anything in it
+# (tests/pkgs/run.sh, "no AI outside the AI sets"). The Moneta panel, the
+# Desk's AI parts and the team harness join here as they are built;
+# invictus-voice (whisper) is the other AI set.
+
+pkgname=invictus-assistant
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Invictus assistant: Claude Code now, the Moneta panel later (AI; opt-in)'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=(
+  'invictus-desktop'
+
+  # Claude Code, built from our pin in pkgs/aur
+  'claude-code'
+)
+
+package() {
+  :
+}

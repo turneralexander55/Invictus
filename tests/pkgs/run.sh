@@ -133,9 +133,44 @@ for pb in "$REPO"/pkgs/meta/*/PKGBUILD; do
 done
 adopt_metas="$(sed -n 's/^for m in \(.*\); do$/\1/p' "$REPO/scripts/dev/adopt.sh")"
 [[ "$adopt_metas" == "desktop tessera gaming dev" ]] || sbad "adopt.sh installs '$adopt_metas', want 'desktop tessera gaming dev'"
-for f in tessera atrium gaming windows voice; do
+for f in tessera atrium gaming windows voice assistant; do
     field "$REPO/pkgs/meta/invictus-$f/PKGBUILD" depends | grep -x invictus-desktop >/dev/null || sbad "invictus-$f does not depend on invictus-desktop"
 done
+
+# No AI outside the AI sets (Alex, 2026-09-30): a machine set to No AI
+# has no AI package on disk. Only invictus-assistant and invictus-voice may
+# pull one; every other set, followed through the invictus-* sets and our
+# own packages it depends on, must not.
+AI_SETS="invictus-assistant invictus-voice"
+AI_PKGS="claude-code whisper-cpp ggml-vulkan $AI_SETS"
+pb_of() { local d; for d in meta own; do [[ -f "$REPO/pkgs/$d/$1/PKGBUILD" ]] && { echo "$REPO/pkgs/$d/$1/PKGBUILD"; return; }; done; }
+closure() {
+    local todo=("$1") seen=" " n pb
+    while [[ ${#todo[@]} -gt 0 ]]; do
+        n="${todo[0]}"; todo=("${todo[@]:1}")
+        [[ "$seen" == *" $n "* ]] && continue
+        seen+="$n "; echo "$n"
+        pb="$(pb_of "$n")"
+        [[ -n "$pb" ]] || continue
+        while read -r d; do todo+=("$d"); done < <(field "$pb" depends | bare)
+    done
+}
+n_noai=0
+: > "$TMP/noai"
+for pb in "$REPO"/pkgs/meta/*/PKGBUILD "$REPO"/pkgs/own/*/PKGBUILD; do
+    set_name="$(basename "$(dirname "$pb")")"
+    if [[ " $AI_SETS " == *" $set_name "* ]]; then continue; fi
+    n_noai=$((n_noai + 1))
+    for n in $(closure "$set_name"); do
+        if [[ " $AI_PKGS " == *" $n "* ]]; then echo "$set_name pulls $n" >> "$TMP/noai"; fi
+    done
+    for n in $(field "$pb" optdepends | bare); do
+        if [[ " $AI_PKGS " == *" $n "* ]]; then echo "$set_name suggests $n" >> "$TMP/noai"; fi
+    done
+done
+while read -r line; do sbad "no-ai: $line (AI packages belong in $AI_SETS only)"; done < "$TMP/noai"
+[[ $n_noai -ge 9 ]] || sbad "no-ai: only $n_noai non-AI sets and own packages checked"
+for s in $AI_SETS; do [[ -n "$(pb_of "$s")" ]] || sbad "no-ai: AI set $s has no PKGBUILD"; done
 
 # Commands outside the Hyprland config (fixtures/commands.txt). The
 # package must be installed wherever the file is: invictus-desktop, a

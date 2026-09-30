@@ -4,12 +4,13 @@
 # package is in it: docs/packages.md.
 #
 # Development: build tools, git, the two editors, JavaScript and Python,
-# rootless containers, Claude Code, and the search tools agents and people
-# both use. Works on a machine without a desktop too (the editors then
-# just go unused).
+# rootless containers, and the search tools agents and people both use.
+# Works on a machine without a desktop too (the editors then just go
+# unused). No AI here: Claude Code is in invictus-assistant, so a No-AI
+# machine can still have the dev tools.
 
 pkgname=invictus-dev
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
 pkgdesc='Invictus development tools'
 arch=('any')
@@ -31,9 +32,6 @@ depends=(
 
   # command line tools for code: search, find, JSON
   'ripgrep' 'fd' 'jq'
-
-  # Claude Code (AUR until pkgs/aur carries it)
-  'claude-code'
 )
 optdepends=(
   'uv: Python projects and tools'
