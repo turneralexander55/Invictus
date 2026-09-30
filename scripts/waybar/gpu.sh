@@ -112,7 +112,8 @@ if [[ -n "$GPU_CARD" ]] && [[ -d "$GPU_CARD/device" ]]; then
     # Get power draw
     GPU_POWER="N/A"
     if [[ -f "$GPU_CARD/device/hwmon/hwmon*/power1_average" ]]; then
-        POWER_UW=$(cat "$GPU_CARD/device/hwmon/hwmon*/power1_average" 2>/dev/null | head -n1 || echo "0")
+        POWER_UW=$(head -qn1 "$GPU_CARD"/device/hwmon/hwmon*/power1_average 2>/dev/null | head -n1)
+        POWER_UW=${POWER_UW:-0}
         if [[ "$POWER_UW" != "0" ]]; then
             GPU_POWER=$(awk "BEGIN {printf \"%.1f\", $POWER_UW/1000000}")
         fi
