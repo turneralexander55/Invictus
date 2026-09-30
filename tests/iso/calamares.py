@@ -148,6 +148,7 @@ def check_extras_module():
     import tempfile
     import types
 
+    sys.dont_write_bytecode = True  # no __pycache__ next to the module
     fake = types.ModuleType("libcalamares")
     store = {}
     fake.globalstorage = types.SimpleNamespace(value=lambda k: store.get(k))

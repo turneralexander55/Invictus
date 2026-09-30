@@ -4,3 +4,4 @@ config/hypr/config/autostart.mine
 config/hypr/hyprland.mine
 .developer
 out/
+__pycache__/
