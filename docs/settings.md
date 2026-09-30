@@ -18,6 +18,7 @@ Mockups (`docs/mockups/`, 1920 x 1080, self-contained HTML, same fonts, tokens a
 | `settings-desktop-style-keep.html` | Just switched to Tessera: "Keep this desktop style?", 14 s left |
 | `settings-moneta-tessera.html` | Tessera, Libertas, Settings tiled at half the screen: the Moneta page (redrawn 2026-09-30: No AI is the fourth answer) |
 | `settings-ai-off.html` | Atrium, No AI: the AI page, with Moneta's kept memory from before (3.9.1) |
+| `settings-moneta-not-signed-in.html` | Atrium, AI on but never signed in: the Moneta page, Account first (`no-ai.md` 2.3) |
 | `settings-check-text-150.html` | Guard rails at 150% text size (a check, not a state) |
 
 ---
@@ -51,12 +52,12 @@ Fewest pages that cover the list, grouped by how often people come (three groups
 | 7 | **Safety copies** | The safety nets, the copies to go back to |
 | 8 | **Guard rails** | Custodia or Libertas |
 | 9 | **Moneta** (named **AI** while AI is off) | Who answers (Claude, a home AI system, another AI service, No AI), sign in, voice, full access (Libertas); with No AI, the two choices and kept memory |
-| 10 | **Help from Alex** | Get help now, Ask Alex, what changed on this computer |
-| 11 | **About** | This computer, version, space, copy details for Alex |
+| 10 | **Support** | Who helps and how to reach them, Let Support see my screen, Ask Support, what changed on this computer |
+| 11 | **About** | This computer, version, space, the support contact, copy details for Support |
 
 Merged to keep the count down: text size into Screens (it is where "make everything bigger" and "make text bigger" can be told apart once); airplane mode into Wi-Fi and Bluetooth; wallpaper and light/dark into Look. Kept apart on purpose: Updates and Safety copies (one is "what's new", the other is "go back"); Guard rails and Safety copies (the brief's two pages, and the Custodia lock on the nets is explained on both).
 
-The name **Help from Alex** comes from `helper_person`, so another helper's friends see their own name.
+The page name **Support** is fixed. The name in its buttons and messages comes from `helper_person` (`simple-mode.md` 5.1, Who helps): `Support` by default, or the person the machine's owner named.
 
 ---
 
@@ -84,7 +85,7 @@ Gold (or bronze on light) marks where the keyboard is, and nothing else: the foc
 Title is the computer's name (`Maria's laptop`), then one line: `Everything is working.` or, when something is not, the first thing that needs doing. Two sections:
 
 1. **This computer**: four rows that link to their page. Updates (`Up to date`, `Restart when you're ready`, or `Updates are paused until 3 October`), Safety copies (`Last safety copy at 14:00`, or `Hourly copies are off`), Guard rails (`Custodia`, or `Libertas until 15:20`), and the connection. Anything that needs the person goes to the top with a `pompeii` icon.
-2. **Things people often change**: six task buttons that open the exact control, which then gets the focus ring: `Make text bigger`, `Connect to Wi-Fi`, `Connect headphones`, `Change the wallpaper`, `Get a file back`, `Get help from Alex`.
+2. **Things people often change**: six task buttons that open the exact control, which then gets the focus ring: `Make text bigger`, `Connect to Wi-Fi`, `Connect headphones`, `Change the wallpaper`, `Get a file back`, `Get help from Support`.
 
 This is also what Alex asks for on the phone: "open Settings and read me the top."
 
@@ -114,7 +115,7 @@ Each page: what it holds, top to bottom. Options rows are collapsed by default. 
 - **Wi-Fi**: On/Off switch. The Quick settings list (`simple-mode.md` 2.5), reused as is, with more rows: every network in range by signal, the connected one first with `Connected`. Click a locked network: the password row opens in place. Click the connected one: `Forget this network`, `Limit data on this network` (metered: updates wait while it is on, Minerva 2.2), `Share password` (shows it as text; the person's own).
 - **Airplane mode**: switch.
 - **Bluetooth**: On/Off switch. `Your devices`: each paired device with its state and battery if it reports one (`Maria's headphones · Connected · 70%`), click for `Disconnect` and `Forget`. `Pair a device` opens the list of devices in pairing mode near you, with one line: `Put your device in pairing mode. It shows up here.`
-- Options: `Join a hidden network`, `Advanced network settings` (opens `nm-connection-editor`, the jargon tool, for Alex).
+- Options: `Join a hidden network`, `Advanced network settings` (opens `nm-connection-editor`, the jargon tool, for the helper).
 
 ### 3.2 Sound
 
@@ -157,7 +158,7 @@ Options: `Lock the desktop style` (writes `/etc/invictus/flavor.lock`, password 
 - **What changed**: the last update in plain names (`Internet (Zen Browser) 128 to 129`, then `and 34 parts of the system` collapsed).
 - **Custodia**: `Pause updates` with `1 day`, `7 days`, `14 days`. The system prompt holds for 5 seconds and says `Updates keep this computer safe. Paused updates start again by themselves on <date>.` While paused, the card says so with `Resume now`.
 - **Libertas**: no Pause. The row `Automatic updates: On` links to Safety copies, where the switch lives with the other nets (accepted by Minerva, 12.4).
-- **Where updates come from**: `Stable: tested by Alex for a week first`. Custodia: locked to Stable, with `Custodia keeps Stable.` Libertas: `Testing` can be chosen, with the password.
+- **Where updates come from**: `Stable: tested for a week before it reaches you`. Custodia: locked to Stable, with `Custodia keeps Stable.` Libertas: `Testing` can be chosen, with the password.
 
 ### 3.7 Safety copies
 
@@ -175,8 +176,8 @@ See section 4.
   - `Claude`: `Anthropic's Claude, with your own Claude account. It can do things for you after asking.` (preselected, D13)
   - `A home AI system`: `A model on this computer or on your home network. Nothing leaves your home.` Picking it asks for the address, or offers `Use this computer` when the local model package is installed (D15).
   - `Another AI service`: `An account you already have with another AI company. It answers; it can't do things by itself.` (the chat-only `openai-compatible` provider; its key goes to the keyring)
-  - `No AI`: `Guides and Alex. Moneta and voice are removed from this computer.` (`none`; replaces the quiet `Turn Moneta off` link, Alex 2026-09-30). Picking it opens a confirm in the row: `Turn off AI?` / `Moneta and voice are removed from this computer, and you're signed out of Claude on this computer. Moneta's memory and past conversations stay on this computer until you delete them. Help keeps its guides and Ask Alex.` / `Turn off AI` and `Cancel`, equal weight. No password: instant from a local active session, like the return to Custodia (Minerva N1, `design-no-ai.md`). What it removes and keeps: `no-ai.md` 5.
-- **Account**: `Signed in to Claude`, since when, `Working` or `Can't reach Claude`; `Switch account` and `Sign out`. Sign in opens the browser; the window comes back when done. Settings never sees the token.
+  - `No AI`: `Guides and Support. Moneta and voice are removed from this computer.` (`none`; replaces the quiet `Turn Moneta off` link, Alex 2026-09-30). Picking it opens a confirm in the row: `Turn off AI?` / `Moneta and voice are removed from this computer, and you're signed out of Claude on this computer. Moneta's memory and past conversations stay on this computer until you delete them. Help keeps its guides and Ask Support.` / `Turn off AI` and `Cancel`, equal weight. No password: instant from a local active session, like the return to Custodia (Minerva N1, `design-no-ai.md`). What it removes and keeps: `no-ai.md` 5.
+- **Account**: `Signed in to Claude`, since when, `Working` or `Can't reach Claude`; `Switch account` and `Sign out`. Not signed in (AI on, no working credential): the Account card moves to the top with `Sign in to Claude...`, and No AI stays the switch; `no-ai.md` 2.3 (`settings-moneta-not-signed-in.html`). Sign in opens the browser; the window comes back when done. Settings never sees the token.
 - **Voice and limits**:
   - `Talk to Moneta`: `Hold the pen button and speak. Your voice is turned into text on this computer, then sent.` On/Off.
   - **`Full access`** (Alex, 2026-09-30, DS11): `Let Moneta use the terminal and every tool, like a person at the keyboard. It still asks before each change, and system changes still need your password.` **Libertas: a switch, off by default.** **Custodia: locked off** with `Custodia keeps Moneta to a fixed set of safe tools.` Turning it on asks for the password with no hold and no warning: Libertas was the guarded step (Minerva 12.3: its own action, `org.invictus.sys.assistant-full-access`, password every time, never cached; the value lives in `/etc/invictus/assistant`). Turning it on or off restarts Moneta with `Moneta is starting again with the new rules` (the same restart as a guard-rails switch, Minerva 1.6 G7). **It ends with Libertas**: during a timed Libertas the row says `Ends with Libertas at 15:20`, and any return to Custodia (the click, the hour running out, a restart after the hour) turns it off; the row then says `Turned off when guard rails came back on at 15:20.` Going back to Libertas needs the switch again (not the nets pattern; Minerva 12.3 says why).
@@ -190,21 +191,24 @@ The sidebar entry and the title read **AI**: the name of a thing that is not on 
 
 - Line: `Whether Help includes an AI assistant. It is the same for everyone who uses this computer.` (machine-wide, like Guard rails: the packages are.)
 - **Help works with**: two choice cards, the Guard rails pattern (4.1), the current one first with `On now`:
-  - **No AI**: `Short how-to guides you can search, and Alex when you need a person. Nothing on this computer uses AI.`
+  - **No AI**: `Short how-to guides you can search, and Support when you need a person. Nothing on this computer uses AI.`
   - **An AI assistant**: `Moneta answers questions, by voice or typing, and fixes things after asking you. It uses Claude with your own account, or another AI you choose.` and `Turn on Moneta...` with `Downloads Moneta, then asks for your password.` Clicking it opens the Who answers rows inside the card (Claude preselected, D13), then the password prompt (the polkit agent, a safety copy first; Minerva N1: its own action, `org.invictus.sys.ai-on`, the password every time, never cached, never through the help unlock), then the sign-in. The card shows `Downloading Moneta, 40%` until it is ready; the page then becomes the Moneta page.
 - **Kept from before**, only when there is something: `Moneta's memory and past conversations`, `Kept on this computer since AI was turned off on 28 September. Moneta picks them up again if you turn AI back on.`, the size, and `Delete...` (`Delete Moneta's memory?` / `This can't be undone. Your own files and notes are not touched.` / `Delete` · `Cancel`; no password).
 - Nothing else. No Account, Voice or Full access rows, not even greyed out, and no line about what AI would add.
 
-### 3.10 Help from Alex
+### 3.10 Support
 
-- **Get help now**: starts a help session exactly as the Help panel's button does (Minerva 5.2): Alex's RustDesk ID only, Accept on the person's screen, the banner and Stop. While a session runs, this page shows `Alex is helping now` and `Stop`.
-- **Ask Alex**: opens the Help panel with Ask Alex ready (the helper request, `simple-mode.md` 5.1). One place for the request, not two.
+Minerva (`design-inbox.md`, 2026-09-30): this page also gets **Connect to Support** (paste the code, password) and **Disconnect** (one click), **Your requests** with their states, the connection's end date, and the top line reads `/etc/invictus/helper.conf`, which only the hold-list password prompt can change (3.5 there).
+
+- **Top line**: `Sol Invictus support · solinvictus.support@gmail.com` (from `helper_person` and `helper_contact`; a person's name and address when the owner set them).
+- **Let Support see my screen**: the same label as the Help panel's button, and it starts a help session exactly as that button does (Minerva 5.2): the helper's RustDesk ID only, Accept on the person's screen, the banner and Stop. While a session runs, this page shows `Support is helping now` and `Stop`.
+- **Ask Support**: opens the Help panel with Ask Support ready (the helper request, `simple-mode.md` 5.1). One place for the request, not two.
 - **What changed on this computer**: the record (Acta) in plain words, newest first: `Today 11:02 · Maria installed Spotify`, `29 Sep · Maria turned off hourly copies`, `22 Sep · Guard rails: Custodia to Libertas, by Maria`. Each system change links to its safety copy with `Go back to this`.
-- Options: `Alex's helper ID` (for when he asks), and if DS9 is ever approved, `Remove Alex's account`.
+- Options: `Screen help ID` (for when Support asks for it), and if DS9 is ever approved, `Remove the support account`.
 
 ### 3.11 About
 
-`Maria's laptop` (rename under Options), `Invictus 1.0 · Stable · updated 29 Sep`, `Atrium · Custodia`, the hardware in one line (`AMD Ryzen 5 7640U · 16 GB memory · Radeon 760M`), space as a bar (`212 GB free of 476 GB`), and `Copy details for Alex`: a plain-text block of the above plus the doctor's summary, with no serial numbers, MAC addresses or user names.
+`Maria's laptop` (rename under Options), `Invictus 1.0 · Stable · updated 29 Sep`, `Atrium · Custodia`, the hardware in one line (`AMD Ryzen 5 7640U · 16 GB memory · Radeon 760M`), space as a bar (`212 GB free of 476 GB`), the support contact (`Sol Invictus support · solinvictus.support@gmail.com`, as on the Support page), and `Copy details for Support`: a plain-text block of the above plus the doctor's summary, with no serial numbers, MAC addresses or user names.
 
 ---
 
@@ -219,7 +223,7 @@ Title `Guard rails`, and the line: `How careful this computer is before big chan
 Two cards, Custodia first. The current one has a 2 px `parchment`/`ink-2` border, a filled radio and `On now`.
 
 - **Custodia**: `The computer pauses and explains before anything that could erase or break it, and Help only does safe things on its own. Safety copies are always on, so a change can be undone.` Under it, collapsed: `What Custodia does, in detail`, which lists G3 to G7 in plain words (pauses before erasing a disk or removing core parts of the system; the scam warning on every password prompt; Help sticks to a fixed set of tools; updates can be paused but not turned off; the safety nets stay on). With No AI the Help clauses go from both cards (`and Help only does safe things on its own`, `and Help can do more on its own`) and from this list, since there is nothing for them to describe (`no-ai.md` 6, Minerva N4).
-- **Libertas**: `Nothing pauses or warns you before something is erased, and Help can do more on its own. Safety copies stay on unless you turn them off.` Under Custodia it also shows the scam line, `If someone on the phone or a website told you to do this, stop and ask Alex.`, and `Switch to Libertas...`.
+- **Libertas**: `Nothing pauses or warns you before something is erased, and Help can do more on its own. Safety copies stay on unless you turn them off.` Under Custodia it also shows the scam line, `If someone on the phone or a website told you to do this, stop and use Ask Support in Help.`, and `Switch to Libertas...`.
 
 The footer is the honest record, from Acta: `Custodia since this computer was set up, 12 September. Switching back to Custodia is always instant.`
 
@@ -234,7 +238,7 @@ Clio polishes all four sentences; the rule is two sentences each, the first abou
    - The scam line on a `stone` block with a `pompeii` edge and icon.
    - The password field, disabled for 5 seconds (G6 hold list), with `You can type your password in 3 seconds` counting down and a thin `parchment` bar emptying under it. The count is a countdown, not progress, so it is not gold.
    - `Cancel` and `Switch to Libertas`, equal weight, as the approval cards. **Focus starts on Cancel**, so Enter during the hold cancels. When the hold ends, focus moves to the password field.
-   - `Asked by Settings. A safety copy is made first.` and `Details` (the action id, for Alex).
+   - `Asked by Settings. A safety copy is made first.` and `Details` (the action id, for the helper).
 3. On success: the page shows the Libertas state (4.3), and the safety copy `Before guard rails were switched off` is on the Safety copies list.
 
 Clicks from Settings: 3 (Switch to Libertas, Continue, Switch) + wait + password. Decisions: 0 if the hour is right, 1 if not.
@@ -251,7 +255,7 @@ One click, no password, no question (Minerva 1.6: instant, local session only). 
 
 ### 4.5 Edge cases the page must show honestly
 
-- **During a help session**: switching to Libertas is not possible from Alex's side; the page still offers it to the person, and the prompt still needs their password at their keyboard. The page does not hide this.
+- **During a help session**: switching to Libertas is not possible from the helper's side; the page still offers it to the person, and the prompt still needs their password at their keyboard. The page does not hide this.
 - **Finishing an update first**: `guardrails set` waits for a running update. The prompt stays up with `Finishing an update first` under the heading.
 - **Changed elsewhere** (the hour ran out, or a terminal): Settings watches `/etc/invictus/guardrails` and redraws; it never shows a stale state.
 - **Restart during a timed Libertas**: the hour is a wall-clock end time in `/etc/invictus/guardrails-until` (Minerva 12.1), not a running timer, so a restart does not extend it; a machine that is off when the hour ends comes back as Custodia before anyone can log in, and shows `Guard rails are back on` at the first login. Settings, the taskbar and the bar read the end from that file and never compute one.
@@ -291,7 +295,7 @@ One card, five rows:
 
 - **Custodia**: every row shows a lock and `On`, and the section header says `Custodia keeps these on.` No switch at all (G5b).
 - **Libertas**: switches, and the header says `Libertas lets you turn these off, with your password.` Turning one off asks for the password (`invictus-sys set-config nets.<key> off`, `auth_admin_keep`), with no hold and no scam line (Minerva 1.6). A net that is off keeps a line under it saying since when and what that means: `Off since 29 September. Files deleted since then can't be brought back.` Not red: it was the person's choice.
-- A net that is on but failing (no copy for over 24 hours, disk too full) shows a `pompeii` line and `Fix` (opens Help with the problem written in; with No AI it opens the guide the net names, `Free up space` or `Safety copies aren't working`, or Ask Alex with the problem filled in, as `simple-mode.md` 4.1 rule 7).
+- A net that is on but failing (no copy for over 24 hours, disk too full) shows a `pompeii` line and `Fix` (opens Help with the problem written in; with No AI it opens the guide the net names, `Free up space` or `Safety copies aren't working`, or Ask Support with the problem filled in, as `simple-mode.md` 4.1 rule 7).
 
 ### 5.3 Go back
 
@@ -382,6 +386,6 @@ Not verified: that Quickshell's `Networking` joins a secured Wi-Fi network with 
 
 ## 11. Reused / new, and why
 
-Reused: the theme tokens and both light and dark sets, the gold rule, the Quick settings Wi-Fi list and volume slider, the keep-this card (display-resolution pattern, `simple-mode.md` 6.1) for desktop style and screens, the first-start wizard's screen question for `Identify screens`, the theme picker's generated swatches, `invictus-theme`, `invictus-motion`, `invictus-update`, `invictus-doctor` (home page state, `Copy details`), Acta (what changed, the guard-rails history line), the Invictus polkit agent (every password, the hold, the scam line), `invictus-sys` verbs (`guardrails set`, `set-config`, `update-pause`, `update-undo`, `rollback`), the approval card's equal buttons (the Libertas prompt, the go-back confirm), the setup cards' parchment selection border (choice cards), the Help panel's Ask Alex and Get help flows, and the A6 backup-and-check path for `monitors.lua`.
+Reused: the theme tokens and both light and dark sets, the gold rule, the Quick settings Wi-Fi list and volume slider, the keep-this card (display-resolution pattern, `simple-mode.md` 6.1) for desktop style and screens, the first-start wizard's screen question for `Identify screens`, the theme picker's generated swatches, `invictus-theme`, `invictus-motion`, `invictus-update`, `invictus-doctor` (home page state, `Copy details`), Acta (what changed, the guard-rails history line), the Invictus polkit agent (every password, the hold, the scam line), `invictus-sys` verbs (`guardrails set`, `set-config`, `update-pause`, `update-undo`, `rollback`), the approval card's equal buttons (the Libertas prompt, the go-back confirm), the setup cards' parchment selection border (choice cards), the Help panel's Ask Support and Get help flows, and the A6 backup-and-check path for `monitors.lua`.
 
 New, because nothing does the job: the Settings app itself (no settings tool on the system speaks plain words; nwg-look, pavucontrol and nm-connection-editor stay as Options links), the `invictus-qml` shared module (extracted from the Atrium shell so three programs use one set), the Libertas countdown badge, the until-file, and the search synonym list.
