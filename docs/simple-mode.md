@@ -151,7 +151,7 @@ Reuses nothing from waybar's `pavucontrol` / `nm-connection-editor` clicks: thos
 | Print Screen | Screenshot to Pictures, with a message `Screenshot saved in Pictures` | Same |
 | Volume, brightness, media keys | As in Tiling | Hardware keys should just work |
 
-Everything else in Tiling is off in Classic, on purpose: `Super + Delete` (logs out instantly, no confirm), `Super + Q`, the workspace keys, float and fullscreen toggles. A stray chord in Classic does nothing rather than something surprising. Check for Vulcan: the Windows-key-alone bind is a release bind on `SUPER_L`; it must not fire when Super was part of a chord (Hyprland's `bindr` behaviour, unverified on 0.56 Lua).
+Everything else in Tiling is off in Classic, on purpose: `Super + Delete` (log out, after a yes/no confirm), `Super + Q`, the workspace keys, float and fullscreen toggles. A stray chord in Classic does nothing rather than something surprising. Check for Vulcan: the Windows-key-alone bind is a release bind on `SUPER_L`; it must not fire when Super was part of a chord (Hyprland's `bindr` behaviour, unverified on 0.56 Lua).
 
 ### 2.8 Messages on screen, and several monitors
 

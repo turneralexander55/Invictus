@@ -9,7 +9,7 @@
 #    each call against the Hyprland Lua API, and compares the result
 #    with the old hyprlang config in fixtures/.
 # 3. Feeds fake `hyprctl binds` output to scripts/show-keybindings.sh.
-# 4. Runs scripts/confirm-poweroff.sh against a fake rofi.
+# 4. Runs scripts/confirm.sh against a fake rofi.
 #
 # API source: /usr/share/hypr/stubs/hl.meta.lua when Hyprland is
 # installed (so it tracks the installed version), else the vendored
@@ -114,8 +114,8 @@ if grep -q "(no description)" <<< "$out"; then echo "FAIL  a bind has no descrip
 if [[ $sk_fail == 0 ]]; then echo "ok    $total binds listed, grouped by section"; else fail=1; fi
 echo
 
-# ---- 4. confirm-poweroff.sh ------------------------------------------------
-echo "== confirm-poweroff.sh"
+# ---- 4. confirm.sh ------------------------------------------------
+echo "== confirm.sh"
 cp_fail=0
 FAKE_DIR="$(mktemp -d)"
 export FAKE_DIR
@@ -131,17 +131,21 @@ EOF
 chmod +x "$FAKE_DIR/rofi"
 run_confirm() {
     rm -f "$FAKE_DIR/powered"
-    FAKE_ANSWER="$1" ROFI="$FAKE_DIR/rofi" POWEROFF_CMD="touch $FAKE_DIR/powered" \
-        bash "$REPO/scripts/confirm-poweroff.sh" || true
+    FAKE_ANSWER="$1" ROFI="$FAKE_DIR/rofi" \
+        bash "$REPO/scripts/confirm.sh" "Log out?" -- touch "$FAKE_DIR/powered" || true
 }
-run_confirm "Yes"; [[ -e "$FAKE_DIR/powered" ]] || { echo "FAIL  Yes did not power off"; cp_fail=1; }
-run_confirm "No";  [[ ! -e "$FAKE_DIR/powered" ]] || { echo "FAIL  No powered off"; cp_fail=1; }
-run_confirm "";    [[ ! -e "$FAKE_DIR/powered" ]] || { echo "FAIL  Escape powered off"; cp_fail=1; }
-run_confirm "yes please"; [[ ! -e "$FAKE_DIR/powered" ]] || { echo "FAIL  free text powered off"; cp_fail=1; }
+run_confirm "Yes"; [[ -e "$FAKE_DIR/powered" ]] || { echo "FAIL  Yes did not run the command"; cp_fail=1; }
+run_confirm "No";  [[ ! -e "$FAKE_DIR/powered" ]] || { echo "FAIL  No ran the command"; cp_fail=1; }
+run_confirm "";    [[ ! -e "$FAKE_DIR/powered" ]] || { echo "FAIL  Escape ran the command"; cp_fail=1; }
+run_confirm "yes please"; [[ ! -e "$FAKE_DIR/powered" ]] || { echo "FAIL  free text ran the command"; cp_fail=1; }
 [[ "$(head -1 "$FAKE_DIR/menu")" == "No" ]] || { echo "FAIL  first row is not No"; cp_fail=1; }
 grep -q -- "-selected-row 0" "$FAKE_DIR/args" || { echo "FAIL  default row is not No"; cp_fail=1; }
 grep -q -- "-no-custom" "$FAKE_DIR/args" || { echo "FAIL  free text is allowed"; cp_fail=1; }
-if [[ $cp_fail == 0 ]]; then echo "ok    only Yes powers off; No, Escape and other text do nothing; default is No"; else fail=1; fi
+grep -q -- "-p Log out?" "$FAKE_DIR/args" || { echo "FAIL  prompt not passed to rofi"; cp_fail=1; }
+run_confirm "Yes" >/dev/null; rm -f "$FAKE_DIR/powered"
+bash "$REPO/scripts/confirm.sh" "Log out?" touch "$FAKE_DIR/powered" 2>/dev/null && { echo "FAIL  missing -- accepted"; cp_fail=1; } || true
+[[ ! -e "$FAKE_DIR/powered" ]] || { echo "FAIL  missing -- ran the command"; cp_fail=1; }
+if [[ $cp_fail == 0 ]]; then echo "ok    only Yes runs the command; No, Escape and other text do nothing; default is No"; else fail=1; fi
 echo
 
 if [[ $fail == 0 ]]; then echo "ALL PASSED"; else echo "SOME TESTS FAILED"; fi

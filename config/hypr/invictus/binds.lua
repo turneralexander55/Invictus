@@ -60,8 +60,8 @@ end
 
 bind(mod("Return"), dsp.exec_cmd(apps.terminal),            S .. "terminal")
 bind(mod("Q"),      dsp.window.close(),                     S .. "close window")
-bind(mod("DELETE"), dsp.exec_cmd("command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch 'hl.dsp.exit()'"),
-                                                            S .. "exit Hyprland")
+bind(mod("DELETE"), dsp.exec_cmd([==[$HOME/invictus/scripts/confirm.sh "Log out?" -- sh -c "command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch 'hl.dsp.exit()'"]==]),
+                                                            S .. "exit Hyprland with confirm")
 bind(mod("Y"),      dsp.exec_cmd(apps.terminal .. " -e yazi"), S .. "yazi file manager")
 bind(mod("F"),      dsp.window.float({ action = "toggle" }), S .. "toggle floating")
 bind(mod("SPACE"),  dsp.exec_cmd(apps.menu),                S .. "app launcher")
@@ -75,7 +75,7 @@ bind(mod("D"),      dsp.exec_cmd("discord"),                S .. "Discord")
 bind(mod("ALT", "SPACE"), toggleLayout,                     S .. "switch layout master/dwindle")
 bind(mod("G"),      dsp.exec_cmd("steam"),                  S .. "Steam")
 -- Asks yes/no first (default No, Escape cancels), then runs systemctl poweroff.
-bind(mod("ALT", "CTRL", "Escape"), dsp.exec_cmd("$HOME/invictus/scripts/confirm-poweroff.sh"), S .. "power off with confirm")
+bind(mod("ALT", "CTRL", "Escape"), dsp.exec_cmd([==[$HOME/invictus/scripts/confirm.sh "Power off?" -- systemctl poweroff]==]), S .. "power off with confirm")
 
 -- Opens the theme picker (rofi); Enter applies and reloads the desktop, no logout.
 -- invictus-theme is installed to /usr/bin, so it is on PATH.

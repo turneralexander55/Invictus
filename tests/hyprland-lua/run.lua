@@ -362,17 +362,17 @@ local FLAGS = { bind = {}, bindl = { locked = true }, bindel = { locked = true, 
 -- Deliberate changes, each listed in the hand-back report.
 local EXCEPTIONS = {
     -- hyprctl dispatch takes Lua now
-    ["64+delete"] = function(exp)
-        exp[2] = exp[2]:gsub("hyprctl dispatch exit", "hyprctl dispatch 'hl.dsp.exit()'")
-        return exp
+    -- log out now asks first: confirm.sh (rofi yes/no, default No) wraps the hyprshutdown-or-exit command
+    ["64+delete"] = function()
+        return { "exec_cmd", "$HOME/invictus/scripts/confirm.sh \"Log out?\" -- sh -c \"command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch 'hl.dsp.exit()'\"" }
     end,
     -- hyprctl keyword is gone; the layout toggle is a Lua function
     ["72+space"] = function() return { "<lua function>" } end,
     -- the repo is called invictus now; the deployed copy is rewritten for other clone paths
     ["64+slash"] = function() return { "exec_cmd", "$HOME/invictus/scripts/show-keybindings.sh" } end,
     ["64+f1"] = function() return { "exec_cmd", "$HOME/invictus/scripts/show-keybindings.sh" } end,
-    -- power off now asks first: the bind runs scripts/confirm-poweroff.sh (rofi yes/no, default No)
-    ["76+escape"] = function() return { "exec_cmd", "$HOME/invictus/scripts/confirm-poweroff.sh" } end,
+    -- power off now asks first: the bind runs scripts/confirm.sh (rofi yes/no, default No)
+    ["76+escape"] = function() return { "exec_cmd", "$HOME/invictus/scripts/confirm.sh \"Power off?\" -- systemctl poweroff" } end,
 }
 -- Binds added since the hyprlang config, each with the dispatcher it must run.
 -- Keyed like EXCEPTIONS: modmask + key (SUPER+SHIFT = 65).
@@ -725,7 +725,7 @@ local COMMAND_PACKAGES = {
     ["invictus-theme"] = false, -- installed to /usr/bin by the invictus tools package (Vulcan, pkgs/)
     hyprshutdown = false,  -- optional: the bind checks `command -v` first
     ["$HOME/invictus/scripts/show-keybindings.sh"] = false, -- repo script; invictus-tools in Phase 1
-    ["$HOME/invictus/scripts/confirm-poweroff.sh"] = false, -- same
+    ["$HOME/invictus/scripts/confirm.sh"] = false, -- same
     ["~/.local/bin/dashboard-tmux"] = false, -- Alex's own script, not in the repo
 }
 -- Pulled in by every Arch install, so no meta lists them.
