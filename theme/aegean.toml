@@ -1,0 +1,67 @@
+# Invictus theme: Aegean. Token names are roles and are the same in every theme.
+# Edit colours here only; scripts/invictus-theme generates every app file from this.
+
+[meta]
+id = "aegean"
+name = "Aegean"
+source = "Greek: the Aegean at night, Pentelic marble and sea blue"
+concept = "Cool marble grey in shadow, and the blue of the sea for focus."
+wallpaper = "selene"   # assets/wallpapers/selene.svg (+ PNG exports)
+lock = "standard"   # same composition as Dusk: blurred wallpaper, mark in sol, clock, field
+gnome-accent = "blue"   # nearest named accent for org.gnome.desktop.interface accent-color
+papirus-folders = "grey"
+default = false
+
+[dark]
+night = "#101416"
+basalt = "#161B1E"
+stone = "#1F2629"
+line = "#2F393D"
+marble = "#E6EAE8"
+parchment = "#B4BDBB"
+ash = "#8D9896"
+sol = "#6DB3F2"
+sol-bright = "#9CCBF6"
+pompeii = "#E27C68"
+laurel = "#AEB872"
+lapis = "#62C3B6"
+verdigris = "#62C3B6"
+tyrian = "#C095C9"
+
+[light]   # apps and the Desk only; the shell stays dark
+dawn = "#EEF1F0"
+dawn-surface = "#F8FAF9"
+dawn-raised = "#E1E6E5"
+dawn-line = "#C9D1CF"
+ink = "#161C1E"
+ink-2 = "#3B4547"
+ink-muted = "#586466"
+bronze = "#22609E"
+pompeii-dark = "#A8432C"
+laurel-dark = "#5A6624"
+lapis-dark = "#1C6B62"
+
+[terminal]
+background = "#101416"
+foreground = "#E6EAE8"
+selection-background = "#2F393D"
+selection-foreground = "#E6EAE8"
+cursor = "#E6EAE8"
+cursor-text = "#101416"
+url = "#62C3B6"
+color0 = "#1F2629"   # black
+color1 = "#E27C68"   # red
+color2 = "#AEB872"   # green
+color3 = "#D9B45E"   # yellow
+color4 = "#6DB3F2"   # blue
+color5 = "#C095C9"   # magenta
+color6 = "#62C3B6"   # cyan
+color7 = "#B4BDBB"   # white
+color8 = "#75807E"   # bright black
+color9 = "#EC9A89"   # bright red
+color10 = "#C4CD8F"   # bright green
+color11 = "#E8C981"   # bright yellow
+color12 = "#9CCBF6"   # bright blue
+color13 = "#D4B1DB"   # bright magenta
+color14 = "#8AD7CC"   # bright cyan
+color15 = "#E6EAE8"   # bright white

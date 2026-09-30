@@ -1,0 +1,67 @@
+# Invictus theme: Dusk. Token names are roles and are the same in every theme.
+# Edit colours here only; scripts/invictus-theme generates every app file from this.
+
+[meta]
+id = "dusk"
+name = "Dusk"
+source = "Roman: Sol Invictus and a Roman stoa at sunset"
+concept = "Warm dark stone, marble-white text, and one gold: the sun."
+wallpaper = "sol"   # assets/wallpapers/sol.svg (+ PNG exports)
+lock = "standard"   # same composition as Dusk: blurred wallpaper, mark in sol, clock, field
+gnome-accent = "yellow"   # nearest named accent for org.gnome.desktop.interface accent-color
+papirus-folders = "grey"
+default = true
+
+[dark]
+night = "#14120F"
+basalt = "#1C1A16"
+stone = "#27241F"
+line = "#3A352D"
+marble = "#ECE6DA"
+parchment = "#BDB4A3"
+ash = "#968E7F"
+sol = "#E0A64B"
+sol-bright = "#F0C274"
+pompeii = "#D9725A"
+laurel = "#94AD7B"
+lapis = "#7C9FD4"
+verdigris = "#72ACA3"
+tyrian = "#B388B0"
+
+[light]   # apps and the Desk only; the shell stays dark
+dawn = "#F4EFE6"
+dawn-surface = "#FBF8F2"
+dawn-raised = "#EAE3D6"
+dawn-line = "#D6CCBB"
+ink = "#221E18"
+ink-2 = "#4A4338"
+ink-muted = "#6B6254"
+bronze = "#8A5A12"
+pompeii-dark = "#A8432C"
+laurel-dark = "#4E6B35"
+lapis-dark = "#355F9E"
+
+[terminal]
+background = "#14120F"
+foreground = "#ECE6DA"
+selection-background = "#3A352D"
+selection-foreground = "#ECE6DA"
+cursor = "#ECE6DA"
+cursor-text = "#14120F"
+url = "#7C9FD4"
+color0 = "#27241F"   # black
+color1 = "#D9725A"   # red
+color2 = "#94AD7B"   # green
+color3 = "#E0A64B"   # yellow
+color4 = "#7C9FD4"   # blue
+color5 = "#B388B0"   # magenta
+color6 = "#72ACA3"   # cyan
+color7 = "#BDB4A3"   # white
+color8 = "#857D6F"   # bright black
+color9 = "#E8927C"   # bright red
+color10 = "#AEC596"   # bright green
+color11 = "#F0C274"   # bright yellow
+color12 = "#9DB8E2"   # bright blue
+color13 = "#CAA3C7"   # bright magenta
+color14 = "#93C6BE"   # bright cyan
+color15 = "#ECE6DA"   # bright white
