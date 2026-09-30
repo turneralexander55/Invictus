@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="currentColor" stroke-linecap="round">
+  <title>Invictus mark: the radiate sun</title>
+  <g stroke-width="3.5">
+    <line x1="48.42" y1="33.60" x2="57.11" y2="31.27"/>
+    <line x1="45.02" y1="27.07" x2="51.92" y2="21.29"/>
+    <line x1="39.18" y1="22.59" x2="42.99" y2="14.44"/>
+    <line x1="32.00" y1="21.00" x2="32.00" y2="12.00"/>
+    <line x1="24.82" y1="22.59" x2="21.01" y2="14.44"/>
+    <line x1="18.98" y1="27.07" x2="12.08" y2="21.29"/>
+    <line x1="15.58" y1="33.60" x2="6.89" y2="31.27"/>
+  </g>
+  <circle cx="32" cy="38" r="12" fill="currentColor" stroke="none"/>
+  <line x1="6" y1="56" x2="58" y2="56" stroke-width="3.5"/>
+</svg>
