@@ -345,9 +345,11 @@ local NEW_BINDS = {
     ["65+t"] = { "exec_cmd", "invictus-theme pick" }, -- Look: change theme (docs/look.md, The switcher)
 }
 local KEY_RENAMES = { ESC = "Escape" } -- ESC is not an xkb keysym; the old bind never fired
--- Old binds deliberately left out of the port. Empty now: the power-off bind is back
--- (Alex, 2026-09-30) with a confirm step, so it is an EXCEPTION above instead.
-local DISABLED = {}
+-- Old binds deliberately left out of the shipped config: Alex's own, not a friend's.
+-- adopt.sh ports them into his user.lua (tests/pkgs/runtime.sh, hyprlang porter).
+local DISABLED = { ["kitty --title dashboard -e ~/.local/bin/dashboard-tmux"] = true }
+-- Old window rules left out for the same reason: they pin apps to Alex's monitors.
+local PERSONAL_RULES = { ["discord-assign"] = true, ["zen-assign"] = true }
 
 test("every old keybind exists with the same keys, action and flags", function(check)
     local byCombo = {}
@@ -583,8 +585,17 @@ test("window rules match window-rules.conf", function(check)
     end
     local plain = {}
     for _, r in ipairs(state.windowRules) do if not gamingRule[r.name] then table.insert(plain, r) end end
-    check(#plain == #old.rules.windowRules, "rule count " .. #plain .. " vs old " .. #old.rules.windowRules)
-    compareRules(check, old.rules.windowRules, plain, "windowrule")
+    local shipped = {}
+    for _, block in ipairs(old.rules.windowRules) do
+        if PERSONAL_RULES[block.name] then
+            for _, r in ipairs(plain) do check(r.name ~= block.name, block.name .. " is machine-specific and must not ship") end
+        else
+            table.insert(shipped, block)
+        end
+    end
+    for _, r in ipairs(plain) do check(r.monitor == nil, "rule " .. tostring(r.name) .. " pins a monitor") end
+    check(#plain == #shipped, "rule count " .. #plain .. " vs old " .. #shipped)
+    compareRules(check, shipped, plain, "windowrule")
 end)
 
 -- The old config had one layer rule, "rofi" (blur, dim_around). The look adds
@@ -689,7 +700,6 @@ local COMMAND_PACKAGES = {
     hyprctl = "hyprland",
     ["invictus-theme"] = false, -- installed to /usr/bin by the invictus tools package (Vulcan, pkgs/)
     hyprshutdown = false,  -- optional: the bind checks `command -v` first
-    ["~/.local/bin/dashboard-tmux"] = false, -- Alex's own script, not in the repo
     ["/usr/lib/invictus/show-keybindings"] = "invictus-tools",
     ["/usr/lib/invictus/confirm"] = "invictus-tools",
 }

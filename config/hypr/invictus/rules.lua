@@ -91,24 +91,6 @@ hl.window_rule({
 })
 
 
--- Discord
-hl.window_rule({
-    name  = "discord-assign",
-    match = { class = "^(discord)$" },
-
-    monitor = "HDMI-A-2",
-})
-
-
--- Zen Browser
-hl.window_rule({
-    name  = "zen-assign",
-    match = { class = "^(zen)$" },
-
-    monitor = "DP-2",
-})
-
-
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Layer Rules
 -- ─────────────────────────────────────────────────────────────────────────────

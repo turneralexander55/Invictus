@@ -12,6 +12,10 @@
 --                   (~/ or $HOME/, not the old clone), such as dashboard-tmux;
 --                 * every exec bind that is in your deployed config but not in
 --                   the clone (a bind you added yourself);
+--                 * every window rule in your deployed config that pins a
+--                   window to a monitor (monitor = ...), such as Discord on
+--                   HDMI-A-2, unless the shipped rules.lua (next to binds.lua)
+--                   already has a rule of that name;
 --                 * every other line you added, as a comment to port by hand.
 --                 A bind whose command the shipped binds.lua already runs is
 --                 left out, so nothing fires twice.
@@ -166,6 +170,30 @@ for _, path in ipairs(confFiles(deployed)) do
     end
 end
 
+-- ─── window rules that pin a window to a monitor ────────────────────────────
+-- Monitor names are machine-specific, so the shipped rules.lua has none; a
+-- pin in the old config is yours and goes to user.lua.
+local shippedRules = readAll((shippedBinds or ""):gsub("[^/]*$", "") .. "rules.lua") or ""
+local windowRules, seenRule = {}, {}
+for _, path in ipairs(confFiles(deployed)) do
+    for _, block in ipairs(hyprlang.parse(path).windowRules) do
+        local name = block.name
+        if block.monitor and name and not seenRule[name]
+            and not shippedRules:find("name%s*=%s*" .. q(name):gsub("%p", "%%%0")) then
+            seenRule[name] = true
+            local match = {}
+            for k, v in pairs(block) do
+                local m = k:match("^match:(.+)$")
+                if m then table.insert(match, string.format("%s = %s", m, (v == "true" or v == "false") and v or q(v))) end
+            end
+            table.sort(match)
+            table.insert(windowRules, string.format(
+                "-- pins %s to a monitor (%s)\nhl.window_rule({\n    name    = %s,\n    match   = { %s },\n    monitor = %s,\n})",
+                name, path:sub(#deployed + 2), q(name), table.concat(match, ", "), q(block.monitor)))
+        end
+    end
+end
+
 -- ─── write ──────────────────────────────────────────────────────────────────
 local function write(path, text)
     local f = assert(io.open(path, "w"))
@@ -181,9 +209,10 @@ end
 write(outMon, mon)
 
 local user = readAll(userTpl) or ""
-if #binds > 0 or #comments > 0 then
+if #binds > 0 or #comments > 0 or #windowRules > 0 then
     user = user .. "\n-- ─── Ported from your old hyprlang config by adopt.sh on " .. date .. " ───\n"
     if #binds > 0 then user = user .. "\n" .. table.concat(binds, "\n\n") .. "\n" end
+    if #windowRules > 0 then user = user .. "\n" .. table.concat(windowRules, "\n\n") .. "\n" end
     if #comments > 0 then
         user = user .. "\n-- Lines in your old config that are not in the old repo copy. They are\n"
             .. "-- not ported; rewrite any you still want in Lua (see the examples above).\n"
@@ -193,5 +222,6 @@ end
 write(outUser, user)
 
 print(string.format("monitors: %d ported, %d not ported", #monitorsOut, #monitorNotes))
+print(string.format("window rules pinned to a monitor: %d ported", #windowRules))
 print(string.format("personal binds: %d ported, %d already shipped, %d other lines left as comments", #binds, #skipped, #comments))
 for _, c in ipairs(skipped) do print("  already in the shipped binds: " .. c) end

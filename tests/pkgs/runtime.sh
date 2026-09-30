@@ -293,9 +293,13 @@ else
     # and a substring match took this bind for a shipped one.
     # shellcheck disable=SC2016 # a literal hyprlang variable
     echo 'bind = $mainMod SHIFT, T, exec, true' >> "$H/.config/hypr/config/keybindings.conf"
-    # A shipped binds.lua without Alex's dashboard bind (it is his, not everyone's).
-    grep -v 'dashboard-tmux' "$REPO/config/hypr/invictus/binds.lua" > "$TMP/binds-generic.lua"
-    "$LUA" "$REPO/scripts/dev/port-hyprlang.lua" "$H/.config/hypr" "$H/hyprdots/config/hypr" "$TMP/binds-generic.lua" \
+    # The shipped binds.lua and rules.lua carry nothing of Alex's (his dashboard bind, his monitor pins).
+    if grep -q 'dashboard-tmux' "$REPO/config/hypr/invictus/binds.lua" || grep -Eq 'HDMI-A-2|DP-2|discord-assign|zen-assign' "$REPO/config/hypr/invictus/rules.lua"; then
+        bad "shipped binds.lua/rules.lua still carry Alex's dashboard bind or monitor pins"
+    else
+        ok "shipped binds.lua/rules.lua carry no dashboard-tmux bind and no monitor pins"
+    fi
+    "$LUA" "$REPO/scripts/dev/port-hyprlang.lua" "$H/.config/hypr" "$H/hyprdots/config/hypr" "$REPO/config/hypr/invictus/binds.lua" \
         "$REPO/config/hypr/monitors.lua" "$REPO/config/hypr/user.lua" "$TMP/mon.lua" "$TMP/user.lua" > "$TMP/port.log" 2>&1
     if grep -q 'hl.bind("SUPER + SHIFT + B", hl.dsp.exec_cmd("firefox --private-window")' "$TMP/user.lua" \
        && grep -q 'hl.bind("SUPER + minus", hl.dsp.exec_cmd("kitty --title dashboard -e ~/.local/bin/dashboard-tmux"), { description = "Personal: Toggle dashboard terminal (tmux)" })' "$TMP/user.lua" \
@@ -306,16 +310,27 @@ else
     else
         bad "porter user.lua: $(cat "$TMP/port.log"); $(sed -n '/Ported/,$p' "$TMP/user.lua")"
     fi
-    "$LUA" "$REPO/scripts/dev/port-hyprlang.lua" "$H/.config/hypr" "$H/hyprdots/config/hypr" "$REPO/config/hypr/invictus/binds.lua" \
-        "$REPO/config/hypr/monitors.lua" "$REPO/config/hypr/user.lua" "$TMP/mon2.lua" "$TMP/user2.lua" > "$TMP/port2.log" 2>&1
-    if grep -q "already in the shipped binds" "$TMP/port2.log" || ! grep -q dashboard-tmux "$REPO/config/hypr/invictus/binds.lua"; then
-        if [[ "$(grep -c 'dashboard-tmux' "$TMP/user2.lua" "$REPO/config/hypr/invictus/binds.lua" | awk -F: '{ s += $2 } END { print s }')" -le 1 ]]; then
-            ok "porter: a bind the shipped binds.lua already has is not added twice"
-        else
-            bad "porter: dashboard bind would fire twice"
-        fi
+    if grep -q 'name    = "discord-assign"' "$TMP/user.lua" && grep -q 'monitor = "HDMI-A-2"' "$TMP/user.lua" \
+       && grep -q 'match   = { class = "^(discord)\$" }' "$TMP/user.lua" \
+       && grep -q 'name    = "zen-assign"' "$TMP/user.lua" && grep -q 'monitor = "DP-2"' "$TMP/user.lua" \
+       && [[ "$(grep -c '^hl.window_rule' "$TMP/user.lua")" == 2 ]]; then
+        ok "porter: Discord and Zen monitor pins become hl.window_rule in user.lua"
     else
-        bad "porter did not notice the shipped dashboard bind"
+        bad "porter window rules: $(cat "$TMP/port.log"); $(sed -n '/Ported/,$p' "$TMP/user.lua")"
+    fi
+    # A bind or rule the shipped files already have is not added twice.
+    mkdir -p "$TMP/shipped2"
+    cp "$REPO/config/hypr/invictus/binds.lua" "$TMP/shipped2/binds.lua"
+    { cat "$REPO/config/hypr/invictus/rules.lua"; printf 'hl.window_rule({ name = "discord-assign", match = { class = "^(discord)$" }, monitor = "X" })\n'; } > "$TMP/shipped2/rules.lua"
+    printf 'hl.bind("SUPER + SHIFT + B", hl.dsp.exec_cmd("firefox --private-window"), {})\n' >> "$TMP/shipped2/binds.lua"
+    "$LUA" "$REPO/scripts/dev/port-hyprlang.lua" "$H/.config/hypr" "$H/hyprdots/config/hypr" "$TMP/shipped2/binds.lua" \
+        "$REPO/config/hypr/monitors.lua" "$REPO/config/hypr/user.lua" "$TMP/mon2.lua" "$TMP/user2.lua" > "$TMP/port2.log" 2>&1
+    if grep -q "already in the shipped binds: firefox" "$TMP/port2.log" \
+       && ! grep -q 'firefox --private-window' "$TMP/user2.lua" \
+       && ! grep -q discord-assign "$TMP/user2.lua" && grep -q zen-assign "$TMP/user2.lua"; then
+        ok "porter: a bind or rule the shipped files already have is not added twice"
+    else
+        bad "porter duplicates: $(cat "$TMP/port2.log"); $(sed -n '/Ported/,$p' "$TMP/user2.lua")"
     fi
     if grep -q 'output   = "DP-1"' "$TMP/mon.lua" && grep -q 'mode     = "2560x1440@165"' "$TMP/mon.lua"; then
         ok "porter: monitor lines become hl.monitor{}"
