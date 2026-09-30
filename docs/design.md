@@ -6,7 +6,7 @@ Invictus is Alex's personal Linux distro, based on Arch, built around Hyprland, 
 
 Read section 0 for the decisions, section 10 for what only Alex can decide. Everything else is the reasoning and the detail the builders need.
 
-Addendum: Simple mode, the machine-wide admin model for friends' machines (no admin rights for the person, automatic updates with a boot guard, per-user Flatpak apps, helper requests, remote help by RustDesk) is in `design-simple-mode.md` (2026-09-30); its section 7 lists which MUSTs here it changes on Simple machines. The desktop those friends see is Classic (`simple-mode.md`); Alex's is Tiling.
+Addendum: Custodia guard rails, the machine-wide admin model for friends' machines (the person is admin, childproofed by snapshots and plain words, automatic updates with a boot guard, per-user Flatpak apps, helper requests, remote help by RustDesk) is in `design-simple-mode.md` (2026-09-30); its section 7 lists which MUSTs here it changes on Simple machines. The desktop those friends see is the Atrium flavor (`simple-mode.md`); Alex's is Tessera. Guard rails (Custodia or Libertas) and flavor (Atrium or Tessera) are two independent settings, both switchable live (design-simple-mode.md 1.6).
 
 Naming: we say "based on Arch Linux" and never use the Arch name or logo in the distro's own name, artwork or boot screens (trademark policy, verified 2026-09-30: non-Arch packages and a new installer rule out "Remix" use).
 
@@ -446,7 +446,7 @@ Unverified, to be checked in the phase that needs them: `sdl-freerdp3` RemoteApp
 
 ## 9. Naming and flavour (for Clio and Venus)
 
-Settled (Moneta, 2026-09-30): Invictus (the distro), the Desk (dashboard; code name `forum`), Moneta and the Moneta panel (assistant; code name `tribune`), Classic and Tiling (desktop styles), Collegium (team harness). Still proposals: Acta (action log), Annales (the snapshot list on the Desk), Lares (the first-boot wizard, the household guardians), `liber` (the live user). Copy tone: plain and Stoic, short sentences, no exclamation marks, the odd Marcus Aurelius line on the lock screen if Alex likes it. Boot and installer artwork: laurel, marble, bronze, no eagles-and-fasces kitsch, and no Arch logo anywhere.
+Settled (Moneta, 2026-09-30): Invictus (the distro), the Desk (dashboard; code name `forum`), Moneta and the Moneta panel (assistant; code name `tribune`), Atrium and Tessera (flavors, the two desktop styles; Custodia and Libertas are the guard-rails settings, Alex, 2026-09-30), Collegium (team harness). Still proposals: Acta (action log), Annales (the snapshot list on the Desk), Lares (the first-boot wizard, the household guardians), `liber` (the live user). Copy tone: plain and Stoic, short sentences, no exclamation marks, the odd Marcus Aurelius line on the lock screen if Alex likes it. Boot and installer artwork: laurel, marble, bronze, no eagles-and-fasces kitsch, and no Arch logo anywhere.
 
 ---
 
