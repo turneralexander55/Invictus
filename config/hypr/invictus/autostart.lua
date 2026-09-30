@@ -38,5 +38,8 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("swaync")
     hl.exec_cmd("hyprpaper")
     hl.exec_cmd("hypridle")
-    hl.exec_cmd("waybar")
+    -- Generate the current theme's colour files (Dusk on a fresh install) before
+    -- the bar reads them; apps have a Dusk fallback, but rofi needs the file.
+    -- `;` not `&&`: a failing theme step must not leave the desktop without a bar.
+    hl.exec_cmd("invictus-theme apply; waybar")
 end)

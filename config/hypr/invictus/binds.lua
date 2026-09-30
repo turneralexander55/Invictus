@@ -77,6 +77,10 @@ bind(mod("G"),      dsp.exec_cmd("steam"),                  S .. "Steam")
 -- Asks yes/no first (default No, Escape cancels), then runs systemctl poweroff.
 bind(mod("ALT", "CTRL", "Escape"), dsp.exec_cmd("$HOME/invictus/scripts/confirm-poweroff.sh"), S .. "power off with confirm")
 
+-- Opens the theme picker (rofi); Enter applies and reloads the desktop, no logout.
+-- invictus-theme is installed to /usr/bin, so it is on PATH.
+bind(mod("SHIFT", "T"), dsp.exec_cmd("invictus-theme pick"), "Look: change theme")
+
 -- Toggle dashboard terminal (tmux)
 bind(mod("minus"),  dsp.exec_cmd("kitty --title dashboard -e ~/.local/bin/dashboard-tmux"), S .. "dashboard (tmux)")
 

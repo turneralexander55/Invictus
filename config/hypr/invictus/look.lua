@@ -1,10 +1,28 @@
 --------------------------------------------------------------------------------
 --                                                                            --
---                               AESTHETICS                                   --
+--                                  LOOK                                      --
 --                                                                            --
 --------------------------------------------------------------------------------
+-- The look from docs/look.md: gaps, borders, rounding, dimming, shadows, blur.
+-- Colours come from invictus/colors.lua (the current theme, with Dusk as the
+-- fallback), never typed here. Animations are in invictus/motion.lua.
 -- Refer to https://wiki.hypr.land/Configuring/Basics/Variables/
 --------------------------------------------------------------------------------
+
+local c      = require("invictus.colors")
+local state  = require("invictus.state")
+
+-- Game mode (marker file, see state.lua): no gaps, borders, shadows, blur or
+-- dim, so nothing sits between the game and the screen.
+local game   = state.gameMode()
+
+-- Showcase draws the focus border as a gradient of two focus tones (the glint
+-- sweeps it once when a window opens, see motion.lua); Calm and Off use solid
+-- focus colour.
+local activeBorder = c.sol
+if state.motionLevel() == "showcase" then
+    activeBorder = { colors = { c.sol, c.sol_bright, c.sol }, angle = 45 }
+end
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -12,16 +30,16 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 hl.config({
     general = {
-        gaps_in  = 5,
-        gaps_out = 10,
+        gaps_in  = game and 0 or 4,
+        gaps_out = game and 0 or 8,
 
-        -- Slightly heavier border to match block cursor weight
-        border_size = 3,
+        -- Thin and precise; 3 read as heavy
+        border_size = game and 0 or 2,
 
-        -- Monochrome manga-style borders
+        -- Gold means "you are here": the focused window and nothing else
         col = {
-            active_border   = { colors = { "rgba(f7f7f7ff)", "rgba(d6d6d6ff)" }, angle = 45 },
-            inactive_border = "rgba(1a1a1acc)",
+            active_border   = activeBorder,
+            inactive_border = c.stone,
         },
 
         -- Do not allow accidental border dragging
@@ -31,6 +49,22 @@ hl.config({
 
         -- Intentional layout choice
         layout = "master",
+    },
+
+    group = {
+        col = {
+            border_active   = c.sol,
+            border_inactive = c.stone,
+        },
+        groupbar = {
+            font_family = "IBM Plex Sans",
+            font_size   = 12,
+            text_color  = c.marble,
+            col = {
+                active   = c.sol,
+                inactive = c.line,
+            },
+        },
     },
 })
 
@@ -57,65 +91,36 @@ hl.config({
 -- ─────────────────────────────────────────────────────────────────────────────
 hl.config({
     decoration = {
-        rounding       = 10,
+        rounding       = 8,
         rounding_power = 2,
 
-        -- Focused / unfocused transparency
-        active_opacity   = 0.9,
-        inactive_opacity = 0.8,
+        -- Text stays fully legible: unfocused windows are dimmed, not see-through
+        active_opacity   = 1.0,
+        inactive_opacity = 1.0,
+        dim_inactive     = not game,
+        dim_strength     = 0.12,
 
+        -- The focused window lifts a little; unfocused ones get no shadow
         shadow = {
-            enabled      = true,
-            range        = 30,
-            render_power = 5,
-            color        = "rgba(00000055)",
+            enabled        = not game,
+            range          = 16,
+            render_power   = 3,
+            color          = c.shadow,
+            color_inactive = c.shadow_none,
         },
 
+        -- Only visible on layers (bar, launcher, notifications): windows are opaque
         blur = {
-            enabled  = true,
-            size     = 5,
-            passes   = 2,
-            vibrancy = 0,
+            enabled            = not game,
+            size               = 6,
+            passes             = 3,
+            noise              = 0.015,
+            vibrancy           = 0.1,
+            new_optimizations  = true,
+            xray               = false,
         },
     },
 })
-
-
--- ─────────────────────────────────────────────────────────────────────────────
--- ANIMATIONS (Timing curves & motion)
--- https://wiki.hypr.land/Configuring/Advanced-and-Cool/Animations/
--- ─────────────────────────────────────────────────────────────────────────────
-hl.config({
-    animations = {
-        enabled = true, -- yes, please :)
-    },
-})
-
--- Curves
-hl.curve("easeOutQuint",   { type = "bezier", points = { { 0.23, 1 },    { 0.32, 1 } } })
-hl.curve("easeInOutCubic", { type = "bezier", points = { { 0.65, 0.05 }, { 0.36, 1 } } })
-hl.curve("linear",         { type = "bezier", points = { { 0, 0 },       { 1, 1 } } })
-hl.curve("almostLinear",   { type = "bezier", points = { { 0.5, 0.5 },   { 0.75, 1 } } })
-hl.curve("quick",          { type = "bezier", points = { { 0.15, 0 },    { 0.1, 1 } } })
-
--- Animations
-hl.animation({ leaf = "global",        enabled = true, speed = 10,   bezier = "default" })
-hl.animation({ leaf = "border",        enabled = true, speed = 5.39, bezier = "easeOutQuint" })
-hl.animation({ leaf = "windows",       enabled = true, speed = 4.79, bezier = "easeOutQuint" })
-hl.animation({ leaf = "windowsIn",     enabled = true, speed = 4.1,  bezier = "easeOutQuint", style = "popin 87%" })
-hl.animation({ leaf = "windowsOut",    enabled = true, speed = 1.49, bezier = "linear",       style = "popin 87%" })
-hl.animation({ leaf = "fadeIn",        enabled = true, speed = 1.73, bezier = "almostLinear" })
-hl.animation({ leaf = "fadeOut",       enabled = true, speed = 1.46, bezier = "almostLinear" })
-hl.animation({ leaf = "fade",          enabled = true, speed = 3.03, bezier = "quick" })
-hl.animation({ leaf = "layers",        enabled = true, speed = 3.81, bezier = "easeOutQuint" })
-hl.animation({ leaf = "layersIn",      enabled = true, speed = 4,    bezier = "easeOutQuint", style = "fade" })
-hl.animation({ leaf = "layersOut",     enabled = true, speed = 1.5,  bezier = "linear",       style = "fade" })
-hl.animation({ leaf = "fadeLayersIn",  enabled = true, speed = 1.79, bezier = "almostLinear" })
-hl.animation({ leaf = "fadeLayersOut", enabled = true, speed = 1.39, bezier = "almostLinear" })
-hl.animation({ leaf = "workspaces",    enabled = true, speed = 1.94, bezier = "almostLinear", style = "fade" })
-hl.animation({ leaf = "workspacesIn",  enabled = true, speed = 1.21, bezier = "almostLinear", style = "fade" })
-hl.animation({ leaf = "workspacesOut", enabled = true, speed = 1.94, bezier = "almostLinear", style = "fade" })
-hl.animation({ leaf = "zoomFactor",    enabled = true, speed = 7,    bezier = "quick" })
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -162,7 +167,11 @@ hl.config({
 -- misc.vrr lives in invictus/gaming.lua
 hl.config({
     misc = {
-        force_default_wallpaper = -1,    -- Set to 0 or 1 to disable anime mascot wallpapers
-        disable_hyprland_logo   = false, -- :(
+        force_default_wallpaper  = 0,     -- no Hyprland mascot wallpapers
+        disable_hyprland_logo    = true,
+        disable_splash_rendering = true,
+        background_color         = c.night, -- no flash of another colour before the wallpaper loads
+        focus_on_activate        = false,   -- apps cannot steal focus
+        -- misc.vfr (in the look spec) does not exist in 0.56.2; variable frame rate is always on
     },
 })

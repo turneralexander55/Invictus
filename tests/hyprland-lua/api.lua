@@ -79,6 +79,10 @@ M.animationLeaves = set({
     "fadePopups", "fadePopupsIn", "fadePopupsOut", "fadeDpms", "workspacesIn",
     "workspacesOut", "specialWorkspace", "specialWorkspaceIn", "specialWorkspaceOut",
 })
+-- src/animation/AnimationManager.cpp (styleValidInConfigVar). "angle" styles only work on
+-- the borderangle, shadowangle and glowangle leaves. Untested where noted in docs/look.md.
+M.animationStyles = { slide = "any", slidevert = "any", fade = "any", slidefade = "any",
+    slidefadevert = "any", popin = "any", gnome = "any", gnomed = "any", once = "angle", loop = "angle" }
 M.animationFields = set({ "leaf", "enabled", "speed", "bezier", "spring", "style" })
 
 -- src/config/lua/bindings/LuaBindingsInternal.cpp (parseDirectionStr)
