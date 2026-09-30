@@ -98,23 +98,21 @@ hyprdots
 │   ├── fastfetch
 │   │   └── config.jsonc
 │   ├── hypr
-│   │   ├── config
-│   │   │   ├── aesthetics.conf
-│   │   │   ├── assign-workspaces.conf
-│   │   │   ├── autostart.conf
-│   │   │   ├── autostart.mine
-│   │   │   ├── environment.conf
-│   │   │   ├── input-rules.conf
-│   │   │   ├── keybindings.conf
-│   │   │   ├── monitors.conf
-│   │   │   ├── monitors.mine
-│   │   │   ├── permissions.conf
-│   │   │   ├── variables.conf
-│   │   │   └── window-rules.conf
-│   │   ├── hyprland.conf
-│   │   ├── hyprland.mine
+│   │   ├── .luarc.json
+│   │   ├── hyprland.lua
 │   │   ├── hyprpaper.conf
-│   │   └── hyprpaper.mine
+│   │   └── lua
+│   │       ├── autostart.lua
+│   │       ├── binds.lua
+│   │       ├── env.lua
+│   │       ├── gaming.lua
+│   │       ├── input.lua
+│   │       ├── look.lua
+│   │       ├── monitors.lua
+│   │       ├── permissions.lua
+│   │       ├── rules.lua
+│   │       ├── variables.lua
+│   │       └── workspaces.lua
 │   ├── kitty
 │   │   └── kitty.conf
 │   ├── rofi
@@ -149,5 +147,7 @@ hyprdots
 │       ├── gpu.sh
 │       ├── memory.sh
 │       └── updates.sh
-└── shell
-    └── zshrc
+├── shell
+│   └── zshrc
+└── tests
+    └── hyprland-lua          # run.sh: checks the Lua config without Hyprland

@@ -1,0 +1,32 @@
+--------------------------------------------------------------------------------
+--                                                                            --
+--                            ASSIGN WORKSPACES                               --
+--                                                                            --
+--------------------------------------------------------------------------------
+-- This file is responsible ONLY for workspace-related assignments.
+--
+-- Use this file to define:
+--   • Which workspaces are bound to specific monitors
+--   • Static workspace layouts across multi-monitor setups
+--   • Startup workspace placement behavior
+--
+-- This file should NOT contain:
+--   • Window rules
+--   • Application matching rules
+--   • Floating, opacity, or class/title-based logic
+--
+-- Application and window behavior belongs in:
+--   → lua/rules.lua
+--
+-- Keeping workspace assignment logic separate ensures:
+--   • Predictable monitor layouts
+--   • Easier debugging
+--   • Clear separation of concerns
+--
+-- Rules in this file are applied on Hyprland startup and config reload.
+--
+-- Example:
+-- hl.workspace_rule({ workspace = "1", monitor = "DP-2", default = true })
+--
+-- See https://wiki.hypr.land/Configuring/Basics/Workspace-Rules/
+--------------------------------------------------------------------------------
