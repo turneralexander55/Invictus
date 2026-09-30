@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Invictus launcher</title><meta name="description" content="Invictus desktop mockup with the app launcher open over the tiled windows.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cormorant+SC:wght@500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"><style>
+:root{
+ --night:#14120F;--basalt:#1C1A16;--stone:#27241F;--line:#3A352D;
+ --marble:#ECE6DA;--parchment:#BDB4A3;--ash:#968E7F;
+ --sol:#E0A64B;--sol-bright:#F0C274;--pompeii:#D9725A;--laurel:#94AD7B;
+ --lapis:#7C9FD4;--verdigris:#72ACA3;--tyrian:#B388B0;--c8:#857D6F;
+ --sans:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;
+ --sc:"Cormorant SC",serif;--serif:"Cormorant Garamond",serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#0b0a08;overflow:hidden;height:100%}
+body{font-family:var(--sans);color:var(--marble);-webkit-font-smoothing:antialiased}
+.stage{width:1920px;height:1080px;position:relative;overflow:hidden;transform-origin:0 0;background:var(--night)}
+.wall{position:absolute;inset:0;
+ background:
+  radial-gradient(circle at 70% 79%, #F0C274 0 58px, rgba(240,194,116,.0) 60px),
+  radial-gradient(ellipse 900px 520px at 70% 80%, rgba(224,166,75,.55), rgba(160,104,44,.28) 30%, rgba(90,63,30,.18) 55%, rgba(20,18,15,0) 80%),
+  linear-gradient(180deg,#14120F 0%,#17140F 45%,#2A2016 74%,#3A2A18 84%);
+}
+.wall::after{content:"";position:absolute;left:0;right:0;top:84%;bottom:0;
+ background:linear-gradient(180deg,#1A1712 0%,#14120F 100%);border-top:1px solid rgba(224,166,75,.25)}
+.glass{background:rgba(28,26,22,.94);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--line)}
+.mono{font-family:var(--mono)}
+svg{display:block}
+/* bar */
+.bar{position:absolute;top:0;left:0;right:0;height:32px;background:rgba(20,18,15,.82);backdrop-filter:blur(18px);
+ border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:13px;color:var(--parchment);z-index:20}
+.bar .l,.bar .r{display:flex;align-items:center;gap:4px;flex:1}
+.bar .r{justify-content:flex-end}
+.bar .c{position:absolute;left:50%;transform:translateX(-50%);font-weight:600;font-size:14px;color:var(--marble);font-family:var(--sans);font-variant-numeric:tabular-nums}
+.m{padding:0 10px;height:24px;display:flex;align-items:center;gap:6px;border-radius:6px;position:relative}
+.ws{display:flex;font-family:var(--mono)}
+.ws span{width:22px;height:32px;display:flex;align-items:center;justify-content:center;color:var(--ash)}
+.ws .occ{color:var(--parchment)}
+.ws .act{color:var(--marble);box-shadow:inset 0 -2px var(--sol)}
+.title{color:var(--ash)}
+.now{color:var(--parchment)} .now b{font-weight:400;color:var(--ash)}
+.dot{position:absolute;top:3px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--sol)}
+/* windows */
+.win{position:absolute;background:var(--night);border:2px solid var(--stone);border-radius:8px;overflow:hidden}
+.win.focus{border-color:var(--sol);box-shadow:0 8px 32px rgba(0,0,0,.45)}
+.win.dim::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.12)}
+
+.tabs{height:34px;display:flex;align-items:flex-end;gap:2px;padding:0 10px;background:var(--basalt);border-bottom:1px solid var(--line);font-size:13px}
+.tab{padding:7px 14px;color:var(--ash);border-radius:6px 6px 0 0}
+.tab.on{background:var(--night);color:var(--marble)}
+.code{display:flex;font-family:var(--mono);font-size:14px;line-height:1.55;padding:14px 0}
+.gut{color:var(--c8);text-align:right;padding:0 16px 0 18px;user-select:none}
+pre{font-family:var(--mono);color:var(--marble);white-space:pre}
+.term{padding:12px 16px;font-family:var(--mono);font-size:14px;line-height:1.5;color:var(--marble)}
+.p{color:var(--sol)} .g{color:var(--laurel)} .a{color:var(--ash)} .b{color:var(--lapis)}
+.status{position:absolute;bottom:0;left:0;right:0;height:26px;background:var(--basalt);border-top:1px solid var(--line);
+ display:flex;align-items:center;gap:18px;padding:0 12px;font-size:12px;color:var(--ash)}
+
+.launch{position:absolute;left:50%;top:18%;transform:translateX(-50%);width:560px;border-radius:12px;padding:12px;z-index:40;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.inp{height:44px;background:var(--stone);border:1px solid var(--sol);border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:15px;color:var(--marble)}
+.caret{width:1.5px;height:20px;background:var(--sol);margin-left:-8px}
+.list{margin-top:4px}
+.row{height:40px;display:flex;align-items:center;gap:12px;padding:0 14px;border-radius:8px;font-size:15px;position:relative}
+.row.sel{background:var(--stone)}
+.row.sel::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--sol)}
+.row .g{font-size:13px;color:var(--ash)}
+.appi{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#14120F}
+.hint{font-size:12px;color:var(--ash);padding:10px 14px 2px;word-spacing:2px}
+</style></head>
+<body><div class="stage"><div class="wall"></div><div class="bar">
+ <div class="l"><div class="m"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-linecap="round" style="color:var(--marble)"><g stroke-width="1.5"><line x1="8" y1="2" x2="8" y2="4"/><line x1="3.2" y1="4.2" x2="4.6" y2="5.6"/><line x1="12.8" y1="4.2" x2="11.4" y2="5.6"/></g><circle cx="8" cy="9.5" r="3.2" fill="currentColor" stroke="none"/><line x1="1.5" y1="14" x2="14.5" y2="14" stroke-width="1.5"/></svg></div>
+  <div class="ws"><span class="act">1</span><span class="occ">2</span><span>3</span></div>
+  <div class="m title">hyprland.lua · invictus · Zed</div></div>
+ <div class="c mono" style="font-family:var(--sans)">21:14</div>
+ <div class="r">
+  <div class="m now">Now <b>·</b> Port the Hyprland config to Lua</div>
+  <div class="m"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></div>
+  <div class="m"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg><span class="mono">12</span></div>
+  <div class="m"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6h2.5L8.5 3v10L5 10H2.5z"/><path d="M11 5.5a3.5 3.5 0 0 1 0 5M12.8 3.8a6 6 0 0 1 0 8.4"/></svg><span class="mono">45%</span></div>
+  <div class="m"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="9.5" width="12" height="4" rx="1"/><path d="M5 9.5V6.5h6v3M8 6.5V2.5"/></svg></div>
+  <div class="m"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11V7a4 4 0 0 1 8 0v4l1.2 1.5H2.8zM6.5 14h3"/></svg></div>
+  <div class="m" ><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="var(--parchment)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.3"/><path d="M5.2 10.6V5.6L8 8.8l2.8-3.2v5"/></svg><span class="dot"></span></div>
+ </div></div>
+<div class="win dim" style="left:8px;top:40px;width:1178px;height:1032px">
+ <div class="tabs"><div class="tab on">hyprland.lua</div><div class="tab">tokens.lua</div><div class="tab">look.md</div></div>
+ <div class="code"><div class="gut">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20</div><pre><span style="color:var(--c8)">-- ~/.config/hypr/hyprland.lua</span>
+<span style="color:var(--tyrian)">local</span> t <span style="color:var(--parchment)">=</span> <span style="color:var(--lapis)">require</span>(<span style="color:var(--laurel)">"invictus.tokens"</span>)
+
+hl.<span style="color:var(--lapis)">config</span> {
+  general <span style="color:var(--parchment)">=</span> {
+    gaps_in     <span style="color:var(--parchment)">=</span> <span style="color:var(--sol)">4</span>,
+    gaps_out    <span style="color:var(--parchment)">=</span> <span style="color:var(--sol)">8</span>,
+    border_size <span style="color:var(--parchment)">=</span> <span style="color:var(--sol)">2</span>,
+    col <span style="color:var(--parchment)">=</span> {
+      active_border   <span style="color:var(--parchment)">=</span> t.sol,
+      inactive_border <span style="color:var(--parchment)">=</span> t.stone,
+    },
+    layout <span style="color:var(--parchment)">=</span> <span style="color:var(--laurel)">"master"</span>,
+  },
+  decoration <span style="color:var(--parchment)">=</span> {
+    rounding      <span style="color:var(--parchment)">=</span> <span style="color:var(--sol)">8</span>,
+    dim_inactive  <span style="color:var(--parchment)">=</span> <span style="color:var(--tyrian)">true</span>,
+    dim_strength  <span style="color:var(--parchment)">=</span> <span style="color:var(--sol)">0.12</span>,
+  },
+}</pre></div>
+ <div class="status"><span>invictus</span><span>main</span><span style="margin-left:auto">Lua</span><span>Ln 12, Col 30</span></div>
+</div>
+<div class="win dim" style="left:1190px;top:40px;width:722px;height:514px">
+ <div class="term"><span class="p">~/invictus</span> <span class="a">main</span> git log --oneline -6<br>
+<span class="p">4be91c2</span> Port keybindings to Lua<br><span class="p">a07d3e1</span> Port monitors and workspaces<br>
+<span class="p">9c14f60</span> Add tokens module<br><span class="p">531188b</span> Rename LICENSE<br><span class="p">0a579b7</span> fixed hardware cursor issue<br>
+<span class="p">caf086d</span> remove symlinks<br><br>
+<span class="p">~/invictus</span> <span class="a">main</span> hyprctl reload<br><span class="g">ok</span><br><br>
+<span class="p">~/invictus</span> <span class="a">main</span> <span style="background:var(--marble);color:var(--night)">&nbsp;</span></div>
+</div>
+<div class="win dim" style="left:1190px;top:558px;width:722px;height:514px">
+ <div class="tabs" style="height:38px;align-items:center"><div style="flex:1;background:var(--stone);border-radius:8px;padding:6px 12px;color:var(--parchment);font-size:13px">wiki.hypr.land/Configuring/Variables</div></div>
+ <div style="padding:22px 26px;font-size:14px;line-height:1.6;color:var(--parchment)">
+  <div style="font-size:24px;font-weight:600;color:var(--marble);margin-bottom:10px">Variables</div>
+  <div style="font-size:17px;color:var(--marble);margin:14px 0 6px;font-weight:500">decoration</div>
+  <table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="color:var(--ash)"><td>name</td><td>description</td><td>type</td></tr>
+  <tr><td class="mono">rounding</td><td>rounded corners' radius (in layout px)</td><td>int</td></tr>
+  <tr><td class="mono">dim_inactive</td><td>enables dimming of inactive windows</td><td>bool</td></tr>
+  <tr><td class="mono">dim_strength</td><td>how much inactive windows should be dimmed</td><td>float</td></tr></table>
+ </div>
+</div><div class="launch glass"><div class="inp"><span style="color:var(--ash)"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 14 14"/></svg></span><span class="caret"></span>
+<span style="color:var(--ash)">Search apps</span></div><div class="list"><div class="row sel"><div class="appi" style="background:#7C9FD4">Z</div>Zen Browser<span class="g">Web browser</span></div><div class="row"><div class="appi" style="background:#72ACA3">Z</div>Zed<span class="g">Code editor</span></div><div class="row"><div class="appi" style="background:#BDB4A3">K</div>Kitty<span class="g">Terminal</span></div><div class="row"><div class="appi" style="background:#9DB8E2">S</div>Steam<span class="g">Games</span></div><div class="row"><div class="appi" style="background:#94AD7B">T</div>Thunar<span class="g">Files</span></div><div class="row"><div class="appi" style="background:#E8927C">b</div>btop<span class="g">System monitor</span></div><div class="row"><div class="appi" style="background:#7C9FD4">V</div>Visual Studio Code<span class="g">Code editor</span></div><div class="row"><div class="appi" style="background:#CAA3C7">V</div>Volume Control<span class="g">Audio</span></div></div>
+<div class="hint">Enter open &nbsp;&nbsp; Ctrl+Enter run as typed</div></div></div><script>
+(function(){var s=document.querySelector('.stage');function f(){var k=Math.min(1,innerWidth/1920);
+s.style.transform='scale('+k+')';document.body.style.height=(1080*k)+'px'}addEventListener('resize',f);f()})();
+</script></body></html>
