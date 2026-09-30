@@ -1,9 +1,9 @@
-# Invictus: Simple mode (called "Classic" on screen)
+# Invictus: the Classic desktop
 
 Status: design, not yet built. Owner: Venus (designer). Date: 2026-09-30.
 Asked for by Alex (2026-09-30): "an ultra dumb mode for some of my non tech friends. Most don't even know what run as admin does on windows, let alone sudo."
 
-Security, admin rights, updates, rollback, app installs, the helper's limits and remote help are Minerva's (designed in parallel). This document designs what people see and touch. Every place where one of her decisions plugs in is marked **[M1]** to **[M9]** and listed in section 7.
+Security, admin rights, updates, rollback, app installs, the assistant's limits and remote help are Minerva's (`design-simple-mode.md`). This document designs what people see and touch. Every place where one of her decisions plugs in is marked **[M1]** to **[M9]** and listed in section 7.
 
 Mockups (`docs/mockups/`, 1920 x 1080, self-contained HTML, same fonts and scale-to-fit script as the other mockups). Sample names, apps and conversations are made up.
 
@@ -29,14 +29,14 @@ Mockups (`docs/mockups/`, 1920 x 1080, self-contained HTML, same fonts and scale
 
 ## 0. In one screen
 
-- **Name on screen: Classic.** The desktop style for people who want windows and a taskbar. Alex's style is called **Tiling**. Inside the team and in file names it stays "Simple mode".
+- **Name on screen: Classic.** The desktop style for people who want windows and a taskbar. Alex's style is called **Tiling**. The team says Classic too. "Simple" is Minerva's name for the machine-wide admin model (`design-simple-mode.md`) and never appears on screen; the file names (`simple-mode.md`, `mockups/simple-*.html`) stay.
 - **Windows fill the screen, one at a time**, like a phone or a maximised Windows app, using Hyprland's own `monocle` layout. Every window has a title bar with **minimise, full size / smaller, close**, from the `hyprbars` plugin.
 - **A taskbar at the bottom**: a big **Start** button, the open apps, a **Help** button with its name on it, then Wi-Fi, sound, battery and the clock. One click on Wi-Fi, sound or battery opens one small panel with all three.
 - **Start** is a grid of big app tiles with plain names ("Internet", "Files", "Photos"), a search field, and Sleep / Restart / Turn off at the bottom.
 - **No keyboard shortcut is needed for anything.** Familiar Windows keys work (the Windows key opens Start, Alt+Tab, Alt+F4). Every Tiling key that could surprise someone is off.
 - **Install: 4 screens. First start: 2 to 4 screens** (2 on a laptop that is already online; Wi-Fi and "which screen is in front of you?" appear only when needed).
 - **Messages** always say what happened, what it means for you, and what to do, with one button named for what it does. No codes, no jargon, no blame.
-- **Help** is one labelled button: talk or type to the helper, and **Ask Alex** when the helper can't fix it.
+- **Help** is one labelled button: talk or type to Moneta, and **Ask Alex** when Moneta can't fix it.
 - **Motion defaults to Calm.** Themes, wallpapers and the "gold means you are here" rule carry over unchanged.
 
 ---
@@ -156,7 +156,7 @@ Everything else in Tiling is off in Classic, on purpose: `Super + Delete` (log o
 ### 2.8 Messages on screen, and several monitors
 
 - Messages (swaync, reused) move to the bottom-right, above the taskbar, 420 px wide, text 15 px. Section 4 has the patterns.
-- Several monitors: each gets a taskbar showing the apps on that monitor. Start, Help and Quick settings open on the monitor the mouse is on. Everything machine-specific is automatic (Alex, 2026-09-30: an install wizard for machine settings is fine, and Simple mode gets at most one plain question): scaling from each screen's size and resolution (for example 125% on a 14-inch 1080p laptop), arrangement left to right in port order, keyboard layout from the installer's language, one workspace per screen. The one question, only when more than one screen is plugged in, is which screen is in front of you (3.2); that screen becomes the main one. A wrong guess about arrangement or scaling is fixed in Settings > Screens.
+- Several monitors: each gets a taskbar showing the apps on that monitor. Start, Help and Quick settings open on the monitor the mouse is on. Everything machine-specific is automatic (Alex, 2026-09-30: an install wizard for machine settings is fine, and Classic gets at most one plain question): scaling from each screen's size and resolution (for example 125% on a 14-inch 1080p laptop), arrangement left to right in port order, keyboard layout from the installer's language, one workspace per screen. The one question, only when more than one screen is plugged in, is which screen is in front of you (3.2); that screen becomes the main one. A wrong guess about arrangement or scaling is fixed in Settings > Screens.
 
 ### 2.9 Taps and decisions, before and after
 
@@ -171,7 +171,7 @@ For a person who has never used Hyprland. "Keys to know" counts things someone m
 | Join a Wi-Fi network | Click the icon, then a technical dialog (`nm-connection-editor`): about 7 steps and 3 jargon words | Click the icons, click the network, type the password, Connect: 3 clicks + typing |
 | Change the volume | Scroll on a small number, or open `pavucontrol` | Click the icons, drag the slider: 1 click + drag (or the volume keys) |
 | Turn off | Know `Super + Alt + Ctrl + Escape`, choose Yes (1 key) | Start, Power, Turn off: 3 clicks |
-| Get help | Know `Super + A` (1 key) | Click Help: 1 click |
+| Ask Moneta | Know `Super + A` (1 key) | Click Help: 1 click |
 | **Keys to know** | **6 or more** | **0** |
 
 ---
@@ -192,7 +192,7 @@ Each screen: `night` background with the Sol wallpaper faint behind, one centred
    - One disk with something on it: `Invictus will replace everything on this computer.` Under it, in plain words, what is there now: `Found: Windows 11 and 212 GB of files on "Samsung SSD 512 GB".` Then a checkbox, unchecked: `I've saved the photos and files I want to keep.` The gold button `Erase and install` stays disabled until it is ticked. The box is the one extra decision in the whole flow, and it is worth it: this is the only step that can destroy something.
    - More than one disk: one row per disk with its size and what is on it, the empty or largest one preselected, then the same checkbox.
    - Options (collapsed): `Keep Windows and choose at start-up` (dual boot), `Lock the disk with a password` (encryption; off by default as Alex decided, D6), `Choose partitions myself`. Alex lives here; nobody else opens it.
-3. **You.** `Who will use this computer?` Fields: `Your name` (e.g. Maria Santos), `Password`, `Type it again`, each 52 px, with a `Show` eye. Under the password: `You'll type this to unlock the computer and to approve changes.` The computer's name is made from the first name (`marias-laptop`) and not shown. The username is made from the first name (`maria`) and not shown. Button: `Install`. Whether this person is an admin, and whether a second admin account for Alex is created here, is **[M1]**; the screen has room for one line such as `Alex can help with this computer from far away` if Minerva's model needs consent at install time.
+3. **You.** `Who will use this computer?` Fields: `Your name` (e.g. Maria Santos), `Password`, `Type it again`, each 52 px, with a `Show` eye. Under the password: `You'll type this to unlock the computer.` The computer's name is made from the first name (`marias-laptop`) and not shown. The username is made from the first name (`maria`) and not shown. Button: `Install`. Whether this person is an admin, and whether a second admin account for Alex is created here, is **[M1]**; the screen has room for one line such as `Alex can help with this computer from far away` if Minerva's model needs consent at install time.
 4. **Installing, then Done.** A progress bar (`sol-bright` fill, as look.md says for progress) and one line that changes with the phase: `Copying Invictus to the disk`, `Setting up your account`, `Almost done`, with `About 8 minutes left`. No log unless you click `Details`. When done: `All done. Take out the USB stick, then restart.` Button: `Restart`. If it fails: `Setup couldn't finish. Nothing on the disk has been used yet.` (only when that is true) or `Setup couldn't finish.`, with `Try again` and `Save a report for Alex` (writes the install log to the USB stick) **[M8]**.
 
 Before: Calamares' default Welcome, Location, Keyboard, Partitions, Users, Summary, Install, Finish = 8 screens, about 14 decisions, 6 jargon words. After: 4 screens (3 on an empty disk), 3 decisions (language, tick the box, name and password), no jargon.
@@ -205,17 +205,17 @@ Replaces Minerva's seven-step first-boot wizard for a Classic user (design.md 2.
 |---|---|
 | Monitors | Automatic (2.8), plus one question when there is more than one screen (screen 2 below) |
 | Look | Dusk, Calm motion, light apps. Changeable in Settings > Look |
-| Assistant provider | Becomes screen 2, "Set up Help" |
+| Assistant provider | Becomes screen 3, "Set up Help" |
 | Collegium | Not shown. Local-only, created silently so Help has a memory. Alex can connect one later remotely |
 | Windows VM | Not shown |
 | Voice (pen button, model) | Not shown. Help uses the built-in microphone; the speech model downloads in the background on first use of the mic |
-| Snapshot and tour | Snapshot happens silently; the tour becomes screen 3 |
+| Snapshot and tour | Snapshot happens silently; the tour becomes screen 4 |
 
 Screens, same card style as the installer:
 
 1. **Wi-Fi.** Skipped if already online (a cable, or Wi-Fi set in the installer). `Connect to the internet` with the same Wi-Fi list as Quick settings. `Skip for now` text button: everything works offline except Help and updates.
 2. **Which screen is in front of you?** Only when more than one screen is plugged in. Every screen shows the same card with its own big number and a `This one` button; the person clicks it on the screen they are looking at. No mapping numbers to a diagram, no dragging. That screen becomes the main one (taskbar with the clock, new windows, messages). If nobody answers in 60 s (a TV that happens to be on), the laptop screen or the largest screen wins and the wizard moves on.
-3. **Set up Help.** `Help answers questions and can fix things for you, when you say yes.` Two cards, the first preselected (2 px `parchment` border and a check; gold stays on the one button): `Use Claude` (sign in with a Claude account in the browser; the window comes back when done) and `Use a helper at home` (a local model or one on the home network, Alex's D13). A `Set up later` text button. Nobody sees a terminal. What sign-in costs the friend and who pays is **[M5]** and a concern for Moneta.
+3. **Set up Help.** `Help answers questions and can fix things for you, when you say yes.` Two cards, the first preselected (2 px `parchment` border and a check; gold stays on the one button): `Use Claude` (sign in with a Claude account in the browser; the window comes back when done) and `Use a home AI system` (a local model or one on the home network, Alex's D13). A `Set up later` text button. Nobody sees a terminal. What sign-in costs the friend and who pays is **[M5]** and a concern for Moneta.
 4. **Three things to know.** Three cards, left to right, each with a small picture of the real control: `Start opens your apps`, `× closes a window`, `Help is always here`. Button: `Start using Invictus`.
 
 There is no question about Classic or Tiling. New users created through the installer get **Classic**; Tiling is one switch in Settings (section 6), and the person who wants it knows to look. Considered: one screen asking "How do you like your windows?" with two pictures. It is a decision a non-technical person cannot make well, it costs everyone a screen, and it is reversible in 3 clicks.
@@ -235,7 +235,7 @@ Clio polishes the words; these are the patterns. Every message is a card (swaync
 3. **One main button, named for what it does.** `Restart now`, `Connect to Wi-Fi`, `Free up space`. Never `OK`, `Yes`, `Proceed`. A second, quieter button only when "not now" is a real choice: `Later`.
 4. **No codes, numbers only when they help.** `3 GB left` helps; `exit 1` does not. Technical detail goes behind a collapsed `Details for Alex` line, which Help can read and send **[M8]**.
 5. **No blame, no alarm.** `That password didn't work`, not `Invalid password`. No exclamation marks, no capitals for emphasis.
-6. **Say who is doing what.** `We` never appears. The computer did something: `Your computer put things back the way they were.` The helper speaks as itself in the Help panel only.
+6. **Say who is doing what.** `We` never appears. The computer did something: `Your computer put things back the way they were.` Moneta speaks as itself in the Help panel only.
 7. **Offer Help on anything that went wrong.** Every error card has `Ask Help` as its quiet button, which opens Help with the problem already written in, so the person does not have to describe it.
 8. **Colour follows the look's status colours**, as a 4 px bar on the card's left edge: `laurel` done, `lapis` information or a choice, `pompeii` something needs you now. Never gold (gold is focus).
 9. **How long it stays.** Done and information: 8 s, then kept in Help's "Recent" list. Needs you: stays until acted on or closed.
@@ -248,14 +248,14 @@ Clio polishes the words; these are the patterns. Every message is a card (swaync
 | Updates installed, restart needed | `Updates are ready` | `Restart to finish. It takes about a minute, and your apps will open again.` | `Restart now` · `Later` | lapis |
 | Restart needed, 3 days of "Later" | `Please restart soon` | `An important update is waiting. Restart when you finish what you're doing.` | `Restart now` · `Tonight` | lapis |
 | An update failed and was undone **[M2]** | `An update didn't work` | `Your computer put things back the way they were. Nothing is lost. Alex has been told.` (last sentence only if the report was really sent **[M8]**) | `Ask Help` | lapis |
-| Computer started from the backup copy after a bad update **[M2]** | `Your computer went back to yesterday's version` | `Something went wrong after an update, so it started from the last good copy. Your files are fine.` | `Got it` · `Ask Help` | lapis |
+| Computer started from the backup copy after a bad update **[M2]** | `Your computer went back to before the last update` | `Something went wrong after an update, so it started from the copy made just before it. Your files are fine.` | `Got it` · `Ask Help` | lapis |
 | An app crashed | `Photos closed unexpectedly` | `Anything you saved is safe.` | `Open it again` · `Ask Help` | lapis (it already happened; nothing needs you now) |
 | Disk nearly full | `Your computer is almost full` | `3 GB left. When it's full, apps and updates stop working.` | `Free up space` (opens Help with "Help me free up space") · `Later` | pompeii |
 | Battery low | `Battery low: 10%` | `Plug in the charger soon.` | none | pompeii |
 | Battery very low | `Battery at 5%` | `The computer will go to sleep in about 5 minutes. Plug in the charger.` | none, stays | pompeii |
 | No internet | `No internet` | `Help and updates need the internet.` | `Connect to Wi-Fi` | lapis |
-| Asked for your password **[M1]** | `Type your password to install Spotify` | `This changes the computer for everyone who uses it.` | `Install` · `Cancel` | lapis |
-| Help can't do it alone **[M6]** (in the Help panel, so the helper speaks as itself) | `This needs Alex` | `I can't change this myself. Want me to send Alex a note with what's happening?` | `Ask Alex` · `Not now` | lapis |
+| Asked for your password **[M1]** (Standard machines only; a Simple machine never asks) | `Type your password to install Spotify` | `This changes the computer for everyone who uses it.` | `Install` · `Cancel` | lapis |
+| Help can't do it alone **[M6]** (in the Help panel, so Moneta speaks as itself) | `This needs Alex` | `I can't change this myself. Want me to ask Alex? I'll tell him what's happening.` | `Ask Alex` · `Not now` | lapis |
 | Alex wants to see the screen **[M3]** | `Alex wants to see your screen` | `He'll be able to see and use your computer until you press Stop.` | `Let Alex in` · `Not now` | lapis |
 | Alex is connected **[M3]** | `Alex is using your computer` | (a strip at the top of the screen, not a card, for as long as it lasts) | `Stop` | pompeii |
 | USB stick plugged in | `USB stick found` | `SANDISK · 29 GB` | `Open it` | lapis |
@@ -273,16 +273,16 @@ The polkit password prompt matters most, because it is the "run as admin" Alex's
 `Help` in the taskbar, with its name on it, always in the same place. It opens the Help panel from the right: the Moneta panel's layout (look.md, "The Moneta panel") scaled up for reading, 480 px wide, full height above the taskbar, `basalt` at 96%, radius 16.
 
 1. **Header** (64 px): `Help` in 18 px weight 600, a status word in `ash` (`Ready`, `Listening`, `Thinking`, `Working on it`), a close ×.
-2. **Conversation**: the helper's words in 16 px `marble`, line height 1.55; the person's on `stone` bubbles on the right. The helper introduces itself once, on first open: `Hi Maria. I'm Moneta. Ask me anything about this computer, or tell me what's wrong.` Steps it gives are numbered and name what is on screen (`Click Start, then Settings`), never keys.
+2. **Conversation**: Moneta's words in 16 px `marble`, line height 1.55; the person's on `stone` bubbles on the right. Moneta introduces itself once, on first open: `Hi Maria. I'm Moneta. Ask me anything about this computer, or tell me what's wrong.` Steps it gives are numbered and name what is on screen (`Click Start, then Settings`), never keys.
 3. **Suggestions** when the conversation is empty: three chips, e.g. `The internet isn't working`, `Make the text bigger`, `Install an app`.
 4. **Talk**: a large round microphone button (64 px), left of the text field. Click once to start, click again to stop (holding is hard on a touchpad). While listening: `lapis` ring and the level bar, status `Listening`. Speech is turned into text on the computer (local whisper, design.md 4.4); the text appears in the field so the person sees what was heard before it is sent.
 5. **Type**: the field, 52 px, placeholder `Type your question`, Enter sends.
-6. **Ask Alex**: a full-width secondary button under the field, `Ask Alex`. It opens a short preview: `I'll send Alex this: [a summary of the problem and what was tried]` with `Send` and `Cancel`. After sending: `Alex has your note. He usually answers within a day.` It is a note, not a live call; the word "call" would promise a ringing phone. If Alex then asks to connect, the remote-help message in 4.2 appears **[M3]**. Who the button names comes from the machine's config (`helper_person`), set when Alex installs it, so another helper's friends see their own name **[M3]**.
+6. **Ask Alex**: a full-width secondary button under the field, `Ask Alex`. It opens a short preview: `I'll send Alex this: [a summary of the problem and what was tried]` with `Send` and `Cancel`. After sending: `Alex has your request. He usually answers within a day.` It is a request, not a live call; the word "call" would promise a ringing phone. This is Minerva's helper request (`design-simple-mode.md` 4.4): the same queue her `helper_ask` tool and every "helper" verb write to, one concept with one name. If Alex then asks to connect, the remote-help message in 4.2 appears **[M3]**. Who the button names comes from the machine's config (`helper_person`), set when Alex installs it, so another helper's friends see their own name **[M3]**.
 7. **Recent**: a collapsed row at the bottom, `Recent messages (3)`, listing the last messages from section 4.
 
-### 5.2 When the helper wants to change something
+### 5.2 When Moneta wants to change something
 
-Uses the Moneta approval card from look.md (1 px `sol` border, two equal buttons so a habit click doesn't approve), in plain words: heading `May I turn on larger text?`, one line on what will change (`Text in every app gets 25% bigger. You can undo it in Settings.`), buttons `Yes, do it` and `No`. The command itself is behind `Details for Alex`. What the helper may do without asking, with asking, or never, and which of these require the password, is Minerva's **[M6]**. The card design does not change with her answer; only which actions produce one.
+Uses the Moneta approval card from look.md (1 px `sol` border, two equal buttons so a habit click doesn't approve), in plain words: heading `May I turn on larger text?`, one line on what will change (`Text in every app gets 25% bigger. You can undo it in Settings.`), buttons `Yes, do it` and `No`. The command itself is behind `Details for Alex`. What Moneta may do without asking, with asking, or never, and which of these require the password, is Minerva's **[M6]**. The card design does not change with her answer; only which actions produce one.
 
 ---
 
@@ -331,11 +331,27 @@ Uses the Moneta approval card from look.md (1 px `sol` border, two equal buttons
 | M2 | Automatic updates: when they run, whether restarts ever happen on their own, how a failed update rolls back and what the person is told | Update messages (4.2); Start > Power |
 | M3 | Remote help from Alex: consent, what he can see and do, how it ends; the `helper_person` config | Ask Alex (5.1), the two remote-help messages (4.2), installer screen 3 |
 | M4 | How apps get installed (our repo, Flatpak, a store app), and what `Get apps` opens | Start tile `Get apps`, the Email tile |
-| M5 | Help's provider for a friend: whose account, what it costs, the home-model option | First start screen 2 |
+| M5 | Help's provider for a friend: whose account, what it costs, the home-model option | First start screen 3 |
 | M6 | What Help may do alone, with a "May I?" card, or never | 5.2, the "This needs Alex" message |
 | M7 | Loading a compositor plugin (hyprbars) on friends' machines; `ecosystem.enforce_permissions` | 2.2 |
 | M8 | What goes in a report to Alex, with what preview, and when "Alex has been told" is true | 4.1 rule 4, installer failure, update failure |
 | M9 | Whether locking the desktop style needs admin, and whether a user can undo it | 6.2 |
+
+### 7.1 Minerva's answers (Clio's reconciliation, 2026-09-30)
+
+Section numbers are `design-simple-mode.md`'s. "Simple machine" means Minerva's admin model; on it, the person uses Classic.
+
+| # | Answered by | What it means here | Still open |
+|---|---|---|---|
+| M1 | 0 (Admin), 1.3, 3.1, DS1 | The person is not an admin and is never asked for a password; `custos` is the admin and only Alex knows it. App installs are per-user Flatpaks with no password. So the password card in 4.2 never appears on a Simple machine, and the Classic polkit prompt is only seen by Alex as `custos` in a help session | Where the Simple switch and the one-time `custos` password screen ("write this on the card", DS4) go in the four installer screens. Whether Classic draws the polkit prompt in Quickshell (4.2 here) or `hyprpolkitagent` shows it (Minerva 5.2 step 4, which also needs it to let Alex pick `custos`). The polkit `<message>` texts |
+| M2 | 2.1 to 2.4, DS2 | Updates run by themselves behind gates; a restart happens on its own only between 02:00 and 06:00, idle, on mains, not in a game, so never while someone is using it. A failed doctor undoes the update from the cache (`An update didn't work`); two bad boots start the pre-update snapshot (`Your computer went back to before the last update`) | Whether `Updates are ready` (`Restart now` · `Later`) and `Please restart soon` count as questions under SM6, which allows none |
+| M3 | 5.1 to 5.3, DS7 | RustDesk, started only when the person presses **Get help**, accepting only the helper's ID and only on a click. The strip `Alex is using your computer` with `Stop` is Minerva's banner (one text, one button name). It ends on Stop, closing the window, Alex disconnecting, or 10 minutes idle. **Ask Alex** is Minerva's helper request | Where Get help sits in Classic: Minerva puts it on a Desk card and Super+H, and Classic has neither (Moneta's `help_start` tool is the only path today). Who starts: Minerva has the person start and Alex connect; the card `Alex wants to see your screen` / `Let Alex in` reads as Alex starting, and may be RustDesk's own Accept dialog rather than ours. `helper_person`: Minerva whitelists one RustDesk ID and names no config key. The installer consent line |
+| M4 | 3.1, DS5 | Per-user Flatpak from Flathub's verified subset. `Get apps` opens Bazaar (fallback: GNOME Software, Flatpak only). Email is Thunderbird from the DS5 set | LibreOffice is a native package in `invictus-everyday` (2.4) and a user Flatpak in DS5: pick one |
+| M5 | 4.1 | Claude Code with the person's own account (D13), a home AI system through the chat-only provider, or none. `generic-cli` is not offered | What the Claude account costs the friend and who pays |
+| M6 | 4.2 to 4.5 | Moneta has no shell, only fixed tools. Undoable things (update, undo, snapshot, doctor, report, help, installs from the verified subset) go through the "May I?" card; system changes become helper requests (`This needs Alex`); nothing ever needs the person's password; Moneta never shows a command | 5.2 puts "the command itself behind `Details for Alex`", but Minerva's 4.5 and SM8 say no command is ever shown: Details should show the tool call in plain words, or go. Whether Claude Code's own permission prompt can be drawn as the "May I?" card (Vulcan) |
+| M7 | Not answered | | Loading hyprbars on friends' machines and `ecosystem.enforce_permissions` |
+| M8 | 4.4, 2.4, DS3; `design.md` 4.5 | Rollbacks and helper requests go to the helper queue. They reach Alex on their own only if DS3 is approved; otherwise at the next help session | DS3. Until it is approved, `Alex has been told`, `I'll send Alex this` and `He usually answers within a day` are not true and need other words. The installer's `Save a report for Alex` is not covered |
+| M9 | Not answered directly | By Minerva's rules (`/etc/invictus/` is root-owned, `set-config` is a helper verb), locking needs `custos` and a locked person cannot unlock it | Minerva to confirm |
 
 ---
 
