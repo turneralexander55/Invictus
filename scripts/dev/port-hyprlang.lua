@@ -143,11 +143,10 @@ for _, path in ipairs(confFiles(deployed)) do
         for _, raw in ipairs(lines(path)) do
             local l = trim(raw)
             local comment = l:match("^#%s*(.-)%s*$")
+            -- a blank line keeps lastComment (a group heading covers its binds)
             if comment then
                 if comment:match("%w") and not comment:match("^[─=%-#%s]+$") then lastComment = comment end
-            elseif l == "" then
-                -- keep lastComment across blank lines inside a group
-            else
+            elseif l ~= "" then
                 local code = trim((l:gsub("%s+#.*$", "")))
                 local kind, value = code:match("^(bind%a*)%s*=%s*(.*)$")
                 local added = clone ~= "" and not inClone[l]
