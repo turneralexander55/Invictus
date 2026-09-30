@@ -6,7 +6,6 @@
 # with paru), invictus (our own PKGBUILD).
 7zip extra
 adw-gtk-theme extra
-adwaita-cursors extra
 amd-ucode core
 base core
 base-devel core
@@ -18,6 +17,7 @@ bluez-utils extra
 brightnessctl extra
 btop extra
 btrfs-progs core
+capitaine-cursors extra
 cava extra
 claude-code aur-paru
 cliphist extra
@@ -136,6 +136,7 @@ proton-ge-custom-bin aur-paru
 python core
 qt6-svg extra
 qt6-wayland extra
+qt6ct extra
 ripgrep extra
 rofi extra
 rsync extra

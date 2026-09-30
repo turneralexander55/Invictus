@@ -186,6 +186,27 @@ done < <(
     } | sort -u
 )
 [[ $seen -ge 12 ]] || sbad "only $seen commands parsed from waybar, swaync and zshrc; parsing broke?"
+# Regression, env-theme-packages (2026-09-30): env.lua names a cursor
+# theme and a Qt platform theme; the packages that provide them must be in
+# invictus-desktop (env.lua is loaded in every session).
+ENV_LUA="$REPO/config/hypr/invictus/env.lua"
+env_val() { sed -nE "s/^hl\.env\(\"$1\", *\"([^\"]*)\"\).*/\1/p" "$ENV_LUA"; }
+desktop_deps="$(field "$REPO/pkgs/meta/invictus-desktop/PKGBUILD" depends | bare)"
+cursor="$(env_val XCURSOR_THEME)"
+case "$cursor" in
+    Adwaita) cursor_pkg=adwaita-cursors ;;
+    '') cursor_pkg="" ;;
+    *) cursor_pkg="$cursor" ;;
+esac
+[[ -z "$cursor_pkg" ]] || grep -qx "$cursor_pkg" <<< "$desktop_deps" \
+    || sbad "env-theme-packages: env.lua sets XCURSOR_THEME=$cursor, but invictus-desktop does not depend on $cursor_pkg"
+qpa="$(env_val QT_QPA_PLATFORMTHEME)"
+case "$qpa" in
+    qt5ct|qt6ct) grep -qx "$qpa" <<< "$desktop_deps" || sbad "env-theme-packages: env.lua sets QT_QPA_PLATFORMTHEME=$qpa, but invictus-desktop does not depend on $qpa" ;;
+    ''|gtk3|xdgdesktopportal) ;;
+    *) sbad "env-theme-packages: QT_QPA_PLATFORMTHEME=$qpa has no package mapping in this test" ;;
+esac
+[[ -n "$cursor" ]] || sbad "env-theme-packages: no XCURSOR_THEME in env.lua (parsing broke?)"
 # The prompt comes from our AUR copy: its PKGBUILD must put it on zsh's fpath.
 grep -q 'usr/share/zsh/site-functions/prompt_spaceship_setup' "$REPO/pkgs/aur/spaceship-prompt/PKGBUILD" \
     || sbad "spaceship-prompt no longer installs prompt_spaceship_setup on zsh's fpath"

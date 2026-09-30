@@ -68,7 +68,7 @@ For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera
 | `loupe showtime papers` | Open photos, video, PDFs (both flavours download files) | Thunar, browsers, Atrium tiles |
 | `gst-plugins-good -bad -ugly gst-libav gst-plugin-va` | Codecs for Showtime and GTK apps, GPU decode | Showtime, Loupe |
 | `zen-browser-bin` | Browser (AUR) | Super+W, Atrium "Internet" |
-| `papirus-icon-theme`, `adwaita-cursors`, `adw-gtk-theme` | Icons, the cursor env.lua sets, the GTK theme `invictus-theme` recolours | theme tool, rofi |
+| `papirus-icon-theme`, `capitaine-cursors`, `adw-gtk-theme`, `qt6ct` | Icons, the cursor `env.lua` sets (`XCURSOR_THEME`), the GTK theme `invictus-theme` recolours, the Qt platform theme `env.lua` sets (`QT_QPA_PLATFORMTHEME=qt6ct`) | theme tool, rofi, Qt apps |
 | `fontconfig`, `ttf-ibm-plex`, `ttf-nerd-fonts-symbols-mono` | The UI and mono face and the glyph font the config names | kitty, waybar, rofi, swaync, first login |
 | `noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-liberation` | Every script, emoji, Arial/Times/Courier metrics | web, documents, games |
 | `zsh zsh-syntax-highlighting zsh-autosuggestions spaceship-prompt fastfetch` | The shipped `~/.zshrc` | every terminal |
@@ -140,7 +140,7 @@ Optional: `uv`, `rustup`, `go`, `shellcheck`, `distrobox`.
 | Package | Was in | Why |
 |---|---|---|
 | `vscode` | pacman.txt | Not an Arch package; `code` is (fixed in Phase 0) |
-| `nordic-darker-theme` | aur.txt, desktop | look.md replaces it with `adw-gtk-theme` recoloured by `invictus-theme`; AUR, last updated 2022. `config/hypr/invictus/env.lua` still sets `GTK_THEME=Nordic-Darker`, which overrides the theme tool: that line should go |
+| `nordic-darker-theme` | aur.txt, desktop | look.md replaces it with `adw-gtk-theme` recoloured by `invictus-theme`; AUR, last updated 2022. `env.lua` no longer sets `GTK_THEME` (Felix, 2026-09-30) |
 | `ttf-jetbrains-mono`, `ttf-dejavu` | pacman.txt, desktop | The config uses IBM Plex; look.md drops both; Noto covers fallback |
 | `ttf-nerd-fonts-symbols` | pacman.txt, desktop | The config asks for "Symbols Nerd Font Mono", which is `ttf-nerd-fonts-symbols-mono` |
 | `qt6-declarative` | pacman.txt, desktop | `sddm` depends on it; nothing of ours uses it directly |
@@ -171,7 +171,7 @@ Design plans dropped: `virtiofsd` in windows (dockur shares folders over SMB, no
 - `gparted`: `gnome-disk-utility` works through udisks without running a root app.
 - `xarchiver`: `file-roller` matches the GTK 4 apps.
 - `cups-browsed`: CUPS 2.4 finds driverless printers itself.
-- `qt5ct`/`qt6ct`, `capitaine-cursors`, `papirus-folders` (AUR), `otf-cormorant` (look.md): the config does not use them yet (`env.lua` sets `QT_QPA_PLATFORMTHEME=gtk3` and `XCURSOR_THEME=Adwaita`); add each when the config does.
+- `qt5ct`, `papirus-folders` (AUR), `otf-cormorant` (look.md): the config does not use them yet (`env.lua` sets `QT_QPA_PLATFORMTHEME=qt6ct`, so Qt 5 apps get no theme); add each when the config does. `qt6ct` and `capitaine-cursors` joined desktop when `env.lua` switched to them (2026-09-30); `adwaita-cursors` left.
 - `quickshell`: nothing runs it yet; joins with the Desk or the Atrium shell.
 - A firewall (`ufw`, `firewalld`): nothing listens on the network by default (sshd off, the VM's RDP on 127.0.0.1). Revisit with RustDesk.
 - `zram-generator`: the design uses a swapfile. `reflector`: the installer's job.
