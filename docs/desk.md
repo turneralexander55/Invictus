@@ -294,7 +294,7 @@ Reused: the claude.ai Desk's sections, order, rules and words (Needs you, answer
 
 ## Team mode control (Alex, 2026-09-30)
 
-The header carries a small **Mode: Lean · Standard · Full** control, the same as the phone Desk (proposal in claude-team `projects/personal/iris-dashboard/proposals/team-mode.md`). It writes `meta/mode` as a person-signed field (design-desk.md), never written by a session. One gold rule holds: the current mode is a marble underline, not gold.
+Each workspace (project tab) carries a small **Mode** control with the five modes (Starvation, Lean, Standard, Full, Absolute Chonk; per workspace, Alex 2026-09-30), the same as the phone Desk (proposal in claude-team `projects/personal/iris-dashboard/proposals/team-mode.md`). It writes `modes/<ws>` as a person-signed field (design-desk.md), never written by a session. One gold rule holds: the current mode is a marble underline, not gold.
 
 ## Alex's answers, 2026-09-30 (recorded by Moneta)
 
