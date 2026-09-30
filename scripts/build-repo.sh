@@ -8,13 +8,24 @@
 #   scripts/build-repo.sh --out DIR       output folder (default out/repo)
 #   scripts/build-repo.sh --no-pinned     leave out the pinned hypr* set
 #                                         (offline builds; not for publishing)
-#   scripts/build-repo.sh --in-container  run in archlinux:base-devel via
+#   scripts/build-repo.sh --only NAME     build just this PKGBUILD (repeat for
+#                                         more); implies --build-only, writes
+#                                         no manifest (CI's aur-pins job)
+#   scripts/build-repo.sh --in-container  build in archlinux:base-devel via
 #                                         podman or docker (the default when
-#                                         makepkg is not installed)
+#                                         makepkg is not installed), then
+#                                         sign and index on this machine
 #
-# Build and index are separate steps so CI can build without the signing
-# key (PKGBUILD code runs there) and sign in a job that runs no package
-# code. See .github/workflows/packages.yml.
+# Build and index are separate steps so package code (PKGBUILDs) never runs
+# where the signing key is: CI builds in one job and signs in another that
+# runs no package code (.github/workflows/packages.yml). With
+# --in-container, one command does both: the container builds with no key
+# and no signing variables, its files are handed back to you (not root),
+# then the repo step runs here with your key (repo-add comes with pacman,
+# so this machine must be Arch). Where this machine has no repo-add (CI's
+# Ubuntu runners) the repo step runs in a second container, which only
+# gets the CI key variables. Without a container both steps run here; the
+# signing variables are kept out of the build step's environment.
 #
 # The build step also writes invictus-manifest.txt (the package files the
 # PKGBUILDs produce). The repo step reads it when present instead of
@@ -39,6 +50,13 @@
 # GitHub renames release assets with other characters, such as the ':'
 # of an epoch.
 #
+# Size: GitHub refuses release assets of 2 GiB or more, so the build step
+# fails on any package that big (proton-ge-custom-bin is about 600 MB).
+#
+# JAVA_TOOL_OPTIONS, when set, reaches the package builds (the limine AUR
+# packages build with a bundled JDK that ignores the system CA store; behind
+# a TLS-inspecting proxy point it at /etc/ssl/certs/java/cacerts).
+#
 # Signing (repo step): set INVICTUS_SIGN_KEY to a key id in your own gpg
 # keyring (local), or INVICTUS_SIGNING_KEY to an ASCII-armoured private key
 # plus INVICTUS_SIGNING_PASSPHRASE (CI secrets; imported into a temp
@@ -57,6 +75,16 @@ DO_BUILD=true
 DO_REPO=true
 CONTAINER=auto
 PINNED=true
+ONLY=()
+# GitHub's limit is "under 2 GiB" per release asset.
+MAX_ASSET_BYTES=$((2 * 1024 * 1024 * 1024 - 1))
+
+# The CI signing key must never be visible to package code: keep it in this
+# shell only, not in the environment of anything it starts (makepkg,
+# PKGBUILDs). The repo step passes it to gpg explicitly.
+SIGNING_KEY_MATERIAL="${INVICTUS_SIGNING_KEY:-}"
+SIGNING_PASSPHRASE="${INVICTUS_SIGNING_PASSPHRASE:-}"
+unset INVICTUS_SIGNING_KEY INVICTUS_SIGNING_PASSPHRASE
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -66,9 +94,14 @@ while [[ $# -gt 0 ]]; do
         --in-container) CONTAINER=yes; shift ;;
         --no-container) CONTAINER=no; shift ;;
         --no-pinned) PINNED=false; shift ;;
-        -h|--help) sed -n '2,45p' "$0"; exit 0 ;;
+        --only) ONLY+=("${2:?--only needs a package name}"); DO_REPO=false; shift 2 ;;
+        -h|--help) sed -n '2,70p' "$0"; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 2 ;;
     esac
+done
+if [[ ${#ONLY[@]} -gt 0 ]] && ! $DO_BUILD; then echo "--only builds; it cannot go with --repo-only." >&2; exit 2; fi
+for n in "${ONLY[@]}"; do
+    compgen -G "$ROOT/pkgs/*/$n/PKGBUILD" >/dev/null || { echo "--only $n: no pkgs/*/$n/PKGBUILD" >&2; exit 2; }
 done
 mkdir -p "$OUT"
 
@@ -76,22 +109,53 @@ warn() {
     if [[ -n "${GITHUB_ACTIONS:-}" ]]; then echo "::warning::$*"; else echo "WARNING: $*" >&2; fi
 }
 
-# ---- run inside an Arch container when makepkg is missing -------------------
+# ---- build in an Arch container, sign and index here ---------------------------
 if [[ "$CONTAINER" == yes || ( "$CONTAINER" == auto && ! -x /usr/bin/makepkg ) ]]; then
     RUNTIME="$(command -v podman || command -v docker || true)"
     [[ -n "$RUNTIME" ]] || { echo "Need makepkg (Arch) or podman/docker." >&2; exit 2; }
-    args=(--no-container --out /out)
-    $DO_BUILD || args+=(--repo-only)
-    $DO_REPO || args+=(--build-only)
-    $PINNED || args+=(--no-pinned)
+    # Where the repo step runs: here when repo-add is here, else in a second
+    # container. A key in your own keyring (INVICTUS_SIGN_KEY) can only sign
+    # here, so check before a long build.
+    REPO_HERE=false
+    command -v repo-add >/dev/null && REPO_HERE=true
+    if $DO_REPO && ! $REPO_HERE && [[ -n "${INVICTUS_SIGN_KEY:-}" ]]; then
+        echo "INVICTUS_SIGN_KEY signs with your own gpg keyring, so the repo step runs on this machine, and it has no repo-add (pacman). Run this on Arch, or build with --build-only and sign where pacman is." >&2
+        exit 2
+    fi
     # CONTAINER_ARGS: extra runtime flags, split on spaces (e.g. "--network host").
     read -ra extra <<< "${CONTAINER_ARGS:-}"
-    echo "==> Running in $IMAGE via $(basename "$RUNTIME")"
-    exec "$RUNTIME" run --rm \
-        -v "$ROOT:/src:ro" -v "$OUT:/out" \
-        -e INVICTUS_SIGNING_KEY -e INVICTUS_SIGNING_PASSPHRASE -e GITHUB_ACTIONS \
-        "${extra[@]}" \
-        "$IMAGE" bash -c 'pacman -Syu --noconfirm --needed >/dev/null && exec bash /src/scripts/build-repo.sh "$@"' _ "${args[@]}"
+    # Runs build-repo.sh in a fresh container with the checkout read-only
+    # and $OUT as /out, then gives /out's files to whoever owns /out (you,
+    # as the container sees it: docker's root would otherwise leave
+    # root-owned files; rootless podman maps its root to you already).
+    in_container() {
+        "$RUNTIME" run --rm \
+            -v "$ROOT:/src:ro" -v "$OUT:/out" \
+            "${extra[@]}" "$@"
+    }
+    # shellcheck disable=SC2016 # expanded by the container's bash
+    INNER='pacman -Syu --noconfirm --needed >/dev/null && bash /src/scripts/build-repo.sh "$@"; rc=$?; chown -R "$(stat -c %u:%g /out)" /out; exit $rc'
+    if $DO_BUILD; then
+        args=(--no-container --build-only --out /out)
+        $PINNED || args+=(--no-pinned)
+        for n in "${ONLY[@]}"; do args+=(--only "$n"); done
+        env_args=(-e GITHUB_ACTIONS)
+        if [[ -n "${JAVA_TOOL_OPTIONS:-}" ]]; then env_args+=(-e JAVA_TOOL_OPTIONS); fi
+        echo "==> Building in $IMAGE via $(basename "$RUNTIME") (no signing key in there)"
+        in_container "${env_args[@]}" "$IMAGE" bash -c "$INNER" _ "${args[@]}"
+    fi
+    if $DO_REPO; then
+        if $REPO_HERE; then
+            echo "==> Signing and indexing on this machine"
+            INVICTUS_SIGNING_KEY="$SIGNING_KEY_MATERIAL" INVICTUS_SIGNING_PASSPHRASE="$SIGNING_PASSPHRASE" \
+                exec bash "$SCRIPT_DIR/build-repo.sh" --no-container --repo-only --out "$OUT"
+        fi
+        echo "==> Signing and indexing in a second $IMAGE container (no repo-add here)"
+        INVICTUS_SIGNING_KEY="$SIGNING_KEY_MATERIAL" INVICTUS_SIGNING_PASSPHRASE="$SIGNING_PASSPHRASE" \
+            in_container -e INVICTUS_SIGNING_KEY -e INVICTUS_SIGNING_PASSPHRASE -e GITHUB_ACTIONS \
+            "$IMAGE" bash -c "$INNER" _ --no-container --repo-only --out /out
+    fi
+    exit 0
 fi
 
 command -v makepkg >/dev/null || { echo "makepkg not found" >&2; exit 2; }
@@ -104,6 +168,9 @@ BUILD_USER=""
 if [[ $EUID -eq 0 ]]; then
     id builder >/dev/null 2>&1 || useradd -m builder
     echo "builder ALL=(ALL) NOPASSWD: /usr/bin/pacman" > /etc/sudoers.d/builder
+    if [[ -n "${JAVA_TOOL_OPTIONS:-}" ]]; then
+        echo 'Defaults env_keep += "JAVA_TOOL_OPTIONS"' >> /etc/sudoers.d/builder
+    fi
     BUILD_USER=builder
 fi
 as_builder() {
@@ -160,6 +227,7 @@ if $DO_BUILD; then
         dir="${dir%/}"
         [[ -f "$dir/PKGBUILD" ]] || continue
         name="$(basename "$dir")"
+        if [[ ${#ONLY[@]} -gt 0 && " ${ONLY[*]} " != *" $name "* ]]; then continue; fi
         if is_placeholder_keyring "$dir"; then
             warn "Skipping invictus-keyring: invictus.gpg is still the placeholder (docs/checklists/signing-key.md)."
             skipped=$((skipped + 1)); continue
@@ -184,6 +252,11 @@ if $DO_BUILD; then
         (cd "$dir" && as_builder env PKGDEST="$STAGE" makepkg --clean --cleanbuild --noconfirm "${deps[@]}")
         for f in $files; do
             [[ -f "$STAGE/$f" ]] || { echo "$name did not produce $f" >&2; exit 1; }
+            size="$(stat -c %s "$STAGE/$f")"
+            if [[ "$size" -gt "$MAX_ASSET_BYTES" ]]; then
+                echo "$f is $size bytes; GitHub release assets must be under 2 GiB. Split the package or host it elsewhere." >&2
+                exit 1
+            fi
             safe="$(repo_file_name "$f")"
             cp "$STAGE/$f" "$OUT/$safe"
             rm -f "$OUT/$safe.sig"
@@ -191,8 +264,12 @@ if $DO_BUILD; then
         built=$((built + 1))
     done
     echo "==> Build: $built built, $reused reused, $skipped skipped"
-    if $PINNED; then bash "$SCRIPT_DIR/fetch-pinned.sh" --out "$OUT"; fi
-    expected_files > "$OUT/invictus-manifest.txt"
+    if [[ ${#ONLY[@]} -gt 0 ]]; then
+        echo "==> --only: no manifest written (not a whole repo)"
+    else
+        if $PINNED; then bash "$SCRIPT_DIR/fetch-pinned.sh" --out "$OUT"; fi
+        expected_files > "$OUT/invictus-manifest.txt"
+    fi
 fi
 
 # ---- sign + index -----------------------------------------------------------
@@ -228,18 +305,18 @@ if $DO_REPO; then
     # CI hands the passphrase over; locally gpg-agent asks for it (pinentry)
     # once and caches it for the rest of the run.
     SIGN_OPTS=()
-    if [[ -n "${INVICTUS_SIGNING_KEY:-}" ]]; then
-        SIGN_OPTS=(--batch --pinentry-mode loopback --passphrase "${INVICTUS_SIGNING_PASSPHRASE:-}")
+    if [[ -n "$SIGNING_KEY_MATERIAL" ]]; then
+        SIGN_OPTS=(--batch --pinentry-mode loopback --passphrase "$SIGNING_PASSPHRASE")
         export GNUPGHOME="$WORK/gnupg"
         install -dm700 "$GNUPGHOME"
         echo "allow-loopback-pinentry" > "$GNUPGHOME/gpg-agent.conf"
         echo "default-cache-ttl 7200" >> "$GNUPGHOME/gpg-agent.conf"
-        printf '%s\n' "$INVICTUS_SIGNING_KEY" | gpg --batch --quiet --import
+        printf '%s\n' "$SIGNING_KEY_MATERIAL" | gpg --batch --quiet --import
         KEY="$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^fpr:/ { print $10; exit }')"
         [[ -n "$KEY" ]] || { echo "INVICTUS_SIGNING_KEY holds no private key." >&2; exit 1; }
         # Unlock once through loopback; repo-add's own gpg calls then use the
         # agent's cached passphrase.
-        echo unlock | gpg --batch --pinentry-mode loopback --passphrase "${INVICTUS_SIGNING_PASSPHRASE:-}" \
+        echo unlock | gpg --batch --pinentry-mode loopback --passphrase "$SIGNING_PASSPHRASE" \
             --local-user "$KEY" --detach-sign --output /dev/null
         trap 'gpgconf --kill gpg-agent 2>/dev/null || true; cleanup' EXIT
     elif [[ -n "${INVICTUS_SIGN_KEY:-}" ]]; then
