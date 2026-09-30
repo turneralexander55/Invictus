@@ -232,8 +232,7 @@ Module details:
 - Colours from the terminal table above. `background_opacity 1.0`.
 - `window_padding_width 10 14`.
 - Cursor: block (unchanged), `cursor #ECE6DA`, `cursor_text_color #14120F`.
-- Blink: `cursor_blink_interval 0.5 ease-in-out` (unchanged), `cursor_stop_blinking_after 15` (was 0, blink forever; a cursor that never stops moving pulls the eye).
-- Trail: keep, shorter: `cursor_trail 3`, `cursor_trail_decay 0.08 0.3`.
+- Blink and trail follow the motion level (Alex, 2026-09-30: he likes his original cursor animation, so it is Showcase). Showcase, the default: `cursor_blink_interval 0.5 ease-in-out`, `cursor_stop_blinking_after 0`, `cursor_trail 50`, `cursor_trail_decay 0.12 0.45`, `cursor_trail_start_threshold 2`, `cursor_trail_color none`. Calm: the shorter set, `cursor_stop_blinking_after 15` (a cursor that never stops moving pulls the eye), `cursor_trail 3`, `cursor_trail_decay 0.08 0.3`. Off: `cursor_trail 0` and `cursor_blink_interval 0`. One file per level in `config/kitty/motion/`; `kitty.conf` includes Showcase, then `~/.config/invictus/motion.d/kitty.conf` (the motion switcher links it at the chosen level's file), and kitty re-reads it on `SIGUSR1`.
 - Tabs: `tab_bar_style separator`, `tab_separator " · "`, active tab `marble` on `stone`, inactive `ash` on `night`, `tab_bar_edge top`, `tab_bar_min_tabs 2`.
 - `active_border_color #E0A64B`, `inactive_border_color #27241F` for kitty splits (the same rule as Hyprland).
 - `url_color #7C9FD4`, `url_style single`.
@@ -571,6 +570,9 @@ Rules at every level:
 4. **Motion goes where your eyes already are.** Flourishes play on the thing you just acted on (the window you opened, the picker you used). Things in the corner of the eye (notifications) get the smallest motion that still says "new".
 5. **Themes change the shape of an accent, never the timing or the amount of motion.** Timings are the same in all four themes.
 6. Calm and Off also set `org.gnome.desktop.interface enable-animations` to false (Showcase sets it true), so GTK apps follow.
+7. Kitty follows the level too (Alex, 2026-09-30, keeping his original cursor animation): Showcase is his exact blink and trail values, Calm is the shorter set, Off has no trail and no blink (Surfaces, Kitty).
+
+**How the level is applied** (built 2026-09-30): the setting is one word in `~/.config/invictus/motion` (`showcase`, `calm` or `off`; missing or unreadable means Showcase). Hyprland reads it when the config loads (`invictus/state.lua`, `invictus/motion.lua`), so a change takes effect on `hyprctl reload`; game mode (the marker file `$XDG_RUNTIME_DIR/invictus/game-mode`) forces Off without touching the file. The per-app files are shipped as `config/<app>/motion/{showcase,calm,off}`: kitty includes the chosen one through `~/.config/invictus/motion.d/kitty.conf`; waybar and swaync have their Showcase values in `motion.css` and the switcher copies `motion/calm.css` or `motion/off.css` over `~/.config/<app>/motion.css`; swaync's `transition-time` (220 / 150 / 0) is in `config.json`. The switcher itself, `invictus-motion`, is not written yet.
 
 ### Curves
 
