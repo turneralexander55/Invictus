@@ -6,6 +6,8 @@ Invictus is Alex's personal Linux distro, based on Arch, built around Hyprland, 
 
 Read section 0 for the decisions, section 10 for what only Alex can decide. Everything else is the reasoning and the detail the builders need.
 
+Addendum: Simple mode (no admin rights for the person, automatic updates with a boot guard, per-user Flatpak apps, helper requests, remote help by RustDesk) is in `design-simple-mode.md` (2026-09-30); its section 7 lists which MUSTs here it changes on Simple machines.
+
 Naming: we say "based on Arch Linux" and never use the Arch name or logo in the distro's own name, artwork or boot screens (trademark policy, verified 2026-09-30: non-Arch packages and a new installer rule out "Remix" use).
 
 ---
