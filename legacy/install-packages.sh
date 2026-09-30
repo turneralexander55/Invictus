@@ -39,7 +39,7 @@ fi
 # Pacman packages
 # ------------------------------------------------------------
 
-PACMAN_LIST="$SCRIPT_DIR/../packages/pacman.txt"
+PACMAN_LIST="$SCRIPT_DIR/packages/pacman.txt"
 
 if [[ ! -f "$PACMAN_LIST" ]]; then
   echo "ERROR: pacman package list not found at $PACMAN_LIST"
@@ -103,7 +103,7 @@ echo
 # AUR packages
 # ------------------------------------------------------------
 
-AUR_LIST="$SCRIPT_DIR/../packages/aur.txt"
+AUR_LIST="$SCRIPT_DIR/packages/aur.txt"
 
 if [[ ! -f "$AUR_LIST" ]]; then
   echo "ERROR: AUR package list not found at $AUR_LIST"

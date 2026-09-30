@@ -75,7 +75,7 @@ echo
 if [[ "$deploy_sddm" =~ ^([yY]|yes|YES)$ ]]; then
   echo "==> Deploying SDDM"
 
-  SDDM_SCRIPT="./scripts/install-sddm.sh"
+  SDDM_SCRIPT="$SCRIPT_DIR/install-sddm.sh"
 
   if [[ ! -f "$SDDM_SCRIPT" ]]; then
     echo "ERROR: SDDM install script not found:"
