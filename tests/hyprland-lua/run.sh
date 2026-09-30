@@ -28,7 +28,17 @@ pick() { for c in "$@"; do command -v "$c" >/dev/null 2>&1 && { command -v "$c";
 
 LUA="${LUA:-$(pick lua5.5 lua5.4 lua || true)}"
 [[ -n "$LUA" ]] || { echo "No Lua interpreter found (install lua or lua54)"; exit 2; }
-LUAC="${LUAC:-$(pick "$(dirname "$LUA")/luac" luac5.5 luac5.4 luac || true)}"
+# luac must match the interpreter: a Debian/Ubuntu `luac` can point at 5.1
+# (luacheck pulls it in), which rejects 5.3+ syntax such as `&` and `//`.
+LUA_VER="$("$LUA" -e 'io.write((_VERSION:match("%d+%.%d+")))')"
+case "$LUA_VER" in 5.[34]|5.[5-9]) ;; *) echo "Lua $LUA_VER is too old: the config and tests need 5.3+ (Hyprland embeds 5.5)"; exit 2 ;; esac
+luac_ok() { [[ -x "$1" ]] && "$1" -v 2>&1 | grep -q "^Lua $LUA_VER"; }
+if [[ -z "${LUAC:-}" ]]; then
+    for c in "$(dirname "$LUA")/luac$LUA_VER" "$(command -v "luac$LUA_VER" || true)" "$(dirname "$LUA")/luac" "$(command -v luac || true)"; do
+        if [[ -n "$c" ]] && luac_ok "$c"; then LUAC="$c"; break; fi
+    done
+fi
+LUAC="${LUAC:-}"
 
 if [[ -z "${HL_STUBS:-}" ]]; then
     if [[ -f /usr/share/hypr/stubs/hl.meta.lua ]]; then
@@ -40,6 +50,7 @@ fi
 XKB_KEYSYMS_H="${XKB_KEYSYMS_H:-/usr/include/xkbcommon/xkbcommon-keysyms.h}"
 
 echo "lua:     $("$LUA" -v 2>&1 | head -1)"
+echo "luac:    ${LUAC:-none, using load()}"
 echo "stubs:   $HL_STUBS"
 echo "keysyms: $([[ -f "$XKB_KEYSYMS_H" ]] && echo "$XKB_KEYSYMS_H" || echo "not found")"
 echo

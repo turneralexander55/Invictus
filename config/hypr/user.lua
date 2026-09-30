@@ -1,0 +1,17 @@
+--------------------------------------------------------------------------------
+--                                                                            --
+--                                  USER                                      --
+--                                                                            --
+--------------------------------------------------------------------------------
+-- ~/.config/hypr/user.lua: your changes. Updates never touch this file.
+--
+-- hyprland.lua loads it last, after the shipped invictus/*.lua modules and
+-- your monitors.lua, so anything set here wins. Same API as the shipped
+-- modules (https://wiki.hypr.land/Configuring/Start/). Examples:
+--
+-- hl.config({ general = { gaps_out = 6 } })
+-- hl.bind("SUPER + B", hl.dsp.exec_cmd("firefox"), { description = "Apps: Firefox" })
+--
+-- To read the shipped app defaults:
+--     local apps = require("invictus.variables")
+--------------------------------------------------------------------------------

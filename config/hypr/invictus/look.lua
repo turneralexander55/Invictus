@@ -27,7 +27,7 @@ hl.config({
         -- Do not allow accidental border dragging
         resize_on_border = false,
 
-        -- general.allow_tearing lives in lua/gaming.lua (tearing for games only)
+        -- general.allow_tearing lives in invictus/gaming.lua (tearing for games only)
 
         -- Intentional layout choice
         layout = "master",
@@ -159,7 +159,7 @@ hl.config({
 -- ─────────────────────────────────────────────────────────────────────────────
 -- MISC
 -- ─────────────────────────────────────────────────────────────────────────────
--- misc.vrr lives in lua/gaming.lua
+-- misc.vrr lives in invictus/gaming.lua
 hl.config({
     misc = {
         force_default_wallpaper = -1,    -- Set to 0 or 1 to disable anime mascot wallpapers

@@ -19,7 +19,7 @@
 -- See https://wiki.hypr.land/Configuring/Basics/Binds/
 --------------------------------------------------------------------------------
 
-local apps    = require("lua.variables")
+local apps    = require("invictus.variables")
 local mainMod = apps.mainMod
 
 local dsp     = hl.dsp
