@@ -16,7 +16,8 @@ Mockups (`docs/mockups/`, 1920 x 1080, self-contained HTML, same fonts, tokens a
 | `settings-safety-copies-libertas-one-off.html` | Libertas, hourly copies of files turned off, the system copies listed |
 | `settings-desktop-style.html` | Desktop style, Atrium on |
 | `settings-desktop-style-keep.html` | Just switched to Tessera: "Keep this desktop style?", 14 s left |
-| `settings-moneta-tessera.html` | Tessera, Libertas, Settings tiled at half the screen: the Moneta page |
+| `settings-moneta-tessera.html` | Tessera, Libertas, Settings tiled at half the screen: the Moneta page (redrawn 2026-09-30: No AI is the fourth answer) |
+| `settings-ai-off.html` | Atrium, No AI: the AI page, with Moneta's kept memory from before (3.9.1) |
 | `settings-check-text-150.html` | Guard rails at 150% text size (a check, not a state) |
 
 ---
@@ -29,6 +30,7 @@ Mockups (`docs/mockups/`, 1920 x 1080, self-contained HTML, same fonts, tokens a
 - **Safety copies page**: the five safety nets (four switchable under Libertas, all locked on under Custodia; the copy before an update is always on) and the list of copies with **Go back to this**, split into **Your files** and **The system**.
 - **Mouse for everything, keyboard for everything, readable at 150% text.** One gold (bronze on light) at a time inside the window: where the keyboard is.
 - **Built in Quickshell** as its own process and a normal window, sharing QML components with the Atrium shell and the first-start wizard (section 7).
+- **No AI** (Alex, 2026-09-30; `no-ai.md`): the Moneta page becomes **AI** while AI is off, with two choices and nothing greyed out. Turning AI on installs Moneta then; turning it off removes it and signs out, and keeps Moneta's memory until the person deletes it.
 - **No night restarts** anywhere in Settings (Alex, 2026-09-30): after an update that needs one, the Updates page and a quiet notice say "Restart when you're ready".
 
 ---
@@ -48,7 +50,7 @@ Fewest pages that cover the list, grouped by how often people come (three groups
 | 6 | **Updates** | State, restart when ready, undo last update, pause (Custodia), where updates come from |
 | 7 | **Safety copies** | The safety nets, the copies to go back to |
 | 8 | **Guard rails** | Custodia or Libertas |
-| 9 | **Moneta** | Who answers (Claude, a home AI system, another AI service), sign in, voice, full access (Libertas) |
+| 9 | **Moneta** (named **AI** while AI is off) | Who answers (Claude, a home AI system, another AI service, No AI), sign in, voice, full access (Libertas); with No AI, the two choices and kept memory |
 | 10 | **Help from Alex** | Get help now, Ask Alex, what changed on this computer |
 | 11 | **About** | This computer, version, space, copy details for Alex |
 
@@ -88,7 +90,7 @@ This is also what Alex asks for on the phone: "open Settings and read me the top
 
 ### 2.4 Search
 
-`Find a setting` at the top of the sidebar, focused when Settings opens (Ctrl+F also focuses it). It searches page names, row names and a list of everyday words per row: "font", "zoom", "bigger" find Text size; "backup", "restore", "undo", "deleted" find Safety copies; "admin", "childproof" find Guard rails; "AI", "assistant", "Claude" find Moneta. Results replace the content column as rows (page > row); Enter opens the first. Clio writes the synonym list with the copy.
+`Find a setting` at the top of the sidebar, focused when Settings opens (Ctrl+F also focuses it). It searches page names, row names and a list of everyday words per row: "font", "zoom", "bigger" find Text size; "backup", "restore", "undo", "deleted" find Safety copies; "admin", "childproof" find Guard rails; "AI", "assistant", "Claude", "Moneta" find the Moneta page (the AI page while AI is off). Results replace the content column as rows (page > row); Enter opens the first. Clio writes the synonym list with the copy.
 
 ### 2.5 Keyboard
 
@@ -173,12 +175,25 @@ See section 4.
   - `Claude`: `Anthropic's Claude, with your own Claude account. It can do things for you after asking.` (preselected, D13)
   - `A home AI system`: `A model on this computer or on your home network. Nothing leaves your home.` Picking it asks for the address, or offers `Use this computer` when the local model package is installed (D15).
   - `Another AI service`: `An account you already have with another AI company. It answers; it can't do things by itself.` (the chat-only `openai-compatible` provider; its key goes to the keyring)
-  - `Turn Moneta off` as a quiet link under the list (`none`).
+  - `No AI`: `Guides and Alex. Moneta and voice are removed from this computer.` (`none`; replaces the quiet `Turn Moneta off` link, Alex 2026-09-30). Picking it opens a confirm in the row: `Turn off AI?` / `Moneta and voice are removed from this computer, and you're signed out of Claude on this computer. Moneta's memory and past conversations stay on this computer until you delete them. Help keeps its guides and Ask Alex.` / `Turn off AI` and `Cancel`, equal weight. No password: instant from a local active session, like the return to Custodia (Minerva N1, `design-no-ai.md`). What it removes and keeps: `no-ai.md` 5.
 - **Account**: `Signed in to Claude`, since when, `Working` or `Can't reach Claude`; `Switch account` and `Sign out`. Sign in opens the browser; the window comes back when done. Settings never sees the token.
 - **Voice and limits**:
   - `Talk to Moneta`: `Hold the pen button and speak. Your voice is turned into text on this computer, then sent.` On/Off.
   - **`Full access`** (Alex, 2026-09-30, DS11): `Let Moneta use the terminal and every tool, like a person at the keyboard. It still asks before each change, and system changes still need your password.` **Libertas: a switch, off by default.** **Custodia: locked off** with `Custodia keeps Moneta to a fixed set of safe tools.` Turning it on asks for the password with no hold and no warning: Libertas was the guarded step (Minerva 12.3: its own action, `org.invictus.sys.assistant-full-access`, password every time, never cached; the value lives in `/etc/invictus/assistant`). Turning it on or off restarts Moneta with `Moneta is starting again with the new rules` (the same restart as a guard-rails switch, Minerva 1.6 G7). **It ends with Libertas**: during a timed Libertas the row says `Ends with Libertas at 15:20`, and any return to Custodia (the click, the hour running out, a restart after the hour) turns it off; the row then says `Turned off when guard rails came back on at 15:20.` Going back to Libertas needs the switch again (not the nets pattern; Minerva 12.3 says why).
 - Options: `Team and memory` (local only, connect to a team repo, or make a new one), `A command-line agent` (only while Full access is on: `generic-cli`, the command filled in by the person; with Full access off or under Custodia the row is locked and a configured agent does not start, with `Moneta's command-line agent is off. Pick who answers in Settings > Moneta.`, Minerva 12.3).
+
+### 3.9.1 With No AI
+
+(`settings-ai-off.html`)
+
+The sidebar entry and the title read **AI**: the name of a thing that is not on the computer means nothing, and "AI" is the word the person chose by. Search finds it by the same words.
+
+- Line: `Whether Help includes an AI assistant. It is the same for everyone who uses this computer.` (machine-wide, like Guard rails: the packages are.)
+- **Help works with**: two choice cards, the Guard rails pattern (4.1), the current one first with `On now`:
+  - **No AI**: `Short how-to guides you can search, and Alex when you need a person. Nothing on this computer uses AI.`
+  - **An AI assistant**: `Moneta answers questions, by voice or typing, and fixes things after asking you. It uses Claude with your own account, or another AI you choose.` and `Turn on Moneta...` with `Downloads Moneta, then asks for your password.` Clicking it opens the Who answers rows inside the card (Claude preselected, D13), then the password prompt (the polkit agent, a safety copy first; Minerva N1: its own action, `org.invictus.sys.ai-on`, the password every time, never cached, never through the help unlock), then the sign-in. The card shows `Downloading Moneta, 40%` until it is ready; the page then becomes the Moneta page.
+- **Kept from before**, only when there is something: `Moneta's memory and past conversations`, `Kept on this computer since AI was turned off on 28 September. Moneta picks them up again if you turn AI back on.`, the size, and `Delete...` (`Delete Moneta's memory?` / `This can't be undone. Your own files and notes are not touched.` / `Delete` · `Cancel`; no password).
+- Nothing else. No Account, Voice or Full access rows, not even greyed out, and no line about what AI would add.
 
 ### 3.10 Help from Alex
 
@@ -203,7 +218,7 @@ Title `Guard rails`, and the line: `How careful this computer is before big chan
 
 Two cards, Custodia first. The current one has a 2 px `parchment`/`ink-2` border, a filled radio and `On now`.
 
-- **Custodia**: `The computer pauses and explains before anything that could erase or break it, and Help only does safe things on its own. Safety copies are always on, so a change can be undone.` Under it, collapsed: `What Custodia does, in detail`, which lists G3 to G7 in plain words (pauses before erasing a disk or removing core parts of the system; the scam warning on every password prompt; Help sticks to a fixed set of tools; updates can be paused but not turned off; the safety nets stay on).
+- **Custodia**: `The computer pauses and explains before anything that could erase or break it, and Help only does safe things on its own. Safety copies are always on, so a change can be undone.` Under it, collapsed: `What Custodia does, in detail`, which lists G3 to G7 in plain words (pauses before erasing a disk or removing core parts of the system; the scam warning on every password prompt; Help sticks to a fixed set of tools; updates can be paused but not turned off; the safety nets stay on). With No AI the Help clauses go from both cards (`and Help only does safe things on its own`, `and Help can do more on its own`) and from this list, since there is nothing for them to describe (`no-ai.md` 6, Minerva N4).
 - **Libertas**: `Nothing pauses or warns you before something is erased, and Help can do more on its own. Safety copies stay on unless you turn them off.` Under Custodia it also shows the scam line, `If someone on the phone or a website told you to do this, stop and ask Alex.`, and `Switch to Libertas...`.
 
 The footer is the honest record, from Acta: `Custodia since this computer was set up, 12 September. Switching back to Custodia is always instant.`
@@ -276,7 +291,7 @@ One card, five rows:
 
 - **Custodia**: every row shows a lock and `On`, and the section header says `Custodia keeps these on.` No switch at all (G5b).
 - **Libertas**: switches, and the header says `Libertas lets you turn these off, with your password.` Turning one off asks for the password (`invictus-sys set-config nets.<key> off`, `auth_admin_keep`), with no hold and no scam line (Minerva 1.6). A net that is off keeps a line under it saying since when and what that means: `Off since 29 September. Files deleted since then can't be brought back.` Not red: it was the person's choice.
-- A net that is on but failing (no copy for over 24 hours, disk too full) shows a `pompeii` line and `Fix` (opens Help with the problem written in).
+- A net that is on but failing (no copy for over 24 hours, disk too full) shows a `pompeii` line and `Fix` (opens Help with the problem written in; with No AI it opens the guide the net names, `Free up space` or `Safety copies aren't working`, or Ask Alex with the problem filled in, as `simple-mode.md` 4.1 rule 7).
 
 ### 5.3 Go back
 
@@ -340,12 +355,14 @@ Before = what exists today in Invictus (Tessera tools and the terminal). Counted
 | Change motion to Calm | Launcher, `Change motion`, pick: 3 steps | Settings, Look, Calm: 3 clicks |
 | Switch to Tessera | Not possible | Settings, Desktop style, Switch to Tessera, Keep: 4 clicks |
 | Use a home AI system | First-start wizard only | Settings, Moneta, A home AI system, Use this computer: 4 clicks |
+| Turn AI off | Settings, Moneta, Turn Moneta off (provider `none`; everything stays installed) | Start, Settings, Moneta, No AI, Turn off AI: 5 clicks, 0 decisions after the first; removes it |
+| Turn AI on (from No AI) | Not possible without the wizard | Start, Settings, AI, Turn on Moneta..., Claude (preselected), password, sign in: 5 clicks + password + sign-in |
 
 ---
 
 ## 9. For Minerva (questions the pages raise)
 
-Answered (Minerva, 2026-09-30, `design-simple-mode.md` section 12): 1 is 12.1 (the until-file is `/etc/invictus/guardrails-until`, enforced by a root timer, at boot and by `invictus-sys`); 2 accepted, 12.4; 3 is `Look inside` only in v1, the logout job in v1.1, 12.2; 4 confirmed with its own action, no keep, and cleared on every return to Custodia rather than remembered, 12.3; 5 as assumed, both read the until-file. Sections 3.9, 4.5, 5.3 and 6 above carry the changes.
+Answered (Minerva, 2026-09-30, `design-simple-mode.md` section 12): 1 is 12.1 (the until-file is `/etc/invictus/guardrails-until`, enforced by a root timer, at boot and by `invictus-sys`); 2 accepted, 12.4; 3 is `Look inside` only in v1, the logout job in v1.1, 12.2; 4 confirmed with its own action, no keep, and cleared on every return to Custodia rather than remembered, 12.3; 5 as assumed, both read the until-file. Sections 3.9, 4.5, 5.3 and 6 above carry the changes. No AI's questions (N1 to N8, `no-ai.md` 7) are answered in `design-no-ai.md`; 3.9, 3.9.1 and 5.2 carry those.
 
 1. **Timed Libertas across a restart.** The page says `until 15:20`. The design assumes a wall-clock end (`OnCalendar` with `Persistent=true`), so a restart never extends it and a machine off at 15:20 comes back as Custodia. Also: the end time must be readable by the session (for the countdown), for example `/etc/invictus/guardrails-until`, 0644.
 2. **The nets switches' home.** Minerva put the automatic-updates and start-up-guard switches under Settings > Updates; this design puts all nets on Safety copies, with a link from Updates. One place for every net, which is also what the Custodia lock explains once. If she wants them on Updates, the rows move; nothing else changes.

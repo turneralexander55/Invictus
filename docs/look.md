@@ -211,13 +211,13 @@ Module details:
 - **Workspaces** (`hyprland/workspaces`, `all-outputs false`, persistent 1-3 / 4-6 / 7-9 as now). Arabic numerals in Plex Mono, 22 px wide buttons. Empty: `ash`. Has windows: `parchment`. Active: `marble` with a 2 px `sol` bar under the number (`box-shadow: inset 0 -2px #E0A64B`). Urgent: `pompeii` number. Numbers match the keys you press, so no Roman numerals here.
 - **Window title** (`hyprland/window`, `separate-outputs true`, `max-length 60`): `ash`, 13 px. Empty desktop: hidden.
 - **Clock**: `%H:%M`, Plex Sans 14 px weight 600, `marble`. Tooltip: `%A %d %B %Y`. Click toggles a calendar in the tooltip.
-- **Now** (custom module, depends on the assistant's architecture): the one thing Moneta says you are doing, for example `Now · Port waybar to Lua`, `parchment`, max 40 characters. Click opens the Moneta panel on the threads list. Hidden when nothing is set. This is the ADHD anchor: one line, always in the same place.
+- **Now** (custom module, depends on the assistant's architecture): the one thing Moneta says you are doing, for example `Now · Port waybar to Lua`, `parchment`, max 40 characters. Click opens the Moneta panel on the threads list. Hidden when nothing is set. This is the ADHD anchor: one line, always in the same place. With No AI (`no-ai.md` 4) it stays, set by hand from the Desk, and a click opens the Desk.
 - **Updates**: `󰮯 12` in `parchment`; hidden at 0. Click opens the update terminal as now.
 - **System alert** (replaces the GPU, CPU and memory pills): hidden while CPU < 90%, GPU temp < 90 °C, RAM < 90% and root disk < 90%. When one is over, shows that one reading in `pompeii`, e.g. `󰢮 94 °C`. Tooltip always lists all four. Poll every 5 s, not 2.
 - **Volume** (`pulseaudio`): icon + number, muted shows the muted icon in `ash`. Scroll 5%. Click opens `pavucontrol`.
 - **Network**: icon only; tooltip has the details. Disconnected: icon in `pompeii`.
 - **Notifications** (`custom/swaync`, from `swaync-client -swb`): bell icon, `sol` dot when there are unread ones, crossed bell in `ash` when DND is on. Click toggles the control centre.
-- **Moneta button**: the Moneta coin glyph (a circle with an `M`, drawn in the icon set as `moneta-symbolic`) in `parchment`. States: idle `parchment`; has something for you: small `sol` dot; listening (push-to-talk held): glyph in `lapis` with a 1 px `lapis` ring. Click toggles the Moneta panel.
+- **Moneta button**: the Moneta coin glyph (a circle with an `M`, drawn in the icon set as `moneta-symbolic`) in `parchment`. States: idle `parchment`; has something for you: small `sol` dot; listening (push-to-talk held): glyph in `lapis` with a 1 px `lapis` ring. Click toggles the Moneta panel. Not shown with No AI (`no-ai.md` 4).
 
 ### Rofi (launcher)
 
@@ -340,6 +340,8 @@ Layout at 1920 x 1080, 1200 px centred column, 32 px gutters:
 4. **System** row, small, bottom: updates available, last snapshot time (`laurel` if under 24 h, `pompeii` if older than 7 days), disk free on `/`, and the team repo sync state. Plain text, one line.
 5. **Ask Moneta** input, bottom, full width.
 6. A line from the Stoics, 14 px Cormorant Garamond italic `ash`, bottom right. Same rotating list as the lock screen.
+
+With No AI the Desk shows facts only: Today (notes and timer) instead of Open threads, system items in Waiting on you, `Add a note` instead of Ask Moneta (`no-ai.md` 4).
 
 Cut from the Desk: weather, news, calendar grid, app shortcuts (that is the launcher's job), system graphs (that is btop's job). If Alex wants a calendar later, it replaces "Waiting on you" only when there is an event in the next 2 hours.
 
