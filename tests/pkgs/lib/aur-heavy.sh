@@ -11,7 +11,7 @@ stand_in_heavy_aur() {
         [[ -n "$n" && "$n" != \#* ]] || continue
         [[ -d "$copy/pkgs/aur/$n" ]] || continue
         # keep what pacman resolves with: provides and conflicts
-        rel="$(bash -c 'source "$1" >/dev/null; for v in provides conflicts; do declare -n a=$v; printf "%s=(" "$v"; printf "\047%s\047 " "${a[@]}"; echo ")"; done' _ "$copy/pkgs/aur/$n/PKGBUILD")"
+        rel="$(bash -c 'source "$1" >/dev/null; for v in provides conflicts; do declare -n a=$v; [[ ${#a[@]} -gt 0 ]] || continue; printf "%s=(" "$v"; printf "\047%s\047 " "${a[@]}"; echo ")"; done' _ "$copy/pkgs/aur/$n/PKGBUILD")"
         rm -rf "${copy:?}/pkgs/aur/$n"
         mkdir -p "$copy/pkgs/aur/$n"
         printf "pkgname=%s\npkgver=0\npkgrel=1\npkgdesc='e2e stand-in'\narch=('any')\nlicense=('custom')\n%s\npackage() { :; }\n" "$n" "$rel" \
