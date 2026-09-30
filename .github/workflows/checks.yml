@@ -45,6 +45,8 @@ jobs:
         run: LUA=lua5.4 tests/hyprland-lua/run.sh
       - name: Package tests
         run: tests/pkgs/run.sh
+      - name: Theme tests
+        run: tests/theme/run.sh
 
   repo-e2e:
     runs-on: ubuntu-24.04
