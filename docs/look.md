@@ -19,7 +19,7 @@ Mockups (`docs/mockups/`, each 1920 x 1080, self-contained HTML, fonts from Goog
 
 Sample content in the mockups (thread names, commit messages, and the Lua in the editor, which is not the real Hyprland API) is made up.
 
-The Classic desktop (for friends who don't use keyboard shortcuts) has its own design and mockups: `docs/simple-mode.md` and `docs/mockups/simple-*.html`. It uses the tokens, themes and rules below unchanged.
+The Atrium desktop (for friends who don't use keyboard shortcuts) has its own design and mockups: `docs/simple-mode.md` and `docs/mockups/simple-*.html`. It uses the tokens, themes and rules below unchanged.
 
 ## Concept
 
