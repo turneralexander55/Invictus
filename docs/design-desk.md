@@ -302,3 +302,8 @@ Unverified, to settle before the phase that needs it:
 - Whether `git verify-commit` with an allowed-signers file is fast enough to run per document on a 5,000-file repo at Desk open (else cache per commit hash): D2.
 - The bridge's real store dump shape (`version` per document from `list ... out_dir`): D0, one read of the live store by the Desk hub session, no writes.
 - Whether a GitHub-hosted desk repo needs a deploy key or a fine-grained token per machine for a friend's local-only-then-push case: D4.
+
+## 10. Alex's answers, 2026-09-30 (recorded by Moneta)
+
+- **DD1 denied, with a different direction:** "This desk can be retired after this rebuild. It doesn't need to be kept." The claude.ai Desk is not kept alongside Invictus. The git Desk is the only Desk once the native Desk ships. **No bridge is built** (section 2.3 and the bridge MUSTs GD13 and related are withdrawn; DD2's bridge key is moot). Migration shrinks to: build the git Desk and the native Desk, one-time import of the open items from the claude.ai store by a Moneta session (ArtifactData read only), then the old page retires; the Desk app session is told when. Consequence to plan for: there is no phone view unless one is built later (a read-only view of the private repo, e.g. GitHub mobile, is the zero-cost fallback). Minerva re-checks this section at final review.
+- **DD2 to DD6 approved** (DD2 moot without a bridge; DD3 signed answers, DD4 channel push with the switch off, DD5 support cards, DD6 separate repo stand).

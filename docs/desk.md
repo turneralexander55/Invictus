@@ -295,3 +295,8 @@ Reused: the claude.ai Desk's sections, order, rules and words (Needs you, answer
 ## Team mode control (Alex, 2026-09-30)
 
 The header carries a small **Mode: Lean · Standard · Full** control, the same as the phone Desk (proposal in claude-team `projects/personal/iris-dashboard/proposals/team-mode.md`). It writes `meta/mode` as a person-signed field (design-desk.md), never written by a session. One gold rule holds: the current mode is a marble underline, not gold.
+
+## Alex's answers, 2026-09-30 (recorded by Moneta)
+
+- **Approved**, with: "I'm sure I'll alter once I'm settled in so just make it to where the code can be easily changed and updated live while I'm using it if possible." Build rule: the Desk is a Quickshell config under `~/.config/invictus/desk/` (user copy of the shipped default, copy-once like other configs), hot-reloaded on save (Quickshell reloads QML on file change), with layout, sections, key map and wording in plain QML/JSON files, not compiled code. A broken edit shows an error bar and keeps the last good version running. Moneta (with Full access or in Tessera) can edit it on request.
+- **Needs you open at login: approved.** Single-letter answers with 6 s undo stand.
