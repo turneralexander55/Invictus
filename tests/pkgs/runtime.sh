@@ -337,6 +337,55 @@ else
     else
         bad "porter monitors.lua: $(tail -8 "$TMP/mon.lua")"
     fi
+    # Workspace pins become hl.workspace_rule{}; what the porter does not scan is listed as not ported.
+    H2="$TMP/h-legacy2"
+    make_legacy_home "$REPO" "$H2"
+    printf 'workspace = 1, monitor:DP-1, default:true\nworkspace = 4, monitor:HDMI-A-1, persistent:true, rounding:false\nworkspace = 7, monitor:DP-2, weird:thing\n' \
+        >> "$H2/.config/hypr/config/assign-workspaces.conf"
+    mkdir -p "$H2/extra"
+    printf 'workspace = 9, monitor:DP-3\nbind = SUPER, F11, exec, notify-send sourced\n' > "$H2/extra/more.conf"
+    # shellcheck disable=SC2016 # literal hyprlang text
+    printf 'source = ~/extra/more.conf\nsource = $HOME/extra/gone.conf\nsource = $FOO/x.conf\nbind = SUPER, F12, exec, notify-send own\nmonitorv2 {\n    output = DP-3\n    mode = 1920x1080@60\n}\n' \
+        >> "$H2/.config/hypr/hyprland.conf"
+    HOME="$H2" "$LUA" "$REPO/scripts/dev/port-hyprlang.lua" "$H2/.config/hypr" "$H2/hyprdots/config/hypr" "$REPO/config/hypr/invictus/binds.lua" \
+        "$REPO/config/hypr/monitors.lua" "$REPO/config/hypr/user.lua" "$TMP/mon3.lua" "$TMP/user3.lua" > "$TMP/port3.log" 2>&1
+    if grep -q '^    workspace = "1",' "$TMP/user3.lua" && grep -q '^    monitor = "DP-1",' "$TMP/user3.lua" \
+       && grep -q '^    default = true,' "$TMP/user3.lua" && grep -q '^    no_rounding = true,' "$TMP/user3.lua" \
+       && grep -q '^    workspace = "9",' "$TMP/user3.lua" \
+       && [[ "$(grep -c '^hl.workspace_rule' "$TMP/user3.lua")" == 4 ]]; then
+        ok "porter: workspace = N, monitor:X lines (also from a sourced file outside config/) become hl.workspace_rule{}"
+    else
+        bad "porter workspace rules: $(cat "$TMP/port3.log"); $(sed -n '/Ported/,$p' "$TMP/user3.lua")"
+    fi
+    # shellcheck disable=SC2016 # literal text with a $
+    if grep -q '^  not ported: hyprland.conf:[0-9]*: monitorv2 block' "$TMP/port3.log" \
+       && grep -q '^-- monitorv2 {' "$TMP/user3.lua" \
+       && grep -q 'not ported: hyprland.conf:[0-9]*: sourced file not found' "$TMP/port3.log" \
+       && grep -q 'not ported: hyprland.conf:[0-9]*: source = \$FOO/x.conf' "$TMP/port3.log" \
+       && grep -q 'not ported: config/assign-workspaces.conf:[0-9]*: workspace option weird:thing' "$TMP/port3.log" \
+       && grep -q 'hl.bind("SUPER + F12", hl.dsp.exec_cmd("notify-send own")' "$TMP/user3.lua" \
+       && grep -q 'hl.bind("SUPER + F11", hl.dsp.exec_cmd("notify-send sourced")' "$TMP/user3.lua"; then
+        ok "porter: monitorv2, a missing or variable source, an unknown workspace option are listed as not ported with file:line; hyprland.conf and sourced files are scanned"
+    else
+        bad "porter not-ported report: $(cat "$TMP/port3.log")"
+    fi
+    # With no old clone, binds that cannot be told from stock ones are counted, not silently dropped.
+    HOME="$H2" "$LUA" "$REPO/scripts/dev/port-hyprlang.lua" "$H2/.config/hypr" "" "$REPO/config/hypr/invictus/binds.lua" \
+        "$REPO/config/hypr/monitors.lua" "$REPO/config/hypr/user.lua" "$TMP/mon4.lua" "$TMP/user4.lua" > "$TMP/port4.log" 2>&1
+    if grep -q 'not ported: (all files): [0-9]* bind line(s)' "$TMP/port4.log"; then
+        ok "porter: with no old clone the binds it cannot judge are reported as not ported"
+    else
+        bad "porter no-clone report: $(cat "$TMP/port4.log")"
+    fi
+    # The workspace rules load with the shipped modules (stub check).
+    mkdir -p "$TMP/ported3"
+    sed "s#/usr/share/invictus/hypr/?.lua#$REPO/config/hypr/?.lua#" "$REPO/config/hypr/hyprland.lua" > "$TMP/ported3/hyprland.lua"
+    cp "$TMP/mon3.lua" "$TMP/ported3/monitors.lua"; cp "$TMP/user3.lua" "$TMP/ported3/user.lua"
+    if (cd "$TMP" && "$LUA" "$REPO/scripts/doctor/hypr-check.lua" "$TMP/ported3/hyprland.lua" "$STUBS") > "$TMP/pc3.log" 2>&1; then
+        ok "porter output with workspace rules passes the stub check"
+    else
+        bad "workspace-rule output fails the stub check: $(grep error "$TMP/pc3.log" | head -3)"
+    fi
     # The ported files must load with the shipped modules.
     mkdir -p "$TMP/ported"
     sed "s#/usr/share/invictus/hypr/?.lua#$REPO/config/hypr/?.lua#" "$REPO/config/hypr/hyprland.lua" > "$TMP/ported/hyprland.lua"

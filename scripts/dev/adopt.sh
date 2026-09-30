@@ -38,7 +38,9 @@
 #      no limine or snap-pac on this machine; never a partial upgrade)
 #   5. writes ~/.config/hypr/monitors.lua (from monitors.conf) and
 #      ~/.config/hypr/user.lua (your own binds such as dashboard-tmux, and
-#      every other line you added, as comments), then runs
+#      every other line you added, as comments; workspace = N, monitor:X lines
+#      become hl.workspace_rule; anything it cannot port, such as monitorv2
+#      blocks, is listed as "not ported" with file and line), then runs
 #      invictus-first-login --adopt: hyprland.lua (the loader) is added, the
 #      hypr/waybar/rofi/kitty/swaync defaults replace the old copies. Your
 #      hyprland.conf and config/*.conf stay where they are, unused
@@ -53,7 +55,8 @@
 # upgraded, and the GTK settings the theme set (gsettings accent-color,
 # gtk-theme) stay; reset them with gsettings reset if you want.
 # ------------------------------------------------------------
-set -euo pipefail
+# -E: the ERR trap below must also fire for a failure inside cmd() (a function).
+set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
