@@ -295,6 +295,28 @@ else
     bad "undo after rollback (rc $rc): $(tail -5 "$WORK/undo3.log")"
 fi
 
+# ---- a failing step prints the undo hint -----------------------------------------------
+echo "==> Adopt with pacman failing (unsigned-local)"
+# ADOPT_SUDO wraps sudo: the -Syu step fails, everything else runs as usual.
+cat > "$WORK/failing-sudo" <<'WRAP'
+#!/bin/sh
+case "$*" in *"pacman -Syu"*) echo "forced pacman failure" >&2; exit 1 ;; esac
+exec sudo "$@"
+WRAP
+chmod 755 "$WORK/failing-sudo"
+rc=0; as_alex env ADOPT_SUDO="$WORK/failing-sudo" bash "$ADOPT" --unsigned-local "$WORK/unsigned" --skip gaming --skip dev --yes --apply > "$WORK/fail.log" 2>&1 || rc=$?
+if [[ $rc != 0 ]] && grep -q "adopt.sh stopped at step" "$WORK/fail.log" && grep -q -- "--undo --apply" "$WORK/fail.log"; then
+    ok "a failing pacman inside a step prints where it stopped and the undo command"
+else
+    bad "failed step (rc $rc): $(tail -6 "$WORK/fail.log")"
+fi
+rc=0; as_alex bash "$ADOPT" --undo --apply --yes > "$WORK/undo4.log" 2>&1 || rc=$?
+if [[ $rc == 0 ]] && snapshot | cmp -s - "$WORK/before2.snap"; then
+    ok "undo after the failed step puts the machine back"
+else
+    bad "undo after failed step (rc $rc): $(tail -5 "$WORK/undo4.log")"
+fi
+
 # Keep the logs when asked (local debugging).
 if [[ -n "${E2E_LOGS:-}" ]]; then cp "$WORK"/*.log "$WORK"/*.snap "$E2E_LOGS"/ 2>/dev/null || true; fi
 
