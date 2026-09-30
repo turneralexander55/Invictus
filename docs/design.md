@@ -8,6 +8,8 @@ Read section 0 for the decisions, section 10 for what only Alex can decide. Ever
 
 Addendum: Custodia guard rails, the machine-wide admin model for friends' machines (the person is admin, childproofed by snapshots and plain words, automatic updates with a boot guard, per-user Flatpak apps, helper requests, remote help by RustDesk) is in `design-simple-mode.md` (2026-09-30); its section 7 lists which MUSTs here it changes on Simple machines. The desktop those friends see is the Atrium flavor (`simple-mode.md`); Alex's is Tessera. Guard rails (Custodia or Libertas) and flavor (Atrium or Tessera) are two independent settings, both switchable live (design-simple-mode.md 1.6).
 
+Addendum: the Desk as a native part of Invictus and the Collegium (git as the one store, the claude.ai page as Alex's phone view through a bridge, the agent-neutral protocol, friends' Desks, local Push through a Claude Code channel, GD1 to GD16) is in `design-desk.md` (2026-09-30); it changes 4.3 (a `desk` repo beside `mine`), 4.6 (Waiting on you reads the desk repo) and Phase 2c.
+
 Naming: we say "based on Arch Linux" and never use the Arch name or logo in the distro's own name, artwork or boot screens (trademark policy, verified 2026-09-30: non-Arch packages and a new installer rule out "Remix" use).
 
 ---

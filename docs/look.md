@@ -328,6 +328,8 @@ A layer-shell panel (namespace `moneta-panel`) that slides in from the right edg
 
 ### The Desk (home dashboard)
 
+Where the data comes from, how Push works and what the security rules are: `design-desk.md` (Minerva, 2026-09-30): Waiting on you, Needs you and Notes read the desk repo beside the Collegium; with No AI the Desk reads no repo.
+
 See `docs/mockups/desk.html`. One job: **what matters now.** It opens on login on the primary monitor and on `Super + D` (a special workspace, so it slides over whatever is there and slides away). Uses the same tokens as everything else and follows light/dark (Dawn) as apps do.
 
 Layout at 1920 x 1080, 1200 px centred column, 32 px gutters:
