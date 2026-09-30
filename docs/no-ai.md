@@ -3,7 +3,7 @@
 Status: design, not yet built. Owner: Venus (designer). Date: 2026-09-30.
 Asked for by Alex (2026-09-30): "there should be a 3rd option... No harness. Not everyone is thrilled with AI."
 
-This is the one place for the rule and everything it touches. The Atrium screens are in `simple-mode.md` (3.2 screen 3, 5.3), the Settings page in `settings.md` (3.9). Security questions for Minerva are marked **[N1]** to **[N8]** and listed in section 7; nothing here decides them.
+This is the one place for the rule and everything it touches. The Atrium screens are in `simple-mode.md` (3.2 screen 3, 5.3), the Settings page in `settings.md` (3.9). Security questions for Minerva are marked **[N1]** to **[N8]** and listed in section 7; they are answered in `design-no-ai.md` (Minerva, 2026-09-30), and the text below carries her answers where they changed it.
 
 Mockups (`docs/mockups/`, 1920 x 1080, same fonts, tokens and scale-to-fit script as the other mockups; sample names and data are made up):
 
@@ -22,7 +22,7 @@ Mockups (`docs/mockups/`, 1920 x 1080, same fonts, tokens and scale-to-fit scrip
 - **No AI means none anywhere Invictus ships.** No Moneta panel, no Super+A, no Moneta button, no voice, no AI summaries on the Desk, no Collegium, and no AI packages or models on disk.
 - **Help still works.** In Atrium the Help button stays where it is, with the same name. Behind it: short how-to guides, searchable, that ship with the system and work offline; **Ask Alex** (a request); **Let Alex see my screen**.
 - **No nudging.** Nothing says AI is missing, nothing greys out, nothing suggests turning it on. The only place AI is mentioned on a No AI machine is Settings > AI and one guide that is found only by searching for it.
-- **Guard rails, safety copies, updates, the polkit agent and remote help are unchanged.** Whether any Custodia rule changes is Minerva's **[N4]**.
+- **Guard rails, safety copies, updates, the polkit agent and remote help are unchanged.** No Custodia rule changes (Minerva **[N4]**, `design-no-ai.md`): every guard is OS-level, and the assistant steps become no-ops.
 - **Switching on installs the pieces then; switching off removes them and signs out.** Moneta's memory and past conversations stay on the computer until the person deletes them, with one button on the AI page.
 
 ---
@@ -44,9 +44,9 @@ Mockups (`docs/mockups/`, 1920 x 1080, same fonts, tokens and scale-to-fit scrip
 
 Apps a person installs themselves (a Flatpak with its own AI) are theirs. No AI covers what Invictus ships and sets up, and the guide "Turn AI on or off" says so in one line.
 
-**Packages (for Vulcan).** Today `claude-code` sits in `invictus-dev` (`packages.md`), so a No AI person who adds the dev set would get it. Proposal: a new meta `invictus-moneta` (claude-code, the plugin and MCP server, the provider files, the panel) that nothing else depends on, `invictus-voice` as is, and `claude-code` out of `invictus-dev`. The ISO installs neither; first start or Settings adds them. A test holds it: on a No AI machine, a full update installs none of them **[N5]**.
+**Packages (for Vulcan).** Today `claude-code` sits in `invictus-dev` (`packages.md`), so a No AI person who adds the dev set would get it. Proposal: a new meta `invictus-moneta` (claude-code, the plugin and MCP server, the provider files, the panel) that nothing else depends on, `invictus-voice` as is, and `claude-code` out of `invictus-dev`. The ISO installs neither; first start or Settings adds them. A test holds it: on a No AI machine, a full update installs none of them **[N5]**. Minerva adds the rule behind it (`design-no-ai.md` N5): nothing always installed may depend on the AI set, so `invictus-guardrails` depends on the `invictus-sys` half of `invictus-assistant`, never on `invictus-moneta`, and CI checks every meta (NA3).
 
-**The state.** One machine-wide value, `/etc/invictus/ai` (`on` or `off`), root-owned 0644, written only by an `invictus-sys ai on|off` verb. Machine-wide because the packages are. Read by the Atrium shell (which Help panel to draw), the Tessera config (binds, bar), the Desk, Settings, first start and the doctor. The provider choice (Claude, home, another service) stays where it is today. **[N1]**, **[N2]**.
+**The state.** One machine-wide value, `/etc/invictus/ai` (`on` or `off`), root-owned 0644, written by the installer (`off`) and after that only by an `invictus-sys ai on|off` verb; a missing file reads as `off` everywhere. Machine-wide because the packages are. When AI is picked offline, the file reads `on` from the moment of the choice and a root job installs the packages at the first connection (Minerva N1). Read by the Atrium shell (which Help panel to draw), the Tessera config (binds, bar), the Desk, Settings, first start and the doctor. The provider choice (Claude, home, another service) stays where it is today. **[N1]**, **[N2]**.
 
 ---
 
@@ -65,14 +65,14 @@ Why two cards and not three: "another AI or a home model" is a choice for the fe
 
 Why no preselection here, when the rule is "preselect the likely answer": this is a question about what the person wants on their computer, not a technical default. A preselected AI card is exactly the nudge Alex asked us not to make; a preselected No AI would nudge the other way. It costs one click for everyone.
 
-**After picking AI**: the Claude sign-in as before, then the packages install in the background while the person reads screen 4 (`Moneta is getting ready` in the Help panel until they are in). Offline (Wi-Fi skipped): `Moneta will be ready once this computer is online. Help has guides until then.` and the install waits for the first connection. The friend's machine never needs a terminal either way.
+**After picking AI**: the password prompt (Minerva N1: adding Moneta is an admin action here as in Settings, `Type your password to add Moneta, an AI assistant, to this computer`), then the Claude sign-in as before, then the packages install in the background while the person reads screen 4 (`Moneta is getting ready` in the Help panel until they are in). Offline (Wi-Fi skipped): `Moneta will be ready once this computer is online. Help has guides until then.` and the install waits for the first connection. The friend's machine never needs a terminal either way.
 
 **After picking No AI**: nothing installs. Screen 4's third card changes its line from `Ask a question by talking or typing.` to `Guides for everyday things, and a way to ask Alex.`
 
 | | Before | After |
 |---|---|---|
 | Decisions | 1 (preselected) | 1 (nothing preselected) |
-| Clicks, AI | 1 (Sign in) | 2 (card, Sign in to Claude) |
+| Clicks, AI | 1 (Sign in) | 2 (card, Sign in to Claude) + password (Minerva N1) |
 | Clicks, no AI | 1 (Set up later; AI packages still on disk) | 2 (card, Continue) |
 
 ---
@@ -128,7 +128,7 @@ In Settings > AI (`settings.md` 3.9).
 **Turning AI off.** Pick `No AI` under Who answers; a confirm opens in the row:
 
 > **Turn off AI?**
-> Moneta and voice are removed from this computer, and you're signed out of Claude. Moneta's memory and past conversations stay on this computer until you delete them. Help keeps its guides and Ask Alex.
+> Moneta and voice are removed from this computer, and you're signed out of Claude on this computer. Moneta's memory and past conversations stay on this computer until you delete them. Help keeps its guides and Ask Alex.
 > `Turn off AI` · `Cancel` (equal weight)
 
 What happens, in order, and which is removed or kept:
@@ -136,14 +136,14 @@ What happens, in order, and which is removed or kept:
 | Step | Removed or kept |
 |---|---|
 | Moneta and any agent it started stop at once (the guard-rails restart path, G7) | Stopped |
-| Sign-out: Claude credentials deleted; an API key for another service deleted from the keyring | **Removed** **[N3]** |
+| Sign-out (Minerva N3, in this order): `claude auth logout` (revokes the credential when online, verified), then in every home `~/.claude/.credentials.json`, the `oauthAccount` block of `~/.claude.json`, the provider keys in the keyring, and `gh` credentials only if Invictus created them | **Removed** **[N3]** |
 | `invictus-moneta`, `invictus-voice`, a local model package: removed | **Removed** |
 | Speech model and local model files (`~/.local/share/invictus/whisper/`, the model directory) | **Removed**: they are large and only AI uses them |
 | Moneta's memory and past conversations (`~/.claude/` without the credentials, `~/Collegium/`, the panel's history) | **Kept**, listed on the AI page with its size and `Delete...` **[N6]** |
 | Notes, timers, the Now line, Acta | **Kept**: they are not AI |
 | Full access (Libertas) and a configured command-line agent | Cleared, as on a return to Custodia (Minerva 12.3) |
 
-No password to turn off: it only takes capability away, like switching back to Custodia **[N1]**. Clicks: Start, Settings, Moneta, No AI, Turn off AI: 5 clicks.
+No password to turn off: it only takes capability away, like switching back to Custodia, and like that switch it is instant only from a local active session (Minerva **[N1]**). Clicks: Start, Settings, Moneta, No AI, Turn off AI: 5 clicks.
 
 **Deleting the kept memory.** `Delete...` on the AI page: `Delete Moneta's memory?` / `This can't be undone. Your own files and notes are not touched.` / `Delete` · `Cancel`. No password: it is the person's own data. Why kept by default: turning AI off and on again should not wipe months of memory, deleting cannot be undone, and the choice is one button away on the page the person is already on. Asking in the turn-off confirm would put two decisions in one card.
 
@@ -159,11 +159,15 @@ No password to turn off: it only takes capability away, like switching back to C
 | `This needs Alex` | Moneta's card | Not used |
 | First start, Wi-Fi `Skip for now` | `everything works offline except Help and updates` | `everything works offline except updates and Ask Alex` |
 | Settings search "AI", "assistant", "Claude", "Moneta" | Moneta page | The AI page |
-| Settings > Guard rails, "What Custodia does, in detail" | Includes `Help sticks to a fixed set of tools` | That line is left out (Minerva's G-list item has nothing to apply to) **[N4]** |
+| Settings > Guard rails, "What Custodia does, in detail" | Includes `Help sticks to a fixed set of tools` | That line is left out (Minerva's G-list item has nothing to apply to; agreed, **[N4]**) |
+| Settings > Safety copies, a net that is failing | `Fix` opens Help with the problem written in | `Fix` opens the guide the net names, or Ask Alex with the problem filled in (rule 7) |
+| The Help panel while Libertas is on | The guard-rails notice in the header | The same notice as one row under the header (it is not a status word; `simple-mode.md` 5.3) |
 
 ---
 
 ## 7. For Minerva (security touchpoints, not decided here)
+
+Answered in `design-no-ai.md` section 2 (Minerva, 2026-09-30). Where the answer differs from the assumption below: N1 (`ai on` costs the password at first start too; `ai off` is instant from a local active session only), N2 (the person may turn AI on during a help session at their own keyboard; Alex may not), N3 (the list and its order, `claude auth logout` first), N7 (Firefox's `GenerativeAI` policy, verified; Zen's path unverified), N8 (the request runs through the report scrubber first).
 
 | # | Question | Design assumes |
 |---|---|---|
@@ -176,7 +180,7 @@ No password to turn off: it only takes capability away, like switching back to C
 | N7 | Browser AI features turned off by a root-managed browser policy on No AI machines, and back on (to the browser's default) when AI is turned on | A policy file written by `ai off`; which keys Zen honours is unverified |
 | N8 | Ask Alex without Moneta: the request is written by the person and carries the About page's `Copy details for Alex` block (no serials, MACs or user names). Same M8 preview, same helper queue | Same queue, same preview; "He usually answers within a day" still waits on the inbox (M8) |
 
-Proposed tests (Minerva adopts or rewrites; Vera runs):
+Proposed tests, adopted and extended by Minerva as NA1 to NA5, with NA6 to NA9 new (`design-no-ai.md` 4; Vera and Janus run them). The originals, for the record:
 
 - **NA1** No AI install: none of `claude-code`, `invictus-moneta`, `invictus-voice`, `whisper-cpp`, `ggml-vulkan` or a local model package is installed; no `claude` on `PATH`; `~/.local/share/invictus/whisper/` and `~/Collegium` do not exist.
 - **NA2** `ai off` on an AI machine: NA1's package list holds; no Claude credentials file; no provider key in the keyring; the kept memory directories exist unless deleted; no Moneta or agent process within 5 s.
