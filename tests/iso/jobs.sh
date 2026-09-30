@@ -227,6 +227,67 @@ bash "$JOBS/cleanup-live.sh" "$ROOTDIR" >/dev/null 2>&1
 printf 'HOOKS=(base udev autodetect block filesystems fsck)\n' >"$ROOTDIR/etc/mkinitcpio.conf"
 run_job bootloader.sh "$ROOTDIR"; check "bootloader: refuses busybox hooks (sd-btrfs-overlayfs needs systemd)" test $? -ne 0
 
+# ---- extras.sh ---------------------------------------------------------------------------
+# $1 = case; sets up the target's extras list, the live resolv.conf and a PCI tree.
+extras_target() {
+    new_target "$1"
+    mkdir -p "$ROOTDIR/usr/share/invictus" "$T/$1/pci"
+    cp "$REPO/scripts/lib/extras.list" "$ROOTDIR/usr/share/invictus/extras.list"
+    echo 'nameserver 192.0.2.53' >"$T/$1/live-resolv"
+    echo '# the target' >"$ROOTDIR/etc/resolv.conf"
+    export INVICTUS_PCI_SYSFS="$T/$1/pci" INVICTUS_LIVE_RESOLV="$T/$1/live-resolv"
+}
+pci_dev() { mkdir -p "$INVICTUS_PCI_SYSFS/$1"; echo "$2" >"$INVICTUS_PCI_SYSFS/$1/vendor"; echo "$3" >"$INVICTUS_PCI_SYSFS/$1/class"; }
+
+extras_target extras
+pci_dev 0000:03:00.0 0x1002 0x030000   # AMD graphics
+run_job extras.sh "$ROOTDIR" invictus-office invictus-gaming; rc=$?
+check "extras: exits 0 online" test "$rc" -eq 0
+check "extras: one pacman -Syu --needed with the picks, inside the target" logged 'chroot pacman -Syu --needed --noconfirm invictus-office invictus-gaming'
+check "extras: never pacman -Sy alone" bash -c "! grep -Eq 'pacman -Sy( |$)' '$FAKE_LOG'"
+check "extras: pacman ran with the live system's name servers" grep -qx 'nameserver 192.0.2.53' "$FAKE_STATE/resolv-during"
+check "extras: the target's own resolv.conf is put back" grep -qx '# the target' "$ROOTDIR/etc/resolv.conf"
+check "extras: nothing left pending online" test ! -e "$ROOTDIR/var/lib/invictus/pending-extras"
+check "extras: no NVIDIA firmware on an AMD machine" bash -c "! grep -q linux-firmware-nvidia '$FAKE_LOG'"
+check "extras: no code in the job touches pacman.conf or SigLevel" bash -c "! grep -v '^[[:space:]]*#' '$JOBS/extras.sh' | grep -Eqi 'pacman\.conf|siglevel|--config|--gpgdir'"
+
+extras_target extras-offline
+touch "$FAKE_STATE/pacman-fails"
+run_job extras.sh "$ROOTDIR" invictus-dev noto-fonts-cjk; rc=$?
+check "extras: no internet still exits 0 (the install finishes)" test "$rc" -eq 0
+check "extras: no internet leaves the picks pending, one per line" bash -c "printf 'invictus-dev\nnoto-fonts-cjk\n' | cmp -s - '$ROOTDIR/var/lib/invictus/pending-extras'"
+check "extras: the pending file is root's, 644" bash -c "[[ \$(stat -c %a '$ROOTDIR/var/lib/invictus/pending-extras') == 644 ]]"
+check "extras: no internet enables invictus-extras.service" logged 'chroot systemctl enable invictus-extras.service'
+check "extras: says when they will install" out_has 'first time Invictus starts with internet'
+check "extras: resolv.conf put back after a failure too" grep -qx '# the target' "$ROOTDIR/etc/resolv.conf"
+
+extras_target extras-none
+run_job extras.sh "$ROOTDIR"; rc=$?
+check "extras: nothing picked runs no pacman" bash -c "[[ $rc -eq 0 ]] && ! grep -q pacman '$FAKE_LOG'"
+
+extras_target extras-nvidia
+pci_dev 0000:01:00.0 0x10de 0x030000   # NVIDIA VGA
+pci_dev 0000:01:00.1 0x10de 0x040300   # its audio function
+run_job extras.sh "$ROOTDIR"; rc=$?
+check "extras: an NVIDIA card adds linux-firmware-nvidia even with nothing ticked" \
+    bash -c "[[ $rc -eq 0 ]] && grep -qx 'chroot pacman -Syu --needed --noconfirm linux-firmware-nvidia' '$FAKE_LOG'"
+extras_target extras-nvidia-audio
+pci_dev 0000:01:00.1 0x10de 0x040300   # NVIDIA audio only (no graphics)
+run_job extras.sh "$ROOTDIR"
+check "extras: an NVIDIA non-graphics device adds nothing" bash -c "! grep -q pacman '$FAKE_LOG'"
+
+for badpick in "linux" "invictus-moneta" "--config=/tmp/x" "invictus-office;reboot" "../etc/passwd"; do
+    extras_target extras-bad
+    run_job extras.sh "$ROOTDIR" invictus-office "$badpick"; rc=$?
+    check "extras: refuses '$badpick' and runs no pacman" bash -c "[[ $rc -ne 0 ]] && ! grep -q pacman '$FAKE_LOG'"
+done
+extras_target extras-nolist
+rm "$ROOTDIR/usr/share/invictus/extras.list"
+run_job extras.sh "$ROOTDIR" invictus-office; rc=$?
+check "extras: no extras.list in the target refuses" test "$rc" -ne 0
+check "extras: refuses the live system's own /" bash -c "! bash '$JOBS/extras.sh' / invictus-office >/dev/null 2>&1"
+unset INVICTUS_PCI_SYSFS INVICTUS_LIVE_RESOLV
+
 # ---- snapper.sh ------------------------------------------------------------------------
 new_target snap
 run_job snapper.sh "$ROOTDIR"; rc=$?

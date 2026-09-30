@@ -2,7 +2,7 @@
 # ------------------------------------------------------------
 # invictus-install: start the Invictus installer on the live system.
 #
-#   invictus-install              plain path: Atrium + Custodia, 6 pages
+#   invictus-install              plain path: Atrium + Custodia, 7 pages
 #   invictus-install --advanced   Advanced: flavor, guard rails, manual
 #                                 partitioning, encryption offered
 #   invictus-install --auto       plain, or Advanced when the kernel command

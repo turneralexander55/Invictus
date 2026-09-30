@@ -9,13 +9,15 @@
 #   /usr/lib/invictus/show-keybindings, confirm            (Hyprland binds)
 #   /usr/lib/invictus/waybar/{alert,updates}               (waybar modules)
 #   /usr/lib/invictus/lib/defaults.sh                      (shared shell code)
+#   /usr/lib/invictus/pending-extras, invictus-extras.service, and
+#   /usr/share/invictus/extras.list                         (installer extras)
 #   /usr/lib/invictus/doctor/                              (the stub config check:
 #       the same mock of `hl` the tests use, checked against the API stubs
 #       /usr/share/hypr/stubs/hl.meta.lua that the hyprland package ships)
 
 pkgname=invictus-tools
 pkgver=0.1.0
-pkgrel=2
+pkgrel=3
 pkgdesc='Invictus commands: theme, motion, update, doctor, and the scripts the desktop runs'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
@@ -53,6 +55,14 @@ package() {
   done
 
   install -Dm644 "$root/scripts/lib/defaults.sh" "$lib/lib/defaults.sh"
+  # Installer extras (docs/packages.md, "Extras"): the list the installer's
+  # extras job and pending-extras accept, and the service that installs
+  # them on the first start with internet (enabled by the installer only
+  # when something is pending).
+  install -Dm644 "$root/scripts/lib/extras.list" "$pkgdir/usr/share/invictus/extras.list"
+  install -Dm755 "$root/scripts/invictus-extras.sh" "$lib/pending-extras"
+  install -Dm644 "$root/scripts/systemd/invictus-extras.service" \
+    "$pkgdir/usr/lib/systemd/system/invictus-extras.service"
   install -Dm644 -t "$lib/doctor" \
     "$root/scripts/doctor/hypr-check.lua" \
     "$root/tests/hyprland-lua/mock_hl.lua" \

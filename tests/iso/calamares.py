@@ -39,9 +39,11 @@ openrcdmcryptcfg packagechooser packagechooserq packages partition plasmalnf ply
 preservefiles rawfs removeuser services-openrc services-systemd shellprocess summary summaryq
 tracking umount unpackfs unpackfsc users usersq welcome welcomeq zfs zfshostid
 """.split())
-OUR_MODULES = {"diskcheck"}
+OUR_MODULES = {"diskcheck", "invictusextras"}
 # Modules that need no config file.
-NO_CONFIG_OK = {"localecfg", "networkcfg", "hwclock", "umount", "summary"}
+NO_CONFIG_OK = {"localecfg", "networkcfg", "hwclock", "umount", "summary", "invictusextras"}
+EXTRAS_LIST = os.path.join(REPO, "scripts", "lib", "extras.list")
+EXTRAS_MODULE = os.path.join(REPO, "installer", "modules", "invictusextras")
 
 passed = 0
 failed = 0
@@ -85,10 +87,112 @@ def seq(settings, kind):
     return out
 
 
+def extras_list():
+    """scripts/lib/extras.list as {package: how}."""
+    out = {}
+    for line in open(EXTRAS_LIST):
+        line = line.strip()
+        if line and not line.startswith("#"):
+            name, how = line.split(None, 1)
+            out[name] = how
+    return out
+
+
+def group_packages(groups):
+    for g in groups:
+        for p in g.get("packages", []):
+            yield p if isinstance(p, str) else p["name"]
+        yield from group_packages(g.get("subgroups", []))
+
+
+def check_extras():
+    """The Extras page, the extras list and our job module agree."""
+    ni = load(os.path.join(CAL, "common", "modules", "netinstall.conf"))
+    groups = ni["groups"]
+    listed = extras_list()
+    page = sorted(set(group_packages(groups)))
+    check("extras: the page draws from its own config, nothing downloaded", ni["groupsUrl"] == "local")
+    check("extras: the page may be left with nothing ticked", ni["required"] is False)
+    check("extras: every package on the page is in scripts/lib/extras.list as 'page'",
+          all(listed.get(p) == "page" for p in page), str(page))
+    check("extras: every 'page' entry of extras.list is on the page",
+          sorted(n for n, how in listed.items() if how == "page") == page, str(listed))
+    check("extras: the only automatic extra is NVIDIA firmware",
+          sorted(n for n, how in listed.items() if how != "page") == ["linux-firmware-nvidia"]
+          and listed["linux-firmware-nvidia"].startswith("auto"))
+    check("extras: no group is critical (a missing extra never stops the install)",
+          all(not g.get("critical", False) for g in groups))
+    selected = [g["name"] for g in groups if g.get("selected")]
+    check("extras: only Office is ticked by default", selected == ["Office"], str(selected))
+    office = [g for g in groups if g["name"] == "Office"][0]
+    check("extras: Office installs invictus-office", office["packages"] == ["invictus-office"])
+    names = {g["name"] for g in groups}
+    check("extras: Games and Programming are offered", {"Games", "Programming"} <= names, str(names))
+    check("extras: no AI set on the page (design-no-ai.md N5)",
+          not ({"invictus-moneta", "invictus-voice", "claude-code"} & set(page)))
+    title = ni["label"]["title"]
+    check("extras: the page says it needs internet and the install finishes without it",
+          "internet" in title and "still finishes" in title, title)
+    check("extras: plain words, no em-dash", "—" not in yaml.safe_dump(ni))
+
+    desc = load(os.path.join(EXTRAS_MODULE, "module.desc"))
+    check("extras module: a Python job named invictusextras with no config",
+          desc == {"type": "job", "name": "invictusextras", "interface": "python", "script": "main.py", "noconfig": True},
+          str(desc))
+    check_extras_module()
+
+
+def check_extras_module():
+    """installer/modules/invictusextras/main.py with a stand-in libcalamares."""
+    import importlib.util
+    import tempfile
+    import types
+
+    fake = types.ModuleType("libcalamares")
+    store = {}
+    fake.globalstorage = types.SimpleNamespace(value=lambda k: store.get(k))
+    fake.utils = types.SimpleNamespace(debug=lambda *a: None, warning=lambda *a: None)
+    sys.modules["libcalamares"] = fake
+    spec = importlib.util.spec_from_file_location("invictusextras_main", os.path.join(EXTRAS_MODULE, "main.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    ops = [
+        {"source": "packagechooser@flavor", "install": ["not-this"]},
+        {"source": "netinstall@netinstall", "install": ["a"], "try_install": ["invictus-office", {"package": "b", "pre-script": "x"}, "a"]},
+    ]
+    check("extras module: reads netinstall's install and try_install, in order, once each",
+          mod.chosen(ops) == ["a", "invictus-office", "b"], str(mod.chosen(ops)))
+    check("extras module: nothing ticked or no operations is an empty list",
+          mod.chosen(None) == [] and mod.chosen([{"source": "netinstall@netinstall"}]) == [])
+
+    with tempfile.TemporaryDirectory() as d:
+        log = os.path.join(d, "args")
+        job = os.path.join(d, "extras.sh")
+        with open(job, "w") as f:
+            f.write('#!/bin/sh\nprintf "%s\\n" "$@" > "' + log + '"\nexit "${FAKE_RC:-0}"\n')
+        os.chmod(job, 0o755)
+        mod.JOB = job
+        store.update({"rootMountPoint": "/tmp/calamares-root-x", "packageOperations": ops})
+        r = mod.run()
+        args = open(log).read().split("\n")[:-1]
+        check("extras module: runs the job with the root and the names as separate arguments",
+              r is None and args == ["/tmp/calamares-root-x", "a", "invictus-office", "b"], str(args))
+        store["packageOperations"] = [{"source": "netinstall@netinstall", "try_install": ["x; touch " + os.path.join(d, "pwned")]}]
+        mod.run()
+        check("extras module: a name is never run through a shell", not os.path.exists(os.path.join(d, "pwned")))
+        os.environ["FAKE_RC"] = "1"
+        r = mod.run()
+        del os.environ["FAKE_RC"]
+        check("extras module: a failing job fails the step with a message", isinstance(r, tuple) and len(r) == 2)
+        store["rootMountPoint"] = None
+        check("extras module: no root mount point fails the step", isinstance(mod.run(), tuple))
+
+
 def main():
     skip = skipped_modules()
     check("Calamares build: the modules we use are not skipped",
-          not ({"packagechooser", "shellprocess", "unpackfs", "initcpiocfg", "mount", "users", "partition"} & skip),
+          not ({"packagechooser", "netinstall", "shellprocess", "unpackfs", "initcpiocfg", "mount", "users", "partition"} & skip),
           str(skip))
 
     # Every YAML file parses.
@@ -228,6 +332,14 @@ def main():
         check(f"{v}: the tick box is the last page before the install", first_show[-1:] == ["diskcheck"])
         check(f"{v}: branding is invictus", settings["branding"] == "invictus")
 
+        # The Extras page (netinstall) and the job that installs its ticks.
+        check(f"{v}: the Extras page is shown before the account and disk pages",
+              "netinstall" in first_show and first_show.index("netinstall") < first_show.index("users"))
+        check(f"{v}: the extras job runs after the bootloader job and before snapper",
+              at("shellprocess@invictus-bootloader") < at("invictusextras") < at("shellprocess@invictus-snapper"))
+        check(f"{v}: no stock packages module (the extras job installs, and survives no internet)",
+              "packages" not in exe)
+
         st = load(modules["shellprocess@invictus-settings"])["script"][0]
         if v == "plain":
             check("plain: writes Atrium + Custodia (SM24)", st.endswith("${USER} atrium custodia --hostname-from-user"), st)
@@ -243,6 +355,8 @@ def main():
             for i in fl["items"] + gr["items"]:
                 art = os.path.join(REPO, "installer/branding/invictus/art", i["screenshot"].replace(".png", ".svg"))
                 check(f"advanced: picture for {i['id']} exists", os.path.isfile(art))
+
+    check_extras()
 
     # Branding.
     b = load(os.path.join(REPO, "installer/branding/invictus/branding.desc"))

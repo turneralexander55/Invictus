@@ -3,7 +3,8 @@
 # The Invictus installer, for the live ISO only (the installer removes it
 # from the installed system): Calamares configuration for the plain and
 # Advanced paths, branding, the install jobs (limine, snapper, cleanup,
-# settings) and the live session scripts. The "I've saved my files" page is
+# settings, extras), the Extras job module (installer/modules) and the live
+# session scripts. The "I've saved my files" page is
 # a C++ Calamares module, built inside our calamares package
 # (installer/diskcheck). Images are pre-rendered (iso/render-art.sh), so
 # nothing here needs building.
@@ -14,7 +15,7 @@
 
 pkgname=invictus-installer
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Invictus installer: Calamares setup, install jobs and live session (live ISO only)'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
@@ -33,11 +34,16 @@ package() {
   # Jobs (run by Calamares shellprocess on the live system) and live scripts.
   install -Dm644 "$root/installer/jobs/lib.sh" "$pkgdir/usr/lib/invictus/installer/lib.sh"
   local j
-  for j in cleanup-live settings bootloader snapper; do
+  for j in cleanup-live settings bootloader extras snapper; do
     install -Dm755 "$root/installer/jobs/$j.sh" "$pkgdir/usr/lib/invictus/installer/$j.sh"
   done
   install -Dm755 -t "$pkgdir/usr/lib/invictus/live" "$root/installer/live/invictus-install" "$root/installer/live/session"
   install -Dm644 -t "$pkgdir/usr/share/applications" "$root"/installer/live/*.desktop
+
+  # Our Calamares job module: hands the Extras page's ticks to extras.sh
+  # (Calamares finds modules in /usr/lib/calamares/modules, "local").
+  install -Dm644 -t "$pkgdir/usr/lib/calamares/modules/invictusextras" \
+    "$root"/installer/modules/invictusextras/{module.desc,main.py}
 
   # Data the jobs and the launcher read.
   local data="$pkgdir/usr/share/invictus/installer"

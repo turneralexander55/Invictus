@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# Groups 4 to 10 of tests/pkgs/run.sh (sourced; uses REPO, HERE, TMP, ok, bad).
+# Groups 4 to 13 of tests/pkgs/run.sh (sourced; uses REPO, HERE, TMP, ok, bad).
 # shellcheck disable=SC2153 # REPO, HERE and TMP come from run.sh
 # Each check prints one ok/FAIL line.
 
@@ -512,4 +512,59 @@ rm -f "$TMP/game-mode"
 before="$(motion get)"
 if ! motion set wobbly 2>/dev/null && [[ "$(motion get)" == "$before" ]]; then ok "an unknown level is refused and changes nothing"
 else bad "motion accepted an unknown level"; fi
+echo
+
+# ---- 13. installer extras: pending-extras and its service ------------------------------------
+echo "== pending extras"
+PX="$REPO/scripts/invictus-extras.sh"
+if [[ -x "$ALL/usr/lib/invictus/pending-extras" && -f "$ALL/usr/share/invictus/extras.list" \
+      && -f "$ALL/usr/lib/systemd/system/invictus-extras.service" \
+      && ! -e "$ALL/usr/lib/systemd/system/multi-user.target.wants/invictus-extras.service" ]]; then
+    ok "invictus-tools ships pending-extras, extras.list and the service, not enabled (the installer enables it)"
+else
+    bad "pending-extras, extras.list or invictus-extras.service missing, or the service enabled by the package"
+fi
+unit="$REPO/scripts/systemd/invictus-extras.service"
+if grep -qx 'ConditionPathExists=/var/lib/invictus/pending-extras' "$unit" && grep -qx 'After=network-online.target' "$unit" \
+   && grep -qx 'ExecStart=/usr/lib/invictus/pending-extras' "$unit" && grep -qx 'RestartPreventExitStatus=2' "$unit"; then
+    ok "the service runs only with something pending, after the network, and does not retry a bad file"
+else
+    bad "invictus-extras.service conditions wrong"
+fi
+cat > "$TMP/fake/sysctl" <<'EOF'
+#!/bin/sh
+echo "systemctl $*" >> "$FAKE_LOG"
+EOF
+cat > "$TMP/fake/inhibit" <<'EOF'
+#!/bin/sh
+echo "inhibit" >> "$FAKE_LOG"
+exec "$@"
+EOF
+chmod +x "$TMP/fake/sysctl" "$TMP/fake/inhibit"
+pending() {
+    FAKE_LOG="$TMP/px.log" INVICTUS_PACMAN="$TMP/fake/pacman" INVICTUS_SYSTEMCTL="$TMP/fake/sysctl" \
+        INVICTUS_INHIBIT="$TMP/fake/inhibit" INVICTUS_EXTRAS_PENDING="$TMP/px-pending" \
+        INVICTUS_EXTRAS_LIST="$REPO/scripts/lib/extras.list" bash "$PX" >"$TMP/px.out" 2>&1
+}
+printf 'invictus-office\ninvictus-gaming\n' > "$TMP/px-pending"; rm -f "$TMP/px.log"; rc=0; pending || rc=$?
+if [[ $rc == 0 && "$(cat "$TMP/px.log")" == "$(printf 'inhibit\n-Syu --needed --noconfirm invictus-office invictus-gaming\nsystemctl disable invictus-extras.service')" \
+      && ! -e "$TMP/px-pending" ]]; then
+    ok "pending extras: one pacman -Syu --needed under a shutdown inhibitor, then the file goes and the service is disabled"
+else
+    bad "pending extras run: rc $rc: $(paste -sd'|' "$TMP/px.log")"
+fi
+printf 'noto-fonts-cjk\n' > "$TMP/px-pending"; rm -f "$TMP/px.log"; rc=0; FAKE_PACMAN_RC=1 pending || rc=$?
+if [[ $rc == 1 && -s "$TMP/px-pending" ]] && ! grep -q systemctl "$TMP/px.log"; then
+    ok "pending extras: pacman failing keeps the file and the service for the next start"
+else
+    bad "pending extras failure: rc $rc, file $(cat "$TMP/px-pending" 2>/dev/null), log $(paste -sd'|' "$TMP/px.log")"
+fi
+for evil in "linux" "invictus-moneta" "--config=/tmp/x" "a b"; do
+    printf 'invictus-office\n%s\n' "$evil" > "$TMP/px-pending"; rm -f "$TMP/px.log"; rc=0; pending || rc=$?
+    if [[ $rc == 2 && ! -s "$TMP/px.log" ]]; then :; else bad "pending extras accepted '$evil' (rc $rc)"; fi
+done
+ok "pending extras: a name not in extras.list stops it before pacman (exit 2)"
+rm -f "$TMP/px-pending" "$TMP/px.log"; rc=0; pending || rc=$?
+if [[ $rc == 0 && ! -s "$TMP/px.log" ]]; then ok "pending extras: nothing pending does nothing"
+else bad "pending extras with no file: rc $rc"; fi
 echo

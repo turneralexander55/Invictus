@@ -1,0 +1,21 @@
+[Unit]
+Description=Invictus: install the extras picked during an install that had no internet
+Documentation=file:///usr/lib/invictus/pending-extras
+ConditionPathExists=/var/lib/invictus/pending-extras
+Wants=network-online.target
+After=network-online.target
+# Wi-Fi often comes up only after someone logs in and picks a network:
+# try every 10 minutes, at most 12 times per start, then on the next start.
+StartLimitIntervalSec=3h
+StartLimitBurst=12
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/invictus/pending-extras
+Restart=on-failure
+RestartSec=10min
+# 2: the pending file names something that is not an extra; retrying will not help.
+RestartPreventExitStatus=2
+
+[Install]
+WantedBy=multi-user.target

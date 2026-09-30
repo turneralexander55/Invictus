@@ -1,0 +1,15 @@
+# The extras: packages that are not on the ISO but an install can add
+# from our signed repo when it has internet (docs/packages.md, "Extras").
+# The installer's Extras page (installer/calamares/common/modules/
+# netinstall.conf) offers them, installer/jobs/extras.sh installs them,
+# and /usr/lib/invictus/pending-extras (scripts/invictus-extras.sh)
+# finishes the job on the first start with internet. Only names listed
+# here are ever installed that way. tests/iso/calamares.py checks that
+# the page and this list agree.
+#
+# package               how it is chosen
+invictus-gaming         page
+invictus-dev            page
+invictus-office         page
+noto-fonts-cjk          page
+linux-firmware-nvidia   auto: added when the machine has an NVIDIA graphics card

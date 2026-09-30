@@ -219,6 +219,18 @@ check "build-iso never takes a private signing key" bash -c "! grep -Eq 'INVICTU
 bash "$REPO/scripts/build-iso.sh" --prepare-only "$T/stage-bad" --channel beta >/dev/null 2>&1
 check "an unknown channel refuses" test $? -ne 0
 
+# Size gate (Alex, 2026-09-30): GitHub release assets must be under 2 GiB.
+# Sparse files, so no disk is used.
+size_check() { truncate -s "$1" "$T/invictus-size.iso"; bash "$REPO/scripts/build-iso.sh" --check-size "$T/invictus-size.iso" >"$T/size.out" 2>&1; }
+size_check 2147483648; rc=$?
+check "size: an ISO of exactly 2 GiB fails the build" bash -c "[[ $rc -ne 0 ]] && grep -q 'must be under 2147483648' '$T/size.out'"
+size_check 2147483647; rc=$?
+check "size: one byte under 2 GiB passes, with the headroom warning" bash -c "[[ $rc -eq 0 ]] && grep -q 'over the 1.8 GiB headroom' '$T/size.out'"
+size_check 1800000000; rc=$?
+check "size: 1.8 GB passes without a warning" bash -c "[[ $rc -eq 0 ]] && ! grep -q WARNING '$T/size.out'"
+rm -f "$T/invictus-size.iso"
+check "size: the build checks every ISO it makes (dev and release)" bash -c "tail -n 3 '$REPO/scripts/build-iso.sh' | grep -qx 'check_iso_size \"\$iso\"'"
+
 # ---- 9. Plymouth theme --------------------------------------------------------------------------
 PL="$ISO/boot-branding/plymouth"
 # shellcheck disable=SC2013  # names without spaces
@@ -245,6 +257,8 @@ done
 # shellcheck disable=SC2016  # a literal $pkgdir
 check "installer package installs lib.sh next to the jobs" grep -q 'installer/jobs/lib.sh" "$pkgdir/usr/lib/invictus/installer/lib.sh"' "$IP"
 check "installer package ships the live-only list" grep -q 'iso/live-only.txt' "$IP"
+check "installer package installs the invictusextras module where Calamares looks (local)" \
+    grep -q 'usr/lib/calamares/modules/invictusextras' "$IP"
 
 echo
 echo "profile: $pass passed, $fail failed"

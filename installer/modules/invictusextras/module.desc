@@ -1,0 +1,9 @@
+# Invictus Calamares job: hands the Extras page's ticks (netinstall) to
+# /usr/lib/invictus/installer/extras.sh. Installed by invictus-installer
+# to /usr/lib/calamares/modules/invictusextras/ (the "local" search path).
+---
+type:       "job"
+name:       "invictusextras"
+interface:  "python"
+script:     "main.py"
+noconfig:   true

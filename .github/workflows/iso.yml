@@ -11,7 +11,8 @@
 #
 # Every build runs the ISO tests first and the squashfs secrets scan
 # (iso/secrets-scan.sh, design S1/T8) inside build-iso.sh; a finding fails
-# the run and no ISO is uploaded. The ISO is uploaded as a workflow artifact;
+# the run and no ISO is uploaded; so does an ISO of 2 GiB or more (GitHub's
+# release asset limit, checked in build-iso.sh). The ISO is uploaded as a workflow artifact;
 # with publish on a release build it is also attached to a GitHub release
 # tagged iso-<version>.
 #
@@ -134,12 +135,8 @@ jobs:
         run: |
           cd out/iso
           sha256sum -c "$ISO.sha256"
-          # GitHub refuses release assets of 2 GiB or more.
-          size=$(stat -c %s "$ISO")
-          if [ "$size" -ge 2147483648 ]; then
-            echo "::error::$ISO is $size bytes; GitHub release assets must be under 2 GiB. Use the workflow artifact instead."
-            exit 1
-          fi
+          # The 2 GiB release-asset limit is checked by build-iso.sh in every
+          # build (dev too), so an ISO that gets here is under it.
           tag="iso-$VERSION"
           gh release view "$tag" >/dev/null 2>&1 || \
             gh release create "$tag" --prerelease --title "Invictus $VERSION" \

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Fake chroot for tests/iso/jobs.sh: logs "chroot <cmd...>" to $FAKE_LOG and
 # acts out the few commands whose effect the jobs check afterwards.
-# Behaviour switches (files in $FAKE_STATE): efibootmgr-fails, has-invictus-sys.
+# Behaviour switches (files in $FAKE_STATE): efibootmgr-fails, has-invictus-sys,
+# pacman-fails (pacman -Syu exits 1), limine-skips (kernels to leave out).
 set -u
 root="$1"; shift
 echo "chroot $*" >>"$FAKE_LOG"
@@ -16,6 +17,10 @@ case "$1" in
     pacman)
         case "$2" in
             -Q) compgen -G "$root/var/lib/pacman/local/$3-[0-9]*" >/dev/null ;;
+            -Syu)
+                # What name resolution the target had while pacman ran.
+                cp "$root/etc/resolv.conf" "$FAKE_STATE/resolv-during" 2>/dev/null || true
+                [[ ! -f "$FAKE_STATE/pacman-fails" ]] ;;
             *) exit 0 ;;
         esac ;;
     pacman-key|systemctl|limine-snapper-sync) exit 0 ;;

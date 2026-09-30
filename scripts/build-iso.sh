@@ -21,6 +21,12 @@
 #     --fast                     zstd squashfs instead of xz (dev only)
 #     --version V                ISO version (default: today, YYYY.MM.DD)
 #     --keep-work                keep the staged profile (prints where)
+#     --check-size FILE          only run the size check below on FILE
+#
+# Size: GitHub refuses release assets of 2 GiB (2147483648 bytes) or more,
+# and the ISO is published next to the package repo, so every build (dev
+# too) fails when the ISO reaches that; it warns above 1.8 GiB, the
+# headroom Alex asked for (2026-09-30). The ISO is kept for inspection.
 #
 # Runs mkarchiso in a privileged Arch container (podman or docker; IMAGE=
 # overrides archlinux:base-devel, CONTAINER_ARGS= adds runtime flags such as
@@ -78,7 +84,8 @@ while [[ $# -gt 0 ]]; do
         --keep-work) KEEP_WORK=true; shift ;;
         # Tests: stage the checkout and the profile into DIR, then stop.
         --prepare-only) PREPARE_ONLY="${2:?}"; shift 2 ;;
-        -h|--help) sed -n '2,52p' "$0"; exit 0 ;;
+        --check-size) CHECK_SIZE_ONLY="${2:?}"; shift 2 ;;
+        -h|--help) sed -n '2,58p' "$0"; exit 0 ;;
         *) echo "build-iso: unknown argument $1" >&2; exit 2 ;;
     esac
 done
@@ -87,6 +94,27 @@ die() { echo "build-iso: $*" >&2; exit 1; }
 warn() {
     if [[ -n "${GITHUB_ACTIONS:-}" ]]; then echo "::warning::$*"; else echo "WARNING: $*" >&2; fi
 }
+
+# check_iso_size FILE: fail at 2 GiB (GitHub's release asset limit), warn
+# above 1.8 GiB.
+MAX_ISO_BYTES=2147483648
+WARN_ISO_BYTES=1932735283
+check_iso_size() {
+    local f="$1" size
+    [[ -f "$f" ]] || die "no ISO at $f"
+    size="$(stat -c %s "$f")"
+    if ((size >= MAX_ISO_BYTES)); then
+        die "$(basename "$f") is $size bytes; GitHub release assets must be under $MAX_ISO_BYTES (2 GiB). Move more packages to the installer's extras (docs/packages.md)."
+    fi
+    if ((size > WARN_ISO_BYTES)); then
+        warn "$(basename "$f") is $size bytes, over the 1.8 GiB headroom (limit $MAX_ISO_BYTES)."
+    fi
+    echo "==> ISO size: $size bytes ($((size * 100 / MAX_ISO_BYTES))% of the 2 GiB limit)"
+}
+if [[ -n "${CHECK_SIZE_ONLY:-}" ]]; then
+    check_iso_size "$CHECK_SIZE_ONLY"
+    exit 0
+fi
 
 case "$CHANNEL" in
     testing) REPO_NAME=invictus-testing ;;
@@ -241,3 +269,5 @@ echo "==> Building in $IMAGE via $(basename "$RUNTIME") (mode: $MODE, channel: $
 
 iso="$(find "$OUT" -maxdepth 1 -name "invictus-*.iso" -newer "$WORK/inner.sh" | head -n 1)"
 echo "==> ISO: $iso ($(du -h "$iso" | cut -f1))"
+check_iso_size "$iso"
+echo "==> Packages: $(grep -c . "${iso%.iso}.packages.txt" 2>/dev/null || echo "?") (${iso%.iso}.packages.txt)"
