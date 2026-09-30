@@ -1,0 +1,99 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 38,
+  "margin-top": 12,
+  "margin-left": 12,
+  "margin-right": 12,
+
+  "modules-left": ["hyprland/workspaces", "hyprland/window", "custom/updates"],
+  "modules-center": ["clock"],
+  "modules-right": [
+    "custom/gpu",
+    "custom/cpu",
+    "custom/memory",
+    "pulseaudio",
+    "network"
+  ],
+
+  "hyprland/workspaces": {
+    "format": "{name}",
+    "on-click": "activate",
+    "all-outputs": false,
+    "active-only": false,
+    "persistent-workspaces": {
+      "DP-1": [1, 2, 3],
+      "DP-2": [4, 5, 6],
+      "HDMI-A-2": [7, 8, 9]
+    }
+  },
+
+  "hyprland/window": {
+    "format": "{title}",
+    "max-length": 40,
+    "separate-outputs": true,
+    "rewrite": {
+      "desktop": ""
+    }
+  },
+
+  "clock": {
+    "format": "{:%H:%M}",
+    "tooltip-format": "{:%A, %B %d, %Y - %H:%M:%S}"
+  },
+
+  "custom/updates": {
+    "format": "󰮯 {}",
+    "interval": 600,
+    "exec": "$HOME/hyprdots/scripts/waybar/updates.sh",
+    "return-type": "json",
+    "on-click": "kitty --hold $HOME/hyprdots/scripts/update.sh && pkill -RTMIN+8 waybar",
+    "signal": 8,
+    "tooltip": true
+  },
+
+  "custom/gpu": {
+    "format": "󰢮 {}",
+    "interval": 2,
+    "exec": "$HOME/hyprdots/scripts/waybar/gpu.sh",
+    "return-type": "json",
+    "tooltip": true
+  },
+
+  "custom/cpu": {
+    "format": "󰻠 {}",
+    "interval": 2,
+    "exec": "$HOME/hyprdots/scripts/waybar/cpu.sh",
+    "return-type": "json",
+    "tooltip": true
+  },
+
+  "custom/memory": {
+    "format": "󰘚 {}",
+    "interval": 2,
+    "exec": "$HOME/hyprdots/scripts/waybar/memory.sh",
+    "return-type": "json",
+    "tooltip": true
+  },
+
+  "pulseaudio": {
+    "format": "󰕾 {volume}%",
+    "format-muted": "󰖁 muted",
+    "format-icons": {
+      "default": ["󰕿", "󰖀", "󰕾"]
+    },
+    "scroll-step": 5,
+    "on-click": "pavucontrol"
+  },
+
+  "network": {
+    "format-wifi": "󰤨 {signalStrength}%",
+    "format-ethernet": "󰈀 eth",
+    "format-disconnected": "󰤭 down",
+    "tooltip-format": "{ifname}: {ipaddr}/{cidr}",
+    "tooltip-format-wifi": "{essid} ({signalStrength}%)\n{ipaddr}/{cidr}",
+    "tooltip-format-ethernet": "{ifname}\n{ipaddr}/{cidr}",
+    "tooltip-format-disconnected": "Disconnected",
+    "on-click": "nm-connection-editor"
+  }
+}

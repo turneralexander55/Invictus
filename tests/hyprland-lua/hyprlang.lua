@@ -10,6 +10,7 @@ local function trim(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
 local KEYWORDS = {
     bind = true, binde = true, bindl = true, bindel = true, bindle = true, bindm = true,
     bezier = true, animation = true, env = true, ["exec-once"] = true, gesture = true,
+    monitor = true, workspace = true,
 }
 local BLOCKS = { windowrule = "windowRules", layerrule = "layerRules", device = "devices" }
 

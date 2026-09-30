@@ -13,11 +13,17 @@ if not cfg or not stubs then
 end
 if keysyms == "" then keysyms = nil end
 
+-- Installed, the mock sits next to this file; in a repo checkout it is in
+-- tests/hyprland-lua.
 local here = (debug.getinfo(1, "S").source:match("^@(.*/)") or "./")
-package.path = here .. "?.lua;" .. package.path
+package.path = here .. "?.lua;" .. here .. "../../tests/hyprland-lua/?.lua;" .. package.path
 
-local mock = require("mock_hl")
-local hyprrequire = require("hyprrequire")
+local okMock, mock = pcall(require, "mock_hl")
+local okReq, hyprrequire = pcall(require, "hyprrequire")
+if not (okMock and okReq) then
+    io.stderr:write("cannot load the checker: " .. tostring(okMock and hyprrequire or mock) .. "\n")
+    os.exit(2)
+end
 
 local okNew, hl, state = pcall(mock.new, { stubs = stubs, keysyms = keysyms })
 if not okNew then
