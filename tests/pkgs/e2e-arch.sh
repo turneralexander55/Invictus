@@ -107,12 +107,13 @@ before="$(sha256sum "$OUT"/invictus-base-*.pkg.tar.zst)"
 bash "$WORK/src/scripts/build-repo.sh" --no-container --build-only --out "$OUT" > "$WORK/rebuild.log" 2>&1
 grep -q "0 built, $N reused" "$WORK/rebuild.log" || bad "second run did not reuse: $(tail -1 "$WORK/rebuild.log")"
 [[ "$(sha256sum "$OUT"/invictus-base-*.pkg.tar.zst)" == "$before" ]] || bad "reused package changed"
+DEV_VER="$(bash -c 'source "$1"; echo "$pkgver"' _ "$WORK/src/pkgs/meta/invictus-dev/PKGBUILD")"
 sed -i 's/^pkgrel=1$/pkgrel=2/' "$WORK/src/pkgs/meta/invictus-dev/PKGBUILD"
 bash "$WORK/src/scripts/build-repo.sh" --no-container --build-only --out "$OUT" > "$WORK/rebuild.log" 2>&1
 INVICTUS_SIGNING_KEY="$SECRET" INVICTUS_SIGNING_PASSPHRASE="$PASS" \
     bash "$WORK/src/scripts/build-repo.sh" --no-container --repo-only --out "$OUT" >> "$WORK/rebuild.log" 2>&1
-if grep -q "1 built, $((N - 1)) reused" "$WORK/rebuild.log" && [[ -f "$OUT/invictus-dev-0.1.0-2-any.pkg.tar.zst.sig" ]] \
-    && ! ls "$OUT"/invictus-dev-0.1.0-1-* >/dev/null 2>&1; then
+if grep -q "1 built, $((N - 1)) reused" "$WORK/rebuild.log" && [[ -f "$OUT/invictus-dev-$DEV_VER-2-any.pkg.tar.zst.sig" ]] \
+    && ! ls "$OUT"/invictus-dev-"$DEV_VER"-1-* >/dev/null 2>&1; then
     ok "unchanged packages reused byte for byte; a pkgrel bump rebuilds, signs and drops the old file"
 else
     bad "rebuild: $(grep -E 'built|Dropping' "$WORK/rebuild.log")"
