@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Fake lsblk: the ESP is partition 1 of sda (or of nvme0n1 for nvme sources).
+[[ -f "${FAKE_STATE:-/nonexistent}/lsblk-empty" ]] && exit 0
+case "$*" in
+    *PKNAME*) [[ "$*" == *nvme* ]] && echo nvme0n1 || echo sda ;;
+    *PARTN*) echo "  1" ;;
+esac

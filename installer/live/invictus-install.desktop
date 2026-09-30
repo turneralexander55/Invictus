@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Install Invictus
+Comment=Put Invictus on this computer
+Exec=/usr/lib/invictus/live/invictus-install
+Icon=invictus
+Terminal=false
+Categories=System;

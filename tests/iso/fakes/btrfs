@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Fake btrfs: logs its arguments to $FAKE_LOG.
+echo "btrfs $*" >>"$FAKE_LOG"
+[[ "$1 $2" == "subvolume delete" ]] && rm -rf "$3"
+exit 0

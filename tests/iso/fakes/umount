@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Fake umount: logs its arguments to $FAKE_LOG.
+echo "umount $*" >>"$FAKE_LOG"
+
+exit 0

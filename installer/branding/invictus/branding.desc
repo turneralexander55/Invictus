@@ -1,0 +1,46 @@
+# Invictus installer branding (Venus, look.md "Installer"): sidebar night,
+# sidebar text parchment, current step sol, content on basalt, primary
+# button sol, the mark as the product logo, the Sol wallpaper on the
+# welcome page. No Arch name or logo anywhere.
+# PNG images are made from art/*.svg when the package is built.
+---
+componentName: invictus
+welcomeStyleCalamares: false
+welcomeExpandingLogo: true
+windowExpanding: normal
+windowSize: 1100px,700px
+windowPlacement: center
+sidebar: widget
+navigation: widget
+
+strings:
+    productName: "Invictus"
+    shortProductName: "Invictus"
+    version: "@VERSION@"
+    shortVersion: "@VERSION@"
+    versionedName: "Invictus"
+    shortVersionedName: "Invictus"
+    bootloaderEntryName: "Invictus"
+    productUrl: "mailto:solinvictus.support@gmail.com"
+    supportUrl: ""
+    knownIssuesUrl: ""
+    releaseNotesUrl: ""
+    donateUrl: ""
+
+images:
+    productLogo: "logo.png"
+    productIcon: "icon.png"
+    productWelcome: "welcome.png"
+
+style:
+    SidebarBackground: "#14120F"
+    SidebarText: "#BDB4A3"
+    SidebarTextCurrent: "#E0A64B"
+    SidebarBackgroundCurrent: "#1C1A16"
+
+slideshow: "show.qml"
+slideshowAPI: 2
+
+# Never paste install logs to a public paste service.
+uploadServer:
+    type: "none"

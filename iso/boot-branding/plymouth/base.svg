@@ -1,0 +1,14 @@
+<!-- Invictus mark in line colour (look.md: Plymouth). Generated from docs/brand/invictus-mark.svg. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke-linecap="round">
+  <line x1="15.26" y1="40.95" x2="6.39" y2="42.51" stroke="#3A352D" stroke-width="3.5"/>
+  <line x1="15.58" y1="33.60" x2="6.89" y2="31.27" stroke="#3A352D" stroke-width="3.5"/>
+  <line x1="18.98" y1="27.07" x2="12.08" y2="21.29" stroke="#3A352D" stroke-width="3.5"/>
+  <line x1="24.82" y1="22.59" x2="21.01" y2="14.44" stroke="#3A352D" stroke-width="3.5"/>
+  <line x1="32.00" y1="21.00" x2="32.00" y2="12.00" stroke="#3A352D" stroke-width="3.5"/>
+  <line x1="39.18" y1="22.59" x2="42.99" y2="14.44" stroke="#3A352D" stroke-width="3.5"/>
+  <line x1="45.02" y1="27.07" x2="51.92" y2="21.29" stroke="#3A352D" stroke-width="3.5"/>
+  <line x1="48.42" y1="33.60" x2="57.11" y2="31.27" stroke="#3A352D" stroke-width="3.5"/>
+  <line x1="48.74" y1="40.95" x2="57.61" y2="42.51" stroke="#3A352D" stroke-width="3.5"/>
+  <circle cx="32" cy="38" r="12" fill="#3A352D"/>
+  <line x1="6" y1="56" x2="58" y2="56" stroke="#3A352D" stroke-width="3.5"/>
+</svg>

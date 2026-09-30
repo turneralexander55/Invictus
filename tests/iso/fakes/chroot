@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Fake chroot for tests/iso/jobs.sh: logs "chroot <cmd...>" to $FAKE_LOG and
+# acts out the few commands whose effect the jobs check afterwards.
+# Behaviour switches (files in $FAKE_STATE): efibootmgr-fails, has-invictus-sys.
+set -u
+root="$1"; shift
+echo "chroot $*" >>"$FAKE_LOG"
+case "$1" in
+    userdel)
+        u="${*: -1}"
+        for f in passwd shadow group; do
+            [[ -f "$root/etc/$f" ]] && sed -i "/^$u:/d" "$root/etc/$f"
+        done
+        rm -rf "${root:?}/home/$u" ;;
+    groupdel) sed -i "/^$2:/d" "$root/etc/group" ;;
+    pacman)
+        case "$2" in
+            -Q) compgen -G "$root/var/lib/pacman/local/$3-[0-9]*" >/dev/null ;;
+            *) exit 0 ;;
+        esac ;;
+    pacman-key|systemctl|limine-snapper-sync) exit 0 ;;
+    sh) [[ -f "$FAKE_STATE/has-invictus-sys" ]] ;;
+    invictus-sys) exit 0 ;;
+    limine-install)
+        mkdir -p "$root/boot/EFI/limine"
+        : >"$root/boot/EFI/limine/limine_x64.efi"
+        if [[ " $* " == *" --fallback "* ]]; then mkdir -p "$root/boot/EFI/BOOT"; : >"$root/boot/EFI/BOOT/BOOTX64.EFI"; fi ;;
+    limine-mkinitcpio)
+        name="$(sed -n 's/^TARGET_OS_NAME="\(.*\)"$/\1/p' "$root/etc/default/limine")"
+        # The format limine-entry-tool 1.40 writes (seen in the first VM install).
+        cmd="$(sed -n 's/^KERNEL_CMDLINE\[default\]=//p' "$root/etc/default/limine")"
+        printf '/+%s\ncomment: machine-id=0123 order-priority=50\n  //linux\n  protocol: linux\n  module_path: boot():/0123/linux/initramfs#abc\n  path: boot():/0123/linux/vmlinuz#def\n  cmdline: %s\n' "$name" "$cmd" >>"$root/boot/limine.conf" ;;
+    efibootmgr)
+        if [[ $# -eq 1 ]]; then echo "BootOrder: 0001"; echo "Boot0001* Windows Boot Manager"; exit 0; fi
+        [[ ! -f "$FAKE_STATE/efibootmgr-fails" ]] ;;
+    snapper)
+        # snapper --no-dbus -c NAME ACTION ARGS...
+        name="$4"; action="$5"; shift 5
+        cfg="$root/etc/snapper/configs/$name"
+        case "$action" in
+            create-config)
+                mkdir -p "$root${1%/}/.snapshots" "$root/etc/snapper/configs"
+                printf 'SUBVOLUME="%s"\nFSTYPE="btrfs"\nALLOW_GROUPS=""\nSYNC_ACL="no"\nTIMELINE_CREATE="yes"\nNUMBER_LIMIT="50"\nNUMBER_LIMIT_IMPORTANT="10"\n' "$1" >"$cfg" ;;
+            set-config)
+                [[ -f "$cfg" ]] || exit 1
+                for kv in "$@"; do
+                    k="${kv%%=*}" v="${kv#*=}"
+                    if grep -q "^$k=" "$cfg"; then sed -i "s|^$k=.*|$k=\"$v\"|" "$cfg"; else echo "$k=\"$v\"" >>"$cfg"; fi
+                done ;;
+            create) [[ -f "$cfg" ]] ;;
+        esac ;;
+    *) echo "fake chroot: unexpected command $1" >&2; exit 99 ;;
+esac

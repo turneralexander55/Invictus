@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Fake cryptsetup status NAME: backed by /dev/sda2.
+[[ "$1" == status ]] || exit 1
+printf '/dev/mapper/%s is active.\n  type:    LUKS2\n  device:  /dev/sda2\n' "$2"

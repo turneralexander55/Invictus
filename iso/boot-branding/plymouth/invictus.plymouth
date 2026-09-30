@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Invictus
+Description=The Invictus mark on night; its rays light up as the computer starts.
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/invictus
+ScriptFile=/usr/share/plymouth/themes/invictus/invictus.script

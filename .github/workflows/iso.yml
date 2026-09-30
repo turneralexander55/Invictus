@@ -1,0 +1,141 @@
+# Build the Invictus ISO (design 2.1, Phase 3). Manual only.
+#
+#   kind = dev      builds every package from this commit into an unsigned
+#                   local repo (scripts/build-iso.sh), then the ISO. For
+#                   testing; the ISO's keyring may be a throwaway (see its
+#                   /etc/invictus/release).
+#   kind = release  downloads the published, signed [invictus-testing] (or
+#                   [invictus]) repo and builds the ISO from it, checking
+#                   every signature. No private key is used here: signing
+#                   stays in packages.yml's publish job.
+#
+# Every build runs the ISO tests first and the squashfs secrets scan
+# (iso/secrets-scan.sh, design S1/T8) inside build-iso.sh; a finding fails
+# the run and no ISO is uploaded. The ISO is uploaded as a workflow artifact;
+# with publish on a release build it is also attached to a GitHub release
+# tagged iso-<version>.
+name: iso
+
+on:
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: 'dev (build every package, unsigned) or release (published signed repo)'
+        type: choice
+        options: [dev, release]
+        default: dev
+      channel:
+        description: 'Repo the installed system uses'
+        type: choice
+        options: [testing, stable]
+        default: testing
+      publish:
+        description: 'Attach the ISO to a GitHub release (release builds only)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iso
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    outputs:
+      iso: ${{ steps.iso.outputs.name }}
+      version: ${{ steps.iso.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Free disk space (the build needs about 20 GB)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          docker image prune -af >/dev/null
+          df -h /
+
+      - name: ISO and installer tests
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq python3-yaml python3-jsonschema shellcheck gnupg
+          tests/iso/run.sh
+
+      - name: Download the published signed repo (release)
+        if: inputs.kind == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          tag=invictus-testing
+          [ "$CHANNEL" = stable ] && tag=invictus
+          mkdir -p out/iso-repo
+          gh release download "$tag" --dir out/iso-repo
+          ls out/iso-repo | head -50
+
+      - name: Build the ISO
+        env:
+          KIND: ${{ inputs.kind }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          args=(--channel "$CHANNEL")
+          [ "$KIND" = release ] && args+=(--release)
+          scripts/build-iso.sh "${args[@]}"
+
+      - name: Install jobs on a real btrfs disk image (limine, snapper)
+        if: inputs.kind == 'dev'
+        run: |
+          sudo modprobe btrfs loop
+          docker run --rm --privileged -v "$PWD:/src:ro" -v "$PWD/out/iso-repo:/repo:ro" \
+            docker.io/library/archlinux:base-devel bash /src/tests/iso/e2e-jobs.sh
+
+      - name: Name the ISO
+        id: iso
+        run: |
+          iso="$(cd out/iso && ls invictus-*.iso | head -n 1)"
+          echo "name=$iso" >> "$GITHUB_OUTPUT"
+          echo "version=$(sed -E 's/^invictus-(.*)-x86_64\.iso$/\1/' <<<"$iso")" >> "$GITHUB_OUTPUT"
+          ls -l out/iso
+          cat out/iso/*.sha256
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: iso
+          path: out/iso
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  publish:
+    needs: build
+    if: inputs.publish && inputs.kind == 'release'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: iso
+          path: out/iso
+      - name: Attach to the iso-<version> release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISO: ${{ needs.build.outputs.iso }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          cd out/iso
+          sha256sum -c "$ISO.sha256"
+          # GitHub refuses release assets of 2 GiB or more.
+          size=$(stat -c %s "$ISO")
+          if [ "$size" -ge 2147483648 ]; then
+            echo "::error::$ISO is $size bytes; GitHub release assets must be under 2 GiB. Use the workflow artifact instead."
+            exit 1
+          fi
+          tag="iso-$VERSION"
+          gh release view "$tag" >/dev/null 2>&1 || \
+            gh release create "$tag" --prerelease --title "Invictus $VERSION" \
+              --notes "Invictus live and install ISO $VERSION. Check it with: sha256sum -c $ISO.sha256"
+          gh release upload "$tag" "$ISO" "$ISO.sha256" --clobber

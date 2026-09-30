@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Fake cage: logs how it was started.
+echo "cage $* WLR_RENDERER=${WLR_RENDERER:-}" >>"$FAKE_LOG"
+exit "${FAKE_EXIT_cage:-0}"

@@ -46,3 +46,16 @@ Each entry: what it is, where it lives, how to reuse it, and its tests.
 | The AI set | `tests/pkgs/lib/ai-set.sh` (`AI_METAS`, `AI_PKGS`), `tests/pkgs/no-ai-in-base.sh` | Any check that needs to know what a No AI machine must not have (design-no-ai.md N5). Add new AI packages to the list, not to each test | `tests/pkgs/run.sh` group 2b, `e2e-arch.sh`, CI `no-ai-in-base` |
 | Heavy-pin stand-ins | `tests/pkgs/lib/aur-heavy.sh` (`stand_in_heavy_aur`) | An e2e test that builds the repo but does not need the real big AUR packages | `e2e-arch.sh`, `e2e-adopt.sh` |
 | Pinned CI tools | `.github/workflows/checks.yml` | Actions pinned by commit, binaries by checksum. Copy the gitleaks install step for any new downloaded tool | CI |
+
+## ISO and installer (Phase 3)
+
+| Piece | Where | Reuse it for | Tests |
+|---|---|---|---|
+| ISO build | `scripts/build-iso.sh` | Any ISO: dev (builds the repo, unsigned) or `--release` (verifies a published signed repo, never signs). Stages the checkout and adds `iso/own-needed` under `pkgs/own` when missing | `tests/iso/profile.sh` (staged build), CI `iso.yml` |
+| Image secrets scan | `iso/secrets-scan.sh ROOT` | Any image or root tree that leaves our hands: empty pacman keyring, no private keys, tokens, credentials or stray homes | `tests/iso/profile.sh` (11 planted secrets) |
+| Target-root job helpers | `installer/jobs/lib.sh` (`need_root`, `in_target`, `write_file`, `user_ids`, the flavor and guard-rails names) | Any script that changes an installed system from outside it (installer jobs, a future rescue tool). `INVICTUS_CHROOT` swaps in a fake | `tests/iso/jobs.sh` |
+| limine setup | `installer/jobs/bootloader.sh` | Setting up limine + limine-entry-tool on a mounted btrfs target (the rescue menu or adopt could call it) | `tests/iso/jobs.sh` |
+| snapper setup | `installer/jobs/snapper.sh` | snapper on `/` with a separate `@snapshots` subvolume, first snapshot | `tests/iso/jobs.sh` |
+| Fake target root | `tests/iso/jobs.sh` (`new_target`) and `tests/iso/fakes/` | Testing any script that works on a mounted target: fake chroot, findmnt, mount, btrfs, lsblk, cryptsetup | itself |
+| QEMU boot | `tests/iso/boot-qemu.sh`, `tests/iso/qmp.py` | Booting any ISO or installed disk under OVMF headless, screenshots and key presses | manual |
+| Calamares config checks | `tests/iso/calamares.py` with `tests/iso/calamares-schemas/` | Any change to `installer/calamares` | itself |

@@ -1,0 +1,27 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# Invictus at boot: the Plymouth splash (look.md) and os-release.
+# Written by Vulcan 2 for Phase 3 under iso/own-needed/; meant to live at
+# pkgs/own/invictus-boot-branding/ (or be folded into invictus-branding).
+# Files come from iso/boot-branding/ at the same commit: bump pkgrel when
+# they change. PNGs are rendered by iso/render-art.sh.
+
+pkgname=invictus-boot-branding
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Invictus boot splash and os-release'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=('plymouth')
+install=invictus-boot-branding.install
+
+package() {
+  local src="$startdir/../../../iso/boot-branding"
+  local theme="$pkgdir/usr/share/plymouth/themes/invictus"
+  install -Dm644 -t "$theme" "$src/plymouth/invictus.plymouth" "$src/plymouth/invictus.script"
+  # Pre-rendered from the SVGs next to them (iso/render-art.sh).
+  install -Dm644 -t "$theme" "$src"/plymouth/*.png
+  install -Dm644 "$src/os-release" "$pkgdir/usr/share/invictus/os-release"
+  install -Dm644 "$src/invictus-os-release.hook" "$pkgdir/usr/share/libalpm/hooks/invictus-os-release.hook"
+}

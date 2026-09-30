@@ -1,0 +1,16 @@
+# Files the ISO profile (iso/airootfs) adds that only the live session
+# needs. The installer's cleanup job (installer/jobs/cleanup-live.sh)
+# deletes each of them from the installed system. tests/iso/profile.sh
+# checks that every file in iso/airootfs is listed here or in keep.txt.
+# A folder entry covers everything under it.
+/etc/sudoers.d/liber
+/etc/systemd/system/getty@tty1.service.d/autologin.conf
+/etc/mkinitcpio.conf.d/archiso.conf
+/etc/systemd/journald.conf.d/volatile-storage.conf
+/etc/systemd/logind.conf.d/do-not-suspend.conf
+/etc/systemd/system/pacman-init.service
+/etc/systemd/system/etc-pacman.d-gnupg.mount
+/etc/systemd/system/multi-user.target.wants/pacman-init.service
+/etc/invictus/iso-release
+/home/liber
+/root/customize_airootfs.sh

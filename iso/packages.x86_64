@@ -1,0 +1,33 @@
+# Invictus live image = the installed system (design 2.1). One package per
+# line; comments allowed. Invictus packages come from the [invictus-testing]
+# repo that scripts/build-iso.sh builds (or, for a release, the published
+# one); the rest from Arch.
+
+# --- the installed system (docs/packages.md, "For the ISO") ---------------
+invictus-base
+invictus-desktop
+invictus-tessera
+invictus-atrium
+# Named here so jack resolves to it, not jack2 (docs/packages.md, desktop).
+pipewire-jack
+# Boot splash and os-release (iso/own-needed; for pkgs/own or invictus-branding).
+invictus-boot-branding
+plymouth
+# Calamares' "install alongside" needs to see other systems; LUKS on the
+# Advanced path.
+os-prober
+cryptsetup
+
+# --- live only (removed by the installer's cleanup job) ----------------------
+invictus-installer
+calamares
+cage
+
+# --- archiso essentials (from releng) -----------------------------------------
+mkinitcpio-archiso
+memtest86+-efi
+edk2-shell
+arch-install-scripts
+squashfs-tools
+gptfdisk
+parted

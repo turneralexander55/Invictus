@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# ------------------------------------------------------------
+# invictus-install: start the Invictus installer on the live system.
+#
+#   invictus-install              plain path: Atrium + Custodia, 6 pages
+#   invictus-install --advanced   Advanced: flavor, guard rails, manual
+#                                 partitioning, encryption offered
+#   invictus-install --auto       plain, or Advanced when the kernel command
+#                                 line has invictus.install=advanced (the
+#                                 boot menu's Advanced entry); the live
+#                                 session calls this
+#   invictus-install --assemble-only [--advanced] --etc DIR
+#                                 only build the config tree (tests)
+#
+# Calamares reads /etc/calamares. This puts the shared modules
+# (calamares/common) and the chosen path's settings and modules together
+# there, then starts Calamares as root with the session's Wayland display.
+# Live system only: the cleanup job removes this package from the target.
+# ------------------------------------------------------------
+set -euo pipefail
+
+DATA="${INVICTUS_INSTALLER_DATA:-/usr/share/invictus/installer}"
+ETC=/etc/calamares
+CMDLINE="${INVICTUS_CMDLINE:-/proc/cmdline}"
+variant=plain
+assemble_only=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --advanced) variant=advanced; shift ;;
+        --plain) variant=plain; shift ;;
+        --auto)
+            if grep -qw 'invictus.install=advanced' "$CMDLINE" 2>/dev/null; then variant=advanced; fi
+            shift ;;
+        --assemble-only) assemble_only=true; shift ;;
+        --etc) ETC="${2:?--etc needs a folder}"; shift 2 ;;
+        -h|--help) sed -n '2,21p' "$0"; exit 0 ;;
+        *) echo "invictus-install: unknown argument $1" >&2; exit 2 ;;
+    esac
+done
+
+assemble() {
+    local src="$DATA/calamares"
+    [[ -f "$src/$variant/settings.conf" ]] || { echo "invictus-install: no $variant settings in $src" >&2; exit 1; }
+    rm -rf -- "${ETC:?}"
+    install -d -m 755 "$ETC/modules"
+    install -m 644 "$src/$variant/settings.conf" "$ETC/settings.conf"
+    install -m 644 -t "$ETC/modules" "$src"/common/modules/*.conf
+    # The path's own files replace shared ones of the same name.
+    install -m 644 -t "$ETC/modules" "$src/$variant"/modules/*.conf
+}
+
+if $assemble_only; then
+    assemble
+    exit 0
+fi
+
+if [[ $EUID -ne 0 ]]; then
+    # The live user has passwordless sudo (live-only rule).
+    exec sudo --preserve-env=WAYLAND_DISPLAY,XDG_RUNTIME_DIR,XDG_SESSION_TYPE,XDG_CURRENT_DESKTOP,QT_QPA_PLATFORM,DISPLAY,HOME \
+        "$0" "--$variant"
+fi
+
+assemble
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland;xcb}"
+# Only one installer at a time; Calamares refuses a second instance anyway.
+exec calamares

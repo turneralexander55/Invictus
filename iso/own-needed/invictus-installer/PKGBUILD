@@ -1,0 +1,62 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# The Invictus installer, for the live ISO only (the installer removes it
+# from the installed system): Calamares configuration for the plain and
+# Advanced paths, branding, the install jobs (limine, snapper, cleanup,
+# settings) and the live session scripts. The "I've saved my files" page is
+# a C++ Calamares module, built inside our calamares package
+# (installer/diskcheck). Images are pre-rendered (iso/render-art.sh), so
+# nothing here needs building.
+# Written by Vulcan 2 for Phase 3 under iso/own-needed/; meant to live at
+# pkgs/own/invictus-installer/ (design 1.1 calls it invictus-calamares-config).
+# Files come from installer/ and iso/live-only.txt at the same commit: bump
+# pkgrel when they change.
+
+pkgname=invictus-installer
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Invictus installer: Calamares setup, install jobs and live session (live ISO only)'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=(
+  'calamares>=3.4.2-2.2' 'cage' 'sudo' 'bash' 'util-linux' 'coreutils' 'e2fsprogs'
+  'btrfs-progs' 'snapper' 'cryptsetup' 'efibootmgr' 'dosfstools' 'os-prober'
+  'limine' 'limine-mkinitcpio-hook' 'limine-snapper-sync'
+)
+
+_root() { printf '%s' "$startdir/../../.."; }
+
+package() {
+  local root; root="$(_root)"
+
+  # Jobs (run by Calamares shellprocess on the live system) and live scripts.
+  install -Dm644 "$root/installer/jobs/lib.sh" "$pkgdir/usr/lib/invictus/installer/lib.sh"
+  local j
+  for j in cleanup-live settings bootloader snapper; do
+    install -Dm755 "$root/installer/jobs/$j.sh" "$pkgdir/usr/lib/invictus/installer/$j.sh"
+  done
+  install -Dm755 -t "$pkgdir/usr/lib/invictus/live" "$root/installer/live/invictus-install" "$root/installer/live/session"
+  install -Dm644 -t "$pkgdir/usr/share/applications" "$root"/installer/live/*.desktop
+
+  # Data the jobs and the launcher read.
+  local data="$pkgdir/usr/share/invictus/installer"
+  install -Dm644 "$root/iso/live-only.txt" "$data/live-only.txt"
+  install -Dm644 "$root/installer/data/limine-header.conf" "$data/limine-header.conf"
+  local v
+  for v in common plain advanced; do
+    install -d "$data/calamares/$v/modules"
+    install -m644 -t "$data/calamares/$v/modules" "$root/installer/calamares/$v"/modules/*.conf
+    if [[ -f "$root/installer/calamares/$v/settings.conf" ]]; then
+      install -m644 "$root/installer/calamares/$v/settings.conf" "$data/calamares/$v/settings.conf"
+    fi
+  done
+
+  # Branding.
+  local brand="$pkgdir/usr/share/calamares/branding/invictus"
+  install -Dm644 -t "$brand" "$root"/installer/branding/invictus/{stylesheet.qss,show.qml}
+  sed "s/@VERSION@/$pkgver/g" "$root/installer/branding/invictus/branding.desc" > "$brand/branding.desc"
+  chmod 644 "$brand/branding.desc"
+  install -Dm644 -t "$brand" "$root"/installer/branding/invictus/*.png
+  install -Dm644 "$root/installer/branding/invictus/icon.png" "$pkgdir/usr/share/icons/hicolor/64x64/apps/invictus.png"
+}

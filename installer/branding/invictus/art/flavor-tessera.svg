@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+  <title>Tessera: windows share the screen side by side</title>
+  <rect width="480" height="300" rx="14" fill="#14120F"/>
+  <rect x="0" y="0" width="480" height="26" fill="#1C1A16"/>
+  <rect x="12" y="8" width="60" height="10" rx="5" fill="#E0A64B"/>
+  <rect x="12" y="38" width="262" height="250" rx="8" fill="#27241F" stroke="#E0A64B" stroke-width="2"/>
+  <rect x="286" y="38" width="182" height="119" rx="8" fill="#27241F" stroke="#3A352D"/>
+  <rect x="286" y="169" width="182" height="119" rx="8" fill="#27241F" stroke="#3A352D"/>
+  <rect x="32" y="62" width="160" height="10" rx="5" fill="#3A352D"/>
+  <rect x="32" y="82" width="210" height="10" rx="5" fill="#3A352D"/>
+  <rect x="306" y="62" width="120" height="10" rx="5" fill="#3A352D"/>
+  <rect x="306" y="193" width="100" height="10" rx="5" fill="#3A352D"/>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+  <title>Libertas: no extra prompts, you decide</title>
+  <rect width="480" height="300" rx="14" fill="#14120F"/>
+  <rect x="150" y="70" width="180" height="170" rx="10" fill="#27241F" stroke="#3A352D" stroke-width="3"/>
+  <path d="M150 70 L250 90 L250 260 L150 240 Z" fill="#1C1A16" stroke="#E0A64B" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="232" cy="170" r="6" fill="#E0A64B"/>
+</svg>

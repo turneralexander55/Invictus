@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Fake findmnt: answers `findmnt -n -o COL --mountpoint PATH` from
+# $FAKE_STATE/mounts, lines "PATH SOURCE FSTYPE UUID OPTIONS".
+set -u
+col="" mp=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -o) col="$2"; shift 2 ;;
+        --mountpoint) mp="$2"; shift 2 ;;
+        *) shift ;;
+    esac
+done
+line="$(awk -v m="$mp" '$1 == m' "$FAKE_STATE/mounts" | tail -n 1)"
+[[ -n "$line" ]] || exit 1
+read -r _ src fs uuid opts <<<"$line"
+case "$col" in
+    SOURCE) echo "$src" ;; FSTYPE) echo "$fs" ;; UUID) echo "$uuid" ;; OPTIONS) echo "$opts" ;;
+    *) exit 2 ;;
+esac

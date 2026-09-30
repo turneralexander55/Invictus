@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+  <title>Atrium: one window at a time, taskbar at the bottom</title>
+  <rect width="480" height="300" rx="14" fill="#14120F"/>
+  <rect x="16" y="16" width="448" height="232" rx="8" fill="#27241F" stroke="#3A352D"/>
+  <rect x="16" y="16" width="448" height="28" rx="8" fill="#3A352D"/>
+  <circle cx="446" cy="30" r="5" fill="#968E7F"/><circle cx="428" cy="30" r="5" fill="#968E7F"/><circle cx="410" cy="30" r="5" fill="#968E7F"/>
+  <rect x="40" y="68" width="220" height="12" rx="6" fill="#3A352D"/>
+  <rect x="40" y="92" width="380" height="10" rx="5" fill="#3A352D"/>
+  <rect x="40" y="112" width="340" height="10" rx="5" fill="#3A352D"/>
+  <rect x="0" y="256" width="480" height="44" fill="#1C1A16"/>
+  <rect x="12" y="264" width="72" height="28" rx="8" fill="#E0A64B"/>
+  <rect x="96" y="268" width="28" height="20" rx="4" fill="#ECE6DA"/>
+  <rect x="134" y="268" width="28" height="20" rx="4" fill="#968E7F"/>
+  <rect x="380" y="270" width="88" height="16" rx="8" fill="#3A352D"/>
+</svg>

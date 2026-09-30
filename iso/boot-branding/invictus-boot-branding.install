@@ -1,0 +1,15 @@
+post_install() {
+    # Make the Invictus splash the default. Takes effect when the initramfs
+    # is next built (the installer builds it; limine-update after that).
+    plymouth-set-default-theme invictus
+}
+
+post_upgrade() {
+    :
+}
+
+pre_remove() {
+    if [ "$(plymouth-set-default-theme 2>/dev/null)" = invictus ]; then
+        plymouth-set-default-theme bgrt >/dev/null 2>&1 || true
+    fi
+}

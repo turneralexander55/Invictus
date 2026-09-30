@@ -3,3 +3,4 @@ config/hypr/config/monitors.mine
 config/hypr/config/autostart.mine
 config/hypr/hyprland.mine
 .developer
+out/

@@ -1,0 +1,4 @@
+# Live only: the live user starts the installer as root without a password.
+# The installer's cleanup job deletes this file; installed machines have no
+# NOPASSWD rule (design A1).
+liber ALL=(ALL:ALL) NOPASSWD: ALL

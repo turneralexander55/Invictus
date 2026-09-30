@@ -1,0 +1,9 @@
+NAME="Invictus"
+PRETTY_NAME="Invictus"
+ID=invictus
+ID_LIKE=arch
+BUILD_ID=rolling
+ANSI_COLOR="38;2;224;166;75"
+SUPPORT_URL="mailto:solinvictus.support@gmail.com"
+BUG_REPORT_URL="mailto:solinvictus.support@gmail.com"
+LOGO=invictus

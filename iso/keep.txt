@@ -1,0 +1,10 @@
+# Files the ISO profile (iso/airootfs) adds that the installed system keeps
+# (some are then rewritten by Calamares: hostname, locale, time zone, the
+# live user's lines in passwd and shadow are removed by the cleanup job).
+/etc/hostname
+/etc/locale.conf
+/etc/localtime
+/etc/passwd
+/etc/shadow
+/etc/pacman.conf
+/etc/pacman.d/mirrorlist

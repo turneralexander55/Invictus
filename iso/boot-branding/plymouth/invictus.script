@@ -1,0 +1,63 @@
+# Invictus boot splash (Venus, look.md "Boot splash (Plymouth) and ISO"):
+# night background, the mark 96 px centred in line colour; as boot
+# progresses the nine rays light up left to right in sol, then the disc.
+# No spinner, no text. The disk password prompt: a 300 x 48 field under the
+# mark with "Disk password" in ash.
+
+Window.SetBackgroundTopColor(0.078, 0.071, 0.059);     # night #14120F
+Window.SetBackgroundBottomColor(0.078, 0.071, 0.059);
+
+size = 96;
+cx = Window.GetX() + Window.GetWidth() / 2;
+cy = Window.GetY() + Window.GetHeight() / 2;
+left = cx - size / 2;
+top = cy - size / 2;
+
+base = Sprite(Image("base.png").Scale(size, size));
+base.SetPosition(left, top, 1);
+
+for (i = 0; i < 9; i++) {
+    ray[i] = Sprite(Image("ray-" + (i + 1) + ".png").Scale(size, size));
+    ray[i].SetPosition(left, top, 2);
+    ray[i].SetOpacity(0);
+}
+disc = Sprite(Image("disc.png").Scale(size, size));
+disc.SetPosition(left, top, 2);
+disc.SetOpacity(0);
+
+fun progress_callback(duration, progress) {
+    lit = Math.Int(progress * 10);
+    for (i = 0; i < 9; i++) {
+        if (i < lit) ray[i].SetOpacity(1);
+    }
+    if (progress >= 0.95) disc.SetOpacity(1);
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+# --- disk password (LUKS, Advanced installs only) ---------------------------
+field_image = Image("field.png");
+field = Sprite(field_image);
+field.SetPosition(cx - field_image.GetWidth() / 2, top + size + 40, 3);
+field.SetOpacity(0);
+label = Sprite(Image.Text("Disk password", 0.588, 0.557, 0.498));   # ash #968E7F
+label.SetPosition(cx - 150, top + size + 14, 3);
+label.SetOpacity(0);
+dots = Sprite();
+dots.SetPosition(cx - 134, top + size + 54, 4);
+
+fun password_callback(prompt, bullets) {
+    field.SetOpacity(1);
+    label.SetOpacity(1);
+    text = "";
+    for (i = 0; i < bullets && i < 24; i++) text = text + "*";
+    dots.SetImage(Image.Text(text, 0.925, 0.902, 0.855));            # marble #ECE6DA
+    dots.SetOpacity(1);
+}
+Plymouth.SetDisplayPasswordFunction(password_callback);
+
+fun normal_callback() {
+    field.SetOpacity(0);
+    label.SetOpacity(0);
+    dots.SetOpacity(0);
+}
+Plymouth.SetDisplayNormalFunction(normal_callback);

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Fake chattr: logs its arguments to $FAKE_LOG.
+echo "chattr $*" >>"$FAKE_LOG"
+
+exit 0

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+  <title>Custodia: a safety copy before every change</title>
+  <rect width="480" height="300" rx="14" fill="#14120F"/>
+  <path d="M240 50 L320 80 L320 150 C320 200 285 232 240 250 C195 232 160 200 160 150 L160 80 Z" fill="#27241F" stroke="#E0A64B" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M205 150 L232 177 L280 122" fill="none" stroke="#94AD7B" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

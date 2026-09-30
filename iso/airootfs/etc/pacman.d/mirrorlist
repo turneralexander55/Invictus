@@ -1,0 +1,8 @@
+##
+## Invictus: Arch Linux package mirrors. The first two are worldwide
+## (GeoDNS and a CDN); add your country's mirrors from
+## https://archlinux.org/mirrorlist/ or run reflector.
+##
+Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
+Server = https://fastly.mirror.pkgbuild.com/$repo/os/$arch
+Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch

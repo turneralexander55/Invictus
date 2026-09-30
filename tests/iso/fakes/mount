@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Fake mount: logs its arguments to $FAKE_LOG.
+echo "mount $*" >>"$FAKE_LOG"
+
+exit 0

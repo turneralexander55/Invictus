@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# ------------------------------------------------------------
+# Live session for the user liber, started from ~/.bash_profile on tty1
+# after autologin.
+#
+# Hyprland is the live desktop: the live system is the installed system, so
+# what you try is what you get (design 2.1), and the installer opens on top
+# of it (~/.config/hypr/user.lua runs invictus-install --auto).
+#
+# Fallback: cage, a one-window kiosk compositor, with only the installer.
+# Used when the boot menu's "safe graphics" entry was picked
+# (invictus.safe=1), when there is no GPU render node (virtual machines
+# without 3D, very old or unsupported GPUs), or when Hyprland exits within
+# 30 seconds of starting. cage uses wlroots, which can draw in software
+# (pixman), so the installer always has a screen.
+# ------------------------------------------------------------
+set -u
+
+CMDLINE="${INVICTUS_CMDLINE:-/proc/cmdline}"
+RENDER_GLOB="${INVICTUS_RENDER_GLOB:-/dev/dri/renderD*}"
+LOG="${XDG_RUNTIME_DIR:-/tmp}/invictus-live-session.log"
+
+kiosk() {
+    echo "starting the installer in cage ($1)" >>"$LOG"
+    export WLR_RENDERER_ALLOW_SOFTWARE=1
+    if ! compgen -G "$RENDER_GLOB" >/dev/null; then export WLR_RENDERER=pixman; fi
+    exec cage -s -- /usr/lib/invictus/live/invictus-install --auto
+}
+
+if grep -qw 'invictus.safe=1' "$CMDLINE" 2>/dev/null; then kiosk "safe graphics chosen"; fi
+if ! compgen -G "$RENDER_GLOB" >/dev/null; then kiosk "no GPU render node"; fi
+
+start=$(date +%s)
+if command -v start-hyprland >/dev/null; then
+    start-hyprland >>"$LOG" 2>&1
+else
+    Hyprland >>"$LOG" 2>&1
+fi
+rc=$?
+if (( rc != 0 && $(date +%s) - start < 30 )); then kiosk "Hyprland exited with $rc"; fi

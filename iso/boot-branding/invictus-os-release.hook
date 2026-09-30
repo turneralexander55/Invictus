@@ -1,0 +1,13 @@
+# Invictus: the filesystem package ships Arch's /usr/lib/os-release; put
+# ours back after every install or upgrade of it (or of this package).
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = filesystem
+Target = invictus-boot-branding
+
+[Action]
+Description = Setting the Invictus os-release...
+When = PostTransaction
+Exec = /usr/bin/install -m 644 /usr/share/invictus/os-release /usr/lib/os-release
