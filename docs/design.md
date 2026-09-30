@@ -192,6 +192,8 @@ The work profile's credentials and any employer data (drive redirection to the l
 
 ## 4. The assistant, the harness and the voice (sensitive)
 
+The default assistant persona is **Moneta** (Alex, 2026-09-30): the same voice as the team's PO, who reminds, keeps the threads and hands build work to the team. Tribune is the panel's working name in code; Alex sees "Moneta". Other providers keep the persona from the Collegium's default PO role unless the user changes it.
+
 Names (proposals for Clio and Venus; the code uses these as package and command names until they say otherwise): Tribune (assistant panel, Super+A), Forum (dashboard), Acta (the assistant's action log), Collegium (the team harness and memory repo), `invictus-sys` (the only door to root).
 
 ### 4.1 Components
