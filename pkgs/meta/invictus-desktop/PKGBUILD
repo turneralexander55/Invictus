@@ -1,0 +1,63 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# Meta package: depends only, no files. The list came from the old
+# legacy/packages/*.txt with the fixes in docs/design.md 1.2. AUR packages
+# named here must be built into [invictus] (pkgs/aur/) before this installs.
+# tests/hyprland-lua checks that every command the Hyprland config runs is
+# provided by one of the metas.
+
+# The Hyprland desktop. Phase 1 adds the shipped config under
+# /usr/share/invictus and moves the hypr* set to pinned copies (pkgs/pinned/).
+#
+# Fixes from design 1.2: mako dropped (swaync is the notification daemon);
+# added what binds, autostart and the waybar scripts call but the old list
+# missed: xwaylandvideobridge, discord, brightnessctl, playerctl, jq, plus
+# pacman-contrib (checkupdates), lm_sensors (sensors) and libnotify.
+
+pkgname=invictus-desktop
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Invictus Hyprland desktop'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=(
+  # Hyprland and its tools (pinned set in [invictus] from Phase 1)
+  'hyprland' 'hyprpaper' 'hypridle' 'hyprlock' 'hyprpolkitagent'
+  'xdg-desktop-portal' 'xdg-desktop-portal-hyprland' 'xdg-desktop-portal-gtk'
+  'xorg-xwayland' 'xwaylandvideobridge' 'qt6-wayland' 'dbus'
+
+  # bar, launcher, terminal, notifications, login
+  'waybar' 'rofi' 'kitty' 'swaync' 'sddm'
+  'qt6-svg' 'qt6-declarative' 'qt6-5compat'
+
+  # clipboard, screenshots, media and hardware keys
+  'wl-clipboard' 'cliphist' 'hyprshot'
+  'wireplumber' 'brightnessctl' 'playerctl'
+  'pavucontrol' 'nm-connection-editor'
+
+  # waybar scripts and the keybinding cheatsheet
+  'pacman-contrib' 'lm_sensors' 'sysstat' 'libnotify' 'jq'
+
+  # files
+  'thunar' 'thunar-volman' 'tumbler' 'gvfs' 'gvfs-mtp' 'gvfs-smb' 'yazi'
+
+  # apps the binds open
+  'zen-browser-bin' 'zed' 'discord'
+
+  # look
+  'nwg-look' 'papirus-icon-theme' 'adwaita-cursors' 'nordic-darker-theme'
+  'ttf-dejavu' 'noto-fonts' 'noto-fonts-cjk' 'noto-fonts-emoji'
+  'ttf-jetbrains-mono' 'ttf-nerd-fonts-symbols'
+
+  # shell and terminal tools
+  'zsh' 'zsh-syntax-highlighting' 'zsh-autosuggestions'
+  'fastfetch' 'btop' 'cava'
+)
+optdepends=(
+  'invictus-gaming: Steam for the Super+G bind'
+)
+
+package() {
+  :
+}

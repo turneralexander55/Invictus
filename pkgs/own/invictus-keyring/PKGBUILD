@@ -1,0 +1,58 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# The public half of the [invictus] repo signing key, for pacman-key.
+# Only the PUBLIC key lives here. The private key stays with Alex and as the
+# REPO_SIGNING_KEY Actions secret (docs/checklists/signing-key.md). check()
+# refuses to build if invictus.gpg holds anything private.
+
+pkgname=invictus-keyring
+pkgver=20260930
+pkgrel=1
+pkgdesc='Invictus package repository signing key'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=('pacman')
+makedepends=('gnupg')
+install=invictus-keyring.install
+# In-repo files: they come from the same reviewed commit as this PKGBUILD.
+source=('invictus.gpg' 'invictus-revoked')
+sha256sums=('SKIP' 'SKIP')
+
+_gpg() {
+  GNUPGHOME="$srcdir/gnupg" gpg --batch --no-autostart --with-colons "$@"
+}
+
+prepare() {
+  install -dm700 "$srcdir/gnupg"
+}
+
+build() {
+  # pacman-key --populate trusts the fingerprints listed in <name>-trusted.
+  # Derive them from the key file so the two can never disagree.
+  _gpg --show-keys "$srcdir/invictus.gpg" \
+    | awk -F: '/^pub:/ { want = 1; next } want && /^fpr:/ { print $10 ":4:"; want = 0 }' \
+    > "$srcdir/invictus-trusted"
+}
+
+check() {
+  if grep -q 'INVICTUS-PLACEHOLDER' "$srcdir/invictus.gpg"; then
+    echo 'invictus.gpg is still the placeholder. Follow docs/checklists/signing-key.md.' >&2
+    return 1
+  fi
+  if grep -q 'PRIVATE KEY' "$srcdir/invictus.gpg" \
+    || _gpg --show-keys "$srcdir/invictus.gpg" | grep -q '^sec:'; then
+    echo 'invictus.gpg contains private key material. Remove it and rotate the key.' >&2
+    return 1
+  fi
+  if [[ ! -s "$srcdir/invictus-trusted" ]]; then
+    echo 'No public key found in invictus.gpg.' >&2
+    return 1
+  fi
+}
+
+package() {
+  install -Dm644 "$srcdir/invictus.gpg" "$pkgdir/usr/share/pacman/keyrings/invictus.gpg"
+  install -Dm644 "$srcdir/invictus-trusted" "$pkgdir/usr/share/pacman/keyrings/invictus-trusted"
+  install -Dm644 "$srcdir/invictus-revoked" "$pkgdir/usr/share/pacman/keyrings/invictus-revoked"
+}

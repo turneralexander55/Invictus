@@ -614,6 +614,75 @@ test("gaming: Steam games and gamescope are marked as games and may tear", funct
     check(byContent and byContent.immediate == true, "no rule for self-declared game content")
 end)
 
+-- ─── every command the config runs is installed by a meta package ──────────
+
+-- Executable -> package that provides it. false = not packaged yet, with why.
+local COMMAND_PACKAGES = {
+    kitty = "kitty", yazi = "yazi", rofi = "rofi", ["zen-browser"] = "zen-browser-bin",
+    hyprlock = "hyprlock", zeditor = "zed", thunar = "thunar", discord = "discord",
+    steam = "steam", hyprshot = "hyprshot", wpctl = "wireplumber",
+    brightnessctl = "brightnessctl", playerctl = "playerctl",
+    xwaylandvideobridge = "xwaylandvideobridge", systemctl = "systemd",
+    hyprpolkitagent = "hyprpolkitagent", ["wl-paste"] = "wl-clipboard", cliphist = "cliphist",
+    ["/usr/lib/xdg-desktop-portal-hyprland"] = "xdg-desktop-portal-hyprland",
+    ["/usr/lib/xdg-desktop-portal"] = "xdg-desktop-portal",
+    swaync = "swaync", hyprpaper = "hyprpaper", hypridle = "hypridle", waybar = "waybar",
+    hyprctl = "hyprland",
+    hyprshutdown = false,  -- optional: the bind checks `command -v` first
+    ["$HOME/invictus/scripts/show-keybindings.sh"] = false, -- repo script; invictus-tools in Phase 1
+    ["$HOME/invictus/scripts/confirm-poweroff.sh"] = false, -- same
+    ["~/.local/bin/dashboard-tmux"] = false, -- Alex's own script, not in the repo
+}
+-- Pulled in by every Arch install, so no meta lists them.
+local BASE_SYSTEM = { systemd = true }
+
+local function executables(cmd)
+    local out = {}
+    cmd = cmd:gsub("%d*>&%d+", ""):gsub("%d*>%s*%S+", "") -- drop redirections (2>&1, >/dev/null)
+    for seg in (cmd .. ";"):gmatch("(.-)%s*[;|&]+%s*") do
+        local words = {}
+        for w in seg:gmatch("%S+") do table.insert(words, w) end
+        if words[1] == "command" and words[2] == "-v" then
+            table.insert(out, words[3])
+        elseif words[1] then
+            table.insert(out, words[1])
+            for i, w in ipairs(words) do
+                if w == "-e" and words[i + 1] then table.insert(out, words[i + 1]) end
+                if w == "start" and words[1] == "systemctl" and words[i + 1] then table.insert(out, words[i + 1]) end
+            end
+        end
+    end
+    return out
+end
+
+test("every command the config runs comes from a meta package in pkgs/meta", function(check)
+    local provided = {}
+    local p = io.popen('for f in "' .. repo .. '"/pkgs/meta/*/PKGBUILD; do '
+        .. 'bash -c \'source "$1"; printf "%s\\n" "${depends[@]}"\' _ "$f"; done')
+    for dep in p:lines() do provided[dep] = true end
+    p:close()
+    check(next(provided) ~= nil, "no depends read from pkgs/meta/*/PKGBUILD")
+    local cmds = {}
+    for _, c in ipairs(state.execs) do table.insert(cmds, c) end
+    for _, b in ipairs(state.binds) do
+        local d = b.dispatcher
+        if type(d) == "table" and d.__dispatcher == "exec_cmd" then table.insert(cmds, d.args[1]) end
+    end
+    local seen = 0
+    for _, c in ipairs(cmds) do
+        for _, exe in ipairs(executables(c)) do
+            seen = seen + 1
+            local pkg = COMMAND_PACKAGES[exe]
+            if pkg == nil then
+                check(false, "'" .. exe .. "' (from: " .. c .. ") has no entry in COMMAND_PACKAGES")
+            elseif pkg and not provided[pkg] and not BASE_SYSTEM[pkg] then
+                check(false, "'" .. exe .. "' needs package " .. pkg .. ", which no meta depends on")
+            end
+        end
+    end
+    check(seen > 30, "only " .. seen .. " commands found; parsing broke?")
+end)
+
 -- ─── fake `hyprctl binds` output for the show-keybindings test ──────────────
 
 if fakeBindsOut and fakeBindsOut ~= "" then
