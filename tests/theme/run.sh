@@ -18,7 +18,7 @@
 # 6. The shipped app configs in config/: no hand-written colours outside the
 #    fallback files, fallbacks equal generated Dusk, every app loads the generated
 #    file, waybar/swaync/rofi/kitty/fastfetch settings from docs/look.md, alert.sh.
-# 7. shellcheck of this file and config/waybar/alert.sh.
+# 7. shellcheck of this file and scripts/waybar/alert.sh.
 # ------------------------------------------------------------
 set -uo pipefail
 
@@ -297,7 +297,7 @@ fi
 echo "7. shellcheck"
 if command -v shellcheck >/dev/null 2>&1; then
     expect "shellcheck run.sh" shellcheck -x "${BASH_SOURCE[0]}"
-    expect "shellcheck alert.sh" shellcheck -x "$REPO/config/waybar/alert.sh"
+    expect "shellcheck alert.sh" shellcheck -x "$REPO/scripts/waybar/alert.sh"
 else
     echo "  note shellcheck not installed"
 fi

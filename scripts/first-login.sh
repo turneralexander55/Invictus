@@ -119,6 +119,14 @@ done < <(default_files)
 
 say "$added added, $replaced replaced, $kept kept as they are"
 
+# waybar, swaync and rofi import ~/.config/invictus/current/*; waybar exits
+# if an import is missing. Put the default theme in place now.
+THEME_CMD="${INVICTUS_THEME_CMD:-invictus-theme}"
+if [[ ! -e "$CFG/invictus/current" ]] && command -v "$THEME_CMD" >/dev/null; then
+    say "applying the default theme (~/.config/invictus/current)"
+    run "$THEME_CMD" apply || say "invictus-theme apply failed; the fallback colours stay in use"
+fi
+
 if ! $DRY; then
     mkdir -p "$STATE"
     date -Is > "$SENTINEL"

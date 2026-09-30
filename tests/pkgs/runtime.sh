@@ -328,3 +328,82 @@ else
     fi
 fi
 echo
+
+# ---- 11. a fresh home: theme in place, every style import resolves ----------------
+echo "== fresh home"
+H="$TMP/h-theme"; mkdir -p "$H"
+if HOME="$H" INVICTUS_THEME_CMD="$ALL/usr/bin/invictus-theme" INVICTUS_THEME_DIR="$ALL/usr/share/invictus/theme" \
+     INVICTUS_WALLPAPERS="$ALL/usr/share/invictus/wallpapers" INVICTUS_HYPRCTL=false INVICTUS_NOTIFY=true \
+     INVICTUS_GSETTINGS=true INVICTUS_SWAYNC_CLIENT=false \
+     first_login "$H" > "$TMP/fl.log" 2>&1 && [[ -f "$H/.config/invictus/current/waybar-colors.css" ]]; then
+    ok "first login on a fresh home applies the default theme (~/.config/invictus/current), exit 0"
+else
+    bad "fresh home has no current theme: $(tail -5 "$TMP/fl.log")"
+fi
+# waybar exits and swaync loses its style if an @import is missing (Felix, 2026-09-30).
+i_fail=0
+for css in waybar/style.css swaync/style.css; do
+    while IFS= read -r imp; do
+        [[ -e "$H/.config/$(dirname "$css")/$imp" ]] || { bad "$css imports $imp, which a fresh home does not have"; i_fail=1; }
+    done < <(sed -n 's/^@import url("\([^"]*\)").*/\1/p' "$H/.config/$css")
+done
+while IFS= read -r imp; do
+    imp="${imp/#\~/$H}"
+    [[ -e "$imp" ]] || { bad "rofi imports $imp, which a fresh home does not have"; i_fail=1; }
+done < <(sed -n 's/^@import "\([^"]*\)".*/\1/p' "$H/.config/rofi/themes/theme.rasi" "$H/.config/rofi/config.rasi")
+while IFS= read -r inc; do
+    inc="${inc/#\~/$H}"; [[ "$inc" == /* ]] || inc="$H/.config/kitty/$inc"
+    [[ "$inc" == */motion.d/kitty.conf || -e "$inc" ]] || { bad "kitty includes $inc, which a fresh home does not have"; i_fail=1; }
+done < <(sed -n 's/^include \(.*\)$/\1/p' "$H/.config/kitty/kitty.conf")
+[[ $i_fail == 0 ]] && ok "every waybar, swaync, rofi and kitty import resolves in a fresh home"
+echo
+
+# ---- 12. invictus-motion ----------------------------------------------------------------
+echo "== invictus-motion"
+MOT="$REPO/scripts/invictus-motion.sh"
+cat > "$TMP/fake/tool" <<'EOF2'
+#!/bin/sh
+echo "$(basename "$0") $*" >> "$FAKE_LOG"
+exit 0
+EOF2
+chmod +x "$TMP/fake/tool"
+for t in hyprctl gsettings swaync-client; do ln -sf tool "$TMP/fake/$t"; done
+cat > "$TMP/fake/pkill" <<'EOF2'
+#!/bin/sh
+echo "pkill $*" >> "$FAKE_LOG"
+exit 1
+EOF2
+chmod +x "$TMP/fake/pkill"
+motion() {
+    FAKE_LOG="$TMP/mot.log" HOME="$H" XDG_CONFIG_HOME="" INVICTUS_SHARE="$SHARE" INVICTUS_HYPRCTL="$TMP/fake/hyprctl" \
+        INVICTUS_GSETTINGS="$TMP/fake/gsettings" INVICTUS_SWAYNC_CLIENT="$TMP/fake/swaync-client" \
+        INVICTUS_PKILL="$TMP/fake/pkill" INVICTUS_GAMEMODE_FILE="$TMP/game-mode" bash "$MOT" "$@"
+}
+rm -f "$TMP/mot.log"
+if [[ "$(motion get)" == showcase ]] && motion set calm \
+   && [[ "$(motion get)" == calm && "$(readlink "$H/.config/invictus/motion.d/kitty.conf")" == "$H/.config/kitty/motion/calm.conf" ]] \
+   && cmp -s "$H/.config/waybar/motion.css" "$SHARE/config/waybar/motion/calm.css" \
+   && cmp -s "$H/.config/swaync/motion.css" "$SHARE/config/swaync/motion/calm.css" \
+   && grep -q '"transition-time": 150' "$H/.config/swaync/config.json" \
+   && grep -q 'gsettings set org.gnome.desktop.interface enable-animations false' "$TMP/mot.log" \
+   && grep -q 'hyprctl reload' "$TMP/mot.log"; then
+    ok "motion set calm: state file, kitty link, waybar and swaync files, 150 ms, GTK off, Hyprland reloaded"
+else
+    bad "motion set calm: $(cat "$TMP/mot.log")"
+fi
+if motion set showcase && cmp -s "$H/.config/waybar/motion.css" "$SHARE/config/waybar/motion.css" \
+   && cmp -s "$H/.config/swaync/config.json" "$SHARE/config/swaync/config.json" \
+   && grep -q 'enable-animations true' "$TMP/mot.log"; then
+    ok "motion set showcase puts the shipped files back (config.json identical)"
+else
+    bad "motion set showcase did not restore the defaults"
+fi
+touch "$TMP/game-mode"; rm -f "$TMP/mot.log"
+motion set off 2>/dev/null
+if ! grep -q 'hyprctl' "$TMP/mot.log" && [[ "$(motion get)" == off ]]; then ok "game mode on: level saved, Hyprland not reloaded"
+else bad "motion in game mode: $(cat "$TMP/mot.log")"; fi
+rm -f "$TMP/game-mode"
+before="$(motion get)"
+if ! motion set wobbly 2>/dev/null && [[ "$(motion get)" == "$before" ]]; then ok "an unknown level is refused and changes nothing"
+else bad "motion accepted an unknown level"; fi
+echo

@@ -179,13 +179,13 @@ check(sec["modules-right"] == [] and sec["modules-left"] == ["hyprland/workspace
       "other monitors: workspaces and window title, clock, nothing on the right")
 allmods = {m for bar in waybar for z in ("modules-left", "modules-center", "modules-right") for m in bar[z]}
 check(not ({"custom/gpu", "custom/cpu", "custom/memory"} & allmods), "the GPU, CPU and memory pills are gone")
-check(prim["custom/alert"]["interval"] == 5 and "alert.sh" in prim["custom/alert"]["exec"], "alert module polls every 5 s and runs alert.sh")
+check(prim["custom/alert"]["interval"] == 5 and prim["custom/alert"]["exec"] == "/usr/lib/invictus/waybar/alert", "alert module polls every 5 s and runs the installed alert script")
 check(prim["hyprland/window"]["max-length"] == 60 and prim["hyprland/window"]["separate-outputs"] is True, "window title: max 60, separate outputs")
 check(prim["tray"]["icon-size"] == 16, "tray icon size 16")
 check(prim["pulseaudio"]["scroll-step"] == 5 and prim["pulseaudio"]["on-click"] == "pavucontrol", "volume: scroll 5, click opens pavucontrol")
 check(prim["clock"]["format"] == "{:%H:%M}" and "%A %d %B %Y" in prim["clock"]["tooltip-format"], "clock: HH:MM, tooltip has the long date")
 check(prim["custom/swaync"]["exec"] == "swaync-client -swb" and prim["custom/swaync"]["on-click"] == "swaync-client -t -sw", "notifications: swaync-client -swb, click toggles")
-check((config / "waybar/alert.sh").exists(), "alert.sh ships")
+check((repo / "scripts/waybar/alert.sh").exists(), "alert.sh ships (scripts/waybar, installed by invictus-tools)")
 persist = prim["hyprland/workspaces"]["persistent-workspaces"]
 check(persist == {"DP-1": [1, 2, 3], "DP-2": [4, 5, 6], "HDMI-A-2": [7, 8, 9]} and sec["hyprland/workspaces"]["persistent-workspaces"] == persist,
       "workspaces keep the persistent 1-3 / 4-6 / 7-9 split")
@@ -273,7 +273,8 @@ for name, exe, entry in (("invictus-theme", "invictus-theme pick", "Change theme
     kv = dict(l.split("=", 1) for l in text.split("\n") if "=" in l and not l.startswith("#"))
     check(kv.get("Type") == "Application" and kv.get("Name") == entry and kv.get("Exec") == exe and kv.get("Terminal") == "false"
           and kv.get("Icon") and kv.get("Categories", "").endswith(";"), f"{name}.desktop is valid and runs '{exe}'")
-check("NoDisplay=true" in (config / "applications/invictus-motion.desktop").read_text(), "the motion entry stays hidden until invictus-motion exists")
+check("NoDisplay" not in (config / "applications/invictus-motion.desktop").read_text()
+      and (repo / "scripts/invictus-motion.sh").exists(), "the motion entry shows now that invictus-motion exists")
 check("NoDisplay" not in (config / "applications/invictus-theme.desktop").read_text(), "the theme entry shows in the launcher")
 
 # ------------------------------------------------- 9. the "Now" module and alert.sh
@@ -311,7 +312,7 @@ def alert(**kw):
             env["PATH"] = f"{d}:{env['PATH']}"
             Path(d, "sleep").write_text(f"#!/bin/sh\nprintf '%s' '{second}' > '{d}/stat'\n")
             Path(d, "sleep").chmod(0o755)
-        r = subprocess.run(["bash", str(config / "waybar/alert.sh")], env=env, capture_output=True, text=True)
+        r = subprocess.run(["bash", str(repo / "scripts/waybar/alert.sh")], env=env, capture_output=True, text=True)
         return json.loads(r.stdout)
 
 quiet = alert()

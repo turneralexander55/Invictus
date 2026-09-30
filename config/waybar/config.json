@@ -87,7 +87,7 @@
     "custom/alert": {
       "format": "{}",
       "interval": 5,
-      "exec": "bash $HOME/.config/waybar/alert.sh",
+      "exec": "/usr/lib/invictus/waybar/alert",
       "return-type": "json",
       "on-click": "kitty btop",
       "tooltip": true

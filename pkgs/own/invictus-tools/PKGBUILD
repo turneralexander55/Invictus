@@ -5,9 +5,9 @@
 # tests/hyprland-lua/) at the same commit as this PKGBUILD: bump pkgrel
 # when any of them changes, or the published package is reused.
 #
-#   /usr/bin/invictus-theme, invictus-update, invictus-doctor
+#   /usr/bin/invictus-theme, invictus-motion, invictus-update, invictus-doctor
 #   /usr/lib/invictus/show-keybindings, confirm-poweroff   (Hyprland binds)
-#   /usr/lib/invictus/waybar/{cpu,gpu,memory,updates}      (waybar modules)
+#   /usr/lib/invictus/waybar/{alert,updates}               (waybar modules)
 #   /usr/lib/invictus/lib/defaults.sh                      (shared shell code)
 #   /usr/lib/invictus/doctor/                              (the stub config check:
 #       the same mock of `hl` the tests use, checked against the API stubs
@@ -16,7 +16,7 @@
 pkgname=invictus-tools
 pkgver=0.1.0
 pkgrel=1
-pkgdesc='Invictus commands: theme, update, doctor, and the scripts the desktop runs'
+pkgdesc='Invictus commands: theme, motion, update, doctor, and the scripts the desktop runs'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
 license=('GPL-3.0-or-later')
@@ -40,11 +40,14 @@ package() {
   install -Dm755 "$root/theme/invictus-theme" "$pkgdir/usr/bin/invictus-theme"
   install -Dm755 "$root/scripts/invictus-update.sh" "$pkgdir/usr/bin/invictus-update"
   install -Dm755 "$root/scripts/invictus-doctor.sh" "$pkgdir/usr/bin/invictus-doctor"
+  install -Dm755 "$root/scripts/invictus-motion.sh" "$pkgdir/usr/bin/invictus-motion"
 
   install -Dm755 "$root/scripts/show-keybindings.sh" "$lib/show-keybindings"
   install -Dm755 "$root/scripts/confirm-poweroff.sh" "$lib/confirm-poweroff"
+  # cpu, gpu and memory.sh stay in the repo only for machines on the old
+  # config (it calls them from the clone); the new bar uses alert instead.
   local f
-  for f in cpu gpu memory updates; do
+  for f in alert updates; do
     install -Dm755 "$root/scripts/waybar/$f.sh" "$lib/waybar/$f"
   done
 
