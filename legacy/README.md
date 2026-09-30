@@ -12,7 +12,7 @@ the adopt script lands.
 | `deploy-configs.sh --force` | Copies `config/*` into `~/.config` | `invictus-desktop` plus first-login copy-once |
 | `deploy-shell.sh --force` | Copies `config/shell/zshrc` to `~/.zshrc` | Same |
 | `init-user.sh` | XDG dirs, user services, caches | `invictus-first-login` |
-| `install-sddm.sh` | Installs the blackglass SDDM theme from `assets/SDDM/blackglass` (not in the checkout; it is in git history, commit 9c8d008) | `invictus-sddm-theme` |
+| `install-sddm.sh` | Installs the blackglass SDDM theme from `assets/SDDM/blackglass`. That folder was never in the repo: commit 9c8d008 added only a submodule pointer (gitlink to commit 3a1a7e4 of an unnamed repo, no `.gitmodules`), so the script has always stopped with "Theme source not found". The dead pointer is removed | `invictus-sddm-theme` |
 | `update.sh` | `git pull` plus `pacman -Syu` and `paru -Sua` | `invictus-update` |
 
 `scripts/update.sh` is a two-line forwarder to `legacy/update.sh`, because the
