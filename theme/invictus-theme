@@ -1,0 +1,673 @@
+#!/usr/bin/env python3
+"""invictus-theme: list, check, generate, apply and pick Invictus themes.
+
+Spec: docs/look.md, section "Themes". Python 3.11+, standard library only.
+
+  invictus-theme list
+  invictus-theme check [<id>]
+  invictus-theme generate <id> <outdir> [--wallpapers DIR]
+  invictus-theme apply [<id>]        (alias: set <id>; no id = current, else Dusk)
+  invictus-theme pick
+
+Nothing in here hardcodes a repo path. Locations, in order of precedence:
+
+  Built-in themes and templates   $INVICTUS_THEME_DIR, the folder this script
+                                  sits in, ../theme, /usr/share/invictus/theme
+  User themes                     $INVICTUS_CONFIG/themes (default ~/.config/invictus/themes)
+  Generated output                $INVICTUS_STATE (default ~/.local/state/invictus/theme)
+  The `current` link              $INVICTUS_CONFIG/current
+  Wallpapers                      $INVICTUS_WALLPAPERS, else assets/wallpapers next to
+                                  the theme folder, else /usr/share/invictus/wallpapers
+  Game mode marker file           $INVICTUS_GAMEMODE_FILE (default
+                                  $XDG_RUNTIME_DIR/invictus/game-mode); present = on
+
+Reload commands can be replaced (tests stub them): INVICTUS_HYPRCTL,
+INVICTUS_PKILL, INVICTUS_SWAYNC_CLIENT, INVICTUS_GSETTINGS, INVICTUS_NOTIFY,
+INVICTUS_ROFI, INVICTUS_RSVG.
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tomllib
+from pathlib import Path
+
+# ---------------------------------------------------------------- schema
+
+DARK = "night basalt stone line marble parchment ash sol sol-bright pompeii laurel lapis verdigris tyrian".split()
+LIGHT = "dawn dawn-surface dawn-raised dawn-line ink ink-2 ink-muted bronze pompeii-dark laurel-dark lapis-dark".split()
+TERMINAL = ("background foreground selection-background selection-foreground cursor cursor-text url".split()
+            + [f"color{i}" for i in range(16)])
+META = "id name source concept wallpaper lock gnome-accent papirus-folders default".split()
+CONCEPT_MAX = 62
+HEX_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+# Text tokens that must reach AA (4.5) on each surface, from look.md.
+TEXT_ON_SHELL = "marble parchment ash sol sol-bright pompeii laurel lapis".split()
+SHELL_SURFACES = ["night", "basalt", "stone"]
+LIGHT_TEXT = "ink ink-2 ink-muted bronze pompeii-dark laurel-dark lapis-dark".split()
+LIGHT_SURFACES = ["dawn", "dawn-surface", "dawn-raised"]
+AA = 4.5
+CVD_MIN_DE = 10.0
+FOCUS_APART_FROM = ["pompeii", "laurel", "lapis", "parchment"]
+
+
+class ThemeError(Exception):
+    pass
+
+
+# ---------------------------------------------------------------- paths
+
+def home():
+    return Path(os.environ.get("HOME") or Path.home())
+
+
+def config_dir():
+    return Path(os.environ.get("INVICTUS_CONFIG") or home() / ".config" / "invictus")
+
+
+def state_dir():
+    return Path(os.environ.get("INVICTUS_STATE") or home() / ".local" / "state" / "invictus" / "theme")
+
+
+def builtin_dir():
+    env = os.environ.get("INVICTUS_THEME_DIR")
+    here = Path(__file__).resolve().parent
+    for c in ([Path(env)] if env else []) + [here, here.parent / "theme", Path("/usr/share/invictus/theme")]:
+        if (c / "templates").is_dir() and any(c.glob("*.toml")):
+            return c
+    raise ThemeError("cannot find the theme folder (set INVICTUS_THEME_DIR)")
+
+
+def wallpaper_dir():
+    env = os.environ.get("INVICTUS_WALLPAPERS")
+    if env:
+        return Path(env)
+    for c in (builtin_dir().parent / "assets" / "wallpapers", Path("/usr/share/invictus/wallpapers")):
+        if c.is_dir():
+            return c
+    return Path("/usr/share/invictus/wallpapers")
+
+
+def game_mode_file():
+    env = os.environ.get("INVICTUS_GAMEMODE_FILE")
+    if env:
+        return Path(env)
+    return Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "invictus" / "game-mode"
+
+
+def tool(envname, default):
+    return os.environ.get(envname) or default
+
+
+# ---------------------------------------------------------------- colour maths
+
+def parse_hex(h):
+    h = h.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def _lin(c):
+    c /= 255.0
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def luminance(rgb):
+    r, g, b = (_lin(c) for c in rgb)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def contrast(fg, bg):
+    a, b = luminance(parse_hex(fg)), luminance(parse_hex(bg))
+    hi, lo = max(a, b), min(a, b)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+# Machado, Oliveira, Fernandes 2009, severity 1.0, applied in linear RGB.
+MACHADO = {
+    "protanopia": ((0.152286, 1.052583, -0.204868),
+                   (0.114503, 0.786281, 0.099216),
+                   (-0.003882, -0.048116, 1.051998)),
+    "deuteranopia": ((0.367322, 0.860646, -0.227968),
+                     (0.280085, 0.672501, 0.047413),
+                     (-0.011820, 0.042940, 0.968881)),
+}
+
+
+def simulate(rgb, kind):
+    lin = [_lin(c) for c in rgb]
+    m = MACHADO[kind]
+    out = [max(0.0, min(1.0, sum(m[i][j] * lin[j] for j in range(3)))) for i in range(3)]
+    return tuple(out)  # linear
+
+
+def lab_from_linear(lin):
+    r, g, b = lin
+    x = 0.4124564 * r + 0.3575761 * g + 0.1804375 * b
+    y = 0.2126729 * r + 0.7151522 * g + 0.0721750 * b
+    z = 0.0193339 * r + 0.1191920 * g + 0.9503041 * b
+    xn, yn, zn = 0.95047, 1.0, 1.08883
+
+    def f(t):
+        return t ** (1 / 3) if t > 216 / 24389 else (24389 / 27 * t + 16) / 116
+
+    fx, fy, fz = f(x / xn), f(y / yn), f(z / zn)
+    return (116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz))
+
+
+def delta_e76(a, b):
+    return sum((p - q) ** 2 for p, q in zip(a, b)) ** 0.5
+
+
+def cvd_distance(h1, h2, kind):
+    return delta_e76(lab_from_linear(simulate(parse_hex(h1), kind)),
+                     lab_from_linear(simulate(parse_hex(h2), kind)))
+
+
+# ---------------------------------------------------------------- themes
+
+class Theme:
+    def __init__(self, data, path):
+        self.data = data
+        self.path = path
+
+    @property
+    def id(self):
+        return self.data.get("meta", {}).get("id") or self.path.stem
+
+    @property
+    def name(self):
+        return self.data.get("meta", {}).get("name", self.id)
+
+    @property
+    def meta(self):
+        return self.data.get("meta", {})
+
+    def token(self, name):
+        for section in ("dark", "light", "terminal"):
+            v = self.data.get(section, {})
+            if name in v:
+                return v[name]
+        return None
+
+
+def load_file(path):
+    try:
+        with open(path, "rb") as f:
+            return Theme(tomllib.load(f), Path(path))
+    except (OSError, tomllib.TOMLDecodeError) as e:
+        raise ThemeError(f"{path}: {e}")
+
+
+def all_themes():
+    """Dusk first, other built-ins alphabetically, then user themes.
+    A user theme with a built-in id replaces it."""
+    found = {}
+    order = []
+    builtins = []
+    for p in sorted(builtin_dir().glob("*.toml")):
+        try:
+            builtins.append(load_file(p))
+        except ThemeError as e:
+            print(f"invictus-theme: skipping {e}", file=sys.stderr)
+    builtins.sort(key=lambda t: (not t.meta.get("default", False), t.id))
+    users = []
+    udir = config_dir() / "themes"
+    if udir.is_dir():
+        for p in sorted(udir.glob("*.toml")):
+            try:
+                users.append(load_file(p))
+            except ThemeError as e:
+                print(f"invictus-theme: skipping {e}", file=sys.stderr)
+    for t in builtins:
+        found[t.id] = t
+        order.append(t.id)
+    for t in users:
+        if t.id not in found:
+            order.append(t.id)
+        found[t.id] = t
+    return [found[i] for i in order]
+
+
+def find_theme(tid):
+    # user folder first (spec), then built-in
+    udir = config_dir() / "themes" / f"{tid}.toml"
+    if udir.is_file():
+        return load_file(udir)
+    bfile = builtin_dir() / f"{tid}.toml"
+    if bfile.is_file():
+        return load_file(bfile)
+    for t in all_themes():
+        if t.id == tid:
+            return t
+    raise ThemeError(f"unknown theme '{tid}'")
+
+
+def current_id():
+    cur = config_dir() / "current"
+    try:
+        return (cur / "id").read_text().strip() or Path(os.readlink(cur)).name
+    except OSError:
+        try:
+            return Path(os.readlink(cur)).name
+        except OSError:
+            return None
+
+
+# ---------------------------------------------------------------- check
+
+def check_theme(t):
+    """Return a list of failure strings; empty means the theme passes."""
+    fails = []
+    d = t.data
+    for k in META:
+        if k not in d.get("meta", {}):
+            fails.append(f"meta.{k} missing")
+    concept = d.get("meta", {}).get("concept", "")
+    if len(concept) > CONCEPT_MAX:
+        fails.append(f"meta.concept is {len(concept)} characters (max {CONCEPT_MAX})")
+    for section, names in (("dark", DARK), ("light", LIGHT), ("terminal", TERMINAL)):
+        sec = d.get(section)
+        if not isinstance(sec, dict):
+            fails.append(f"[{section}] missing")
+            continue
+        for n in names:
+            v = sec.get(n)
+            if v is None:
+                fails.append(f"{section}.{n} missing")
+            elif not isinstance(v, str) or not HEX_RE.match(v):
+                fails.append(f"{section}.{n} is not #RRGGBB: {v!r}")
+    if fails:
+        return fails  # do not measure on a broken schema
+
+    dk, lt, tm = d["dark"], d["light"], d["terminal"]
+    for tok in TEXT_ON_SHELL:
+        for surf in SHELL_SURFACES:
+            r = contrast(dk[tok], dk[surf])
+            if r < AA:
+                fails.append(f"contrast {tok} on {surf} is {r:.2f} (need {AA})")
+    for tok in ("verdigris", "tyrian"):
+        r = contrast(dk[tok], dk["night"])
+        if r < AA:
+            fails.append(f"contrast {tok} on night is {r:.2f} (need {AA})")
+    r = contrast(dk["night"], dk["sol"])
+    if r < AA:
+        fails.append(f"contrast night on sol (button text) is {r:.2f} (need {AA})")
+    r = contrast(tm["color8"], tm["background"])
+    if r < AA:
+        fails.append(f"contrast terminal bright black on background is {r:.2f} (need {AA})")
+    for tok in LIGHT_TEXT:
+        for surf in LIGHT_SURFACES:
+            r = contrast(lt[tok], lt[surf])
+            if r < AA:
+                fails.append(f"contrast light {tok} on {surf} is {r:.2f} (need {AA})")
+    for other in FOCUS_APART_FROM:
+        for kind in MACHADO:
+            de = cvd_distance(dk["sol"], dk[other], kind)
+            if de < CVD_MIN_DE:
+                fails.append(f"colour-blind: sol vs {other} under {kind} is dE {de:.1f} (need {CVD_MIN_DE:g})")
+    # every template must render with this theme (unknown tokens are errors)
+    try:
+        render_all(t, "/nonexistent/wallpaper.png")
+    except ThemeError as e:
+        fails.append(f"templates: {e}")
+    return fails
+
+
+def measure(t):
+    """Human-readable measurements for check -v."""
+    dk = t.data["dark"]
+    lines = []
+    for other in FOCUS_APART_FROM:
+        lines.append(f"  sol vs {other}: deutan {cvd_distance(dk['sol'], dk[other], 'deuteranopia'):.0f}, "
+                     f"protan {cvd_distance(dk['sol'], dk[other], 'protanopia'):.0f}")
+    return lines
+
+
+# ---------------------------------------------------------------- templates
+
+PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z0-9_.\-]+)(?:\|([A-Za-z0-9_:.]+))?\s*\}\}")
+
+
+def _fmt(hexv, flt, where):
+    r, g, b = parse_hex(hexv)
+    if flt is None:
+        return hexv.upper()
+    if flt == "hex":
+        return hexv.lstrip("#").upper()
+    if flt == "rgb":
+        return f"rgb({r},{g},{b})"
+    if flt == "argb":
+        return "#FF" + hexv.lstrip("#").upper()
+    if flt.startswith("rgba:"):
+        return f"rgba({r},{g},{b},{float(flt[5:]):g})"
+    if flt.startswith("hexa:"):
+        a = round(float(flt[5:]) * 255)
+        return "#" + hexv.lstrip("#").upper() + f"{a:02X}"
+    raise ThemeError(f"{where}: unknown filter '{flt}'")
+
+
+def render(text, t, wallpaper, where):
+    def sub(m):
+        key, flt = m.group(1), m.group(2)
+        if key.startswith("meta."):
+            v = t.meta.get(key[5:])
+            if v is None:
+                raise ThemeError(f"{where}: unknown token '{key}'")
+            return str(v)
+        if key == "ctx.wallpaper":
+            return str(wallpaper)
+        v = t.token(key)
+        if v is None:
+            raise ThemeError(f"{where}: unknown token '{key}'")
+        return _fmt(v, flt, where)
+
+    return PLACEHOLDER.sub(sub, text)
+
+
+def templates():
+    return sorted((builtin_dir() / "templates").iterdir())
+
+
+def output_name(tpl):
+    return tpl.name
+
+
+def wallpaper_path(t):
+    name = t.meta.get("wallpaper", "")
+    wd = wallpaper_dir()
+    for cand in (wd / f"{name}-3840x2160.png", wd / f"{name}.png"):
+        if cand.exists():
+            return cand
+    return wd / f"{name}-3840x2160.png"
+
+
+def render_all(t, wallpaper):
+    out = {}
+    for tpl in templates():
+        if tpl.is_file():
+            out[output_name(tpl)] = render(tpl.read_text(), t, wallpaper, tpl.name)
+    return out
+
+
+def rsvg_to_png(svg, png, width, height=None):
+    rsvg = tool("INVICTUS_RSVG", "rsvg-convert")
+    if not shutil.which(rsvg):
+        return False
+    cmd = [rsvg, "-w", str(width)] + (["-h", str(height)] if height else []) + ["-o", str(png), str(svg)]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise ThemeError(f"{rsvg} failed on {svg.name}: {r.stderr.strip()}")
+    return True
+
+
+def generate(t, outdir, wallpapers=None):
+    """Write every app file for theme t into outdir. All templates are rendered
+    in memory first, so an error writes nothing."""
+    wall = wallpaper_path(t) if wallpapers is None else Path(wallpapers) / f"{t.meta.get('wallpaper', '')}-3840x2160.png"
+    files = render_all(t, wall)
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    for name, text in files.items():
+        (outdir / name).write_text(text)
+    (outdir / "id").write_text(t.id + "\n")
+    # PNG exports where rsvg-convert exists (librsvg); the SVGs stay either way.
+    rsvg_to_png(outdir / "swatch.svg", outdir / "swatch.png", 88, 88)
+    for base in ("radiate", "night"):
+        svg = outdir / f"{base}.svg"
+        for w, h in ((3840, 2160), (5120, 1440)):
+            if not rsvg_to_png(svg, outdir / f"{base}-{w}x{h}.png", w, h):
+                break
+    return sorted(files) + ["id"]
+
+
+# ---------------------------------------------------------------- notify and run
+
+def notify(summary, body="", critical=False):
+    cmd = [tool("INVICTUS_NOTIFY", "notify-send"), "-a", "invictus-theme"]
+    if critical:
+        cmd += ["-u", "critical"]
+    cmd += [summary] + ([body] if body else [])
+    try:
+        subprocess.run(cmd, capture_output=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        print(f"invictus-theme: {summary} {body}", file=sys.stderr)
+
+
+def run_step(name, cmd, failures, ok_codes=(0,), timeout=10):
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.SubprocessError) as e:
+        failures.append(f"{name} ({e.__class__.__name__})")
+        return None
+    if r.returncode not in ok_codes:
+        failures.append(f"{name} (exit {r.returncode})")
+        return None
+    return r
+
+
+# ---------------------------------------------------------------- apply
+
+def monitors(failures):
+    r = run_step("monitor list", [tool("INVICTUS_HYPRCTL", "hyprctl"), "-j", "monitors"], failures)
+    if not r:
+        return []
+    try:
+        return [(m["name"], int(m["width"]), int(m["height"])) for m in json.loads(r.stdout)]
+    except (ValueError, KeyError, TypeError):
+        failures.append("monitor list (unreadable)")
+        return []
+
+
+def find_wallpaper(t, outdir, w, h):
+    name = t.meta.get("wallpaper", "")
+    ultrawide = w >= 2 * h - 1 or w / max(h, 1) >= 2.0
+    res = "5120x1440" if ultrawide else "3840x2160"
+    for c in (wallpaper_dir() / f"{name}-{res}.png", outdir / f"{name}-{res}.png",
+              wallpaper_dir() / f"{name}-3840x2160.png", outdir / f"{name}-3840x2160.png"):
+        if c.exists():
+            return c
+    return None
+
+
+def reload_all(t, final, failures):
+    hyprctl = tool("INVICTUS_HYPRCTL", "hyprctl")
+    pkill = tool("INVICTUS_PKILL", "pkill")
+    # wallpaper
+    for name, w, h in monitors(failures):
+        wp = find_wallpaper(t, final, w, h)
+        if wp:
+            run_step(f"wallpaper {name}", [hyprctl, "hyprpaper", "reload", f"{name},{wp}"], failures)
+    # Hyprland colours, unless game mode is on (leaving game mode reloads)
+    if game_mode_file().exists():
+        print("invictus-theme: game mode is on, skipping the Hyprland reload", file=sys.stderr)
+    else:
+        run_step("hyprland", [hyprctl, "reload"], failures)
+    # pkill exits 1 when nothing matched: that app is not running, not a failure
+    run_step("waybar", [pkill, "-SIGUSR2", "-x", "waybar"], failures, ok_codes=(0, 1))
+    run_step("swaync", [tool("INVICTUS_SWAYNC_CLIENT", "swaync-client"), "--reload-css"], failures)
+    run_step("kitty", [pkill, "-SIGUSR1", "-x", "kitty"], failures, ok_codes=(0, 1))
+    gs = tool("INVICTUS_GSETTINGS", "gsettings")
+    run_step("gtk accent", [gs, "set", "org.gnome.desktop.interface", "accent-color",
+                            t.meta.get("gnome-accent", "yellow")], failures)
+    # GTK 3 restyles when the theme name is toggled
+    r = run_step("gtk theme read", [gs, "get", "org.gnome.desktop.interface", "gtk-theme"], failures)
+    orig = (r.stdout.strip().strip("'") if r else "") or "adw-gtk3-dark"
+    if orig == "Adwaita-dark":
+        orig = "adw-gtk3-dark"
+    if run_step("gtk theme toggle", [gs, "set", "org.gnome.desktop.interface", "gtk-theme", "Adwaita-dark"], failures):
+        run_step("gtk theme restore", [gs, "set", "org.gnome.desktop.interface", "gtk-theme", orig], failures)
+    run_step("cava", [pkill, "-SIGUSR1", "-x", "cava"], failures, ok_codes=(0, 1))
+    # user hooks: a failing hook is logged, never undoes the switch
+    hooks = config_dir() / "theme-hooks.d"
+    if hooks.is_dir():
+        for h in sorted(hooks.iterdir()):
+            if h.is_file() and os.access(h, os.X_OK):
+                run_step(f"hook {h.name}", [str(h), t.id], failures, timeout=30)
+
+
+def apply(tid=None):
+    if tid is None:
+        tid = current_id() or next((t.id for t in all_themes() if t.meta.get("default")), "dusk")
+    try:
+        t = find_theme(tid)
+    except ThemeError as e:
+        notify("Theme not changed:", str(e), critical=True)
+        raise
+    fails = check_theme(t)
+    if fails:
+        notify("Theme not changed:", fails[0], critical=True)
+        raise ThemeError(f"{t.id} failed check: " + "; ".join(fails))
+    state = state_dir()
+    state.mkdir(parents=True, exist_ok=True)
+    tmp = state / f".{t.id}.tmp"
+    final = state / t.id
+    try:
+        if tmp.exists():
+            shutil.rmtree(tmp)
+        generate(t, tmp)
+    except (ThemeError, OSError) as e:
+        shutil.rmtree(tmp, ignore_errors=True)
+        notify("Theme not changed:", f"could not generate ({e})", critical=True)
+        raise ThemeError(f"generate failed: {e}")
+    old = None
+    if final.exists():
+        old = state / f".{t.id}.old"
+        shutil.rmtree(old, ignore_errors=True)
+        os.rename(final, old)
+    os.rename(tmp, final)
+    if old:
+        shutil.rmtree(old, ignore_errors=True)
+    # atomic switch of the link
+    cfg = config_dir()
+    cfg.mkdir(parents=True, exist_ok=True)
+    new = cfg / "current.new"
+    if new.is_symlink() or new.exists():
+        new.unlink()
+    os.symlink(final, new)
+    os.replace(new, cfg / "current")
+    failures = []
+    reload_all(t, final, failures)
+    if failures:
+        notify(f"Theme {t.name} applied, but some things did not reload:", ", ".join(failures))
+        print("invictus-theme: reload problems: " + ", ".join(failures), file=sys.stderr)
+    return failures
+
+
+# ---------------------------------------------------------------- pick
+
+def pick():
+    themes = [t for t in all_themes() if not check_theme(t)]
+    if not themes:
+        raise ThemeError("no valid themes")
+    cur = current_id()
+    if not (config_dir() / "current").exists():
+        apply(cur)  # fresh install: Dusk in place so the picker has colours
+        cur = current_id()
+    state = state_dir()
+    sw = state.parent / "swatches"
+    sw.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for t in themes:
+        icon = sw / f"{t.id}.svg"
+        icon.write_text(render((builtin_dir() / "templates" / "swatch.svg").read_text(), t, "", "swatch.svg"))
+        try:
+            if rsvg_to_png(icon, sw / f"{t.id}.png", 88, 88):
+                icon = sw / f"{t.id}.png"
+        except ThemeError:
+            pass
+        name = t.name.replace("&", "&amp;").replace("<", "&lt;")
+        concept = t.meta.get("concept", "").replace("&", "&amp;").replace("<", "&lt;").replace("|", "/")
+        check = "   ✓" if t.id == cur else ""
+        text = f"<b>{name}</b>{check}\n<span size='small' alpha='75%'>{concept}</span>"
+        rows.append(f"{text}\0icon\x1f{icon}")
+    selected = next((i for i, t in enumerate(themes) if t.id == cur), 0)
+    theme_file = config_dir() / "current" / "rofi-picker.rasi"
+    cmd = [tool("INVICTUS_ROFI", "rofi"), "-dmenu", "-i", "-p", "Theme", "-sep", "|", "-format", "i",
+           "-markup-rows", "-show-icons", "-no-custom", "-eh", "2", "-selected-row", str(selected),
+           "-mesg", "Enter apply   Esc close", "-theme", str(theme_file)]
+    r = subprocess.run(cmd, input="|".join(rows), capture_output=True, text=True)
+    if r.returncode != 0 or not r.stdout.strip():
+        return 0  # Esc: change nothing
+    try:
+        choice = themes[int(r.stdout.strip())]
+    except (ValueError, IndexError):
+        return 0
+    if choice.id == cur:
+        return 0
+    return 1 if apply(choice.id) else 0
+
+
+# ---------------------------------------------------------------- cli
+
+def cmd_list():
+    cur = current_id()
+    for t in all_themes():
+        print(f"{'*' if t.id == cur else ' '} {t.id} {t.name}")
+
+
+def cmd_check(args):
+    verbose = "-v" in args
+    args = [a for a in args if a != "-v"]
+    themes = [find_theme(args[0])] if args else all_themes()
+    bad = 0
+    for t in themes:
+        fails = check_theme(t)
+        if fails:
+            bad += 1
+            print(f"FAIL {t.id}")
+            for f in fails:
+                print(f"  {f}")
+        else:
+            print(f"ok   {t.id}")
+            if verbose:
+                print("\n".join(measure(t)))
+    return 1 if bad else 0
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help", "help"):
+        print(__doc__)
+        return 0 if argv else 2
+    cmd, args = argv[0], argv[1:]
+    try:
+        if cmd == "list":
+            cmd_list()
+        elif cmd == "check":
+            return cmd_check(args)
+        elif cmd == "generate":
+            wp = None
+            if "--wallpapers" in args:
+                i = args.index("--wallpapers")
+                wp = args[i + 1]
+                del args[i:i + 2]
+            if len(args) != 2:
+                print("usage: invictus-theme generate <theme> <outdir> [--wallpapers DIR]", file=sys.stderr)
+                return 2
+            t = find_theme(args[0])
+            fails = check_theme(t)
+            if fails:
+                print("\n".join(fails), file=sys.stderr)
+                return 1
+            for n in generate(t, args[1], wp):
+                print(n)
+        elif cmd in ("apply", "set"):
+            if cmd == "set" and not args:
+                print("usage: invictus-theme set <theme>", file=sys.stderr)
+                return 2
+            apply(args[0] if args else None)
+        elif cmd == "pick":
+            return pick()
+        else:
+            print(f"unknown command '{cmd}'", file=sys.stderr)
+            return 2
+    except ThemeError as e:
+        print(f"invictus-theme: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
