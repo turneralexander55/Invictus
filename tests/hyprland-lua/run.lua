@@ -221,6 +221,8 @@ local EXCEPTIONS = {
     ["72+space"] = function() return { "<lua function>" } end,
 }
 local KEY_RENAMES = { ESC = "Escape" } -- ESC is not an xkb keysym; the old bind never fired
+-- Old binds deliberately left out of the port (disabled pending Alex's call).
+local DISABLED = { ["shutdown +0"] = true }
 
 test("every old keybind exists with the same keys, action and flags", function(check)
     local byCombo = {}
@@ -241,7 +243,9 @@ test("every old keybind exists with the same keys, action and flags", function(c
             local key = KEY_RENAMES[p[2]] or p[2]
             local combo = mask .. "+" .. key:lower()
             local b = byCombo[combo]
-            if not b then
+            if DISABLED[p[4] or ""] then
+                check(b == nil, "disabled bind is active: " .. kw.value)
+            elseif not b then
                 check(false, "missing bind: " .. kw.kind .. " = " .. kw.value)
             else
                 seen[combo] = true

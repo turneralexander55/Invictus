@@ -74,7 +74,8 @@ bind(mod("E"),      dsp.exec_cmd(apps.fileManager),         S .. "file manager")
 bind(mod("D"),      dsp.exec_cmd("discord"),                S .. "Discord")
 bind(mod("ALT", "SPACE"), toggleLayout,                     S .. "switch layout master/dwindle")
 bind(mod("G"),      dsp.exec_cmd("steam"),                  S .. "Steam")
-bind(mod("ALT", "CTRL", "Escape"), dsp.exec_cmd("shutdown +0"), S .. "power off now")
+-- Disabled by Moneta until Alex confirms: the old ESC bind never fired, and this powers off instantly.
+-- bind(mod("ALT", "CTRL", "Escape"), dsp.exec_cmd("shutdown +0"), S .. "power off now")
 
 -- Toggle dashboard terminal (tmux)
 bind(mod("minus"),  dsp.exec_cmd("kitty --title dashboard -e ~/.local/bin/dashboard-tmux"), S .. "dashboard (tmux)")
