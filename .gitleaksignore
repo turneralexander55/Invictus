@@ -1,0 +1,8 @@
+# Exact findings only, so a real key in the same files still fails the scan.
+# iso/secrets-scan.sh:11 is a comment naming what the scanner looks for.
+# tests/iso/profile.sh plants fake keys (bodies of repeated "A") to prove
+# iso/secrets-scan.sh catches them.
+fbbd91c86deb399d23758e8920129071f1961d6b:iso/secrets-scan.sh:generic-api-key:11
+fbbd91c86deb399d23758e8920129071f1961d6b:tests/iso/profile.sh:private-key:103
+fbbd91c86deb399d23758e8920129071f1961d6b:tests/iso/profile.sh:private-key:105
+fbbd91c86deb399d23758e8920129071f1961d6b:tests/iso/profile.sh:private-key:118
