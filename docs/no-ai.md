@@ -14,7 +14,7 @@ Mockups (`docs/mockups/`, 1920 x 1080, same fonts, tokens and scale-to-fit scrip
 | `simple-firstboot-3-help-password.html` | After `Sign in to Claude`: the password prompt to add Moneta (Minerva N1) |
 | `simple-help-not-signed-in.html` | Atrium, Not signed in (2.3): the Help panel with the sign-in card over the guides |
 | `settings-moneta-not-signed-in.html` | Settings in Atrium, Not signed in: the Moneta page with the Account card first |
-| `simple-help-no-ai-guide.html` | Atrium, No AI: the Help panel, searched for "print", the guide open, Ask Alex and Let Alex see my screen |
+| `simple-help-no-ai-guide.html` | Atrium, No AI: the Help panel, searched for "print", the guide open, Ask Support and Let Support see my screen |
 | `settings-ai-off.html` | Settings in Atrium: the AI page with No AI on, and Moneta's kept memory from before |
 | `settings-moneta-tessera.html` | Redrawn: the Moneta page with AI on, No AI now the fourth answer under "Who answers" |
 
@@ -24,7 +24,7 @@ Mockups (`docs/mockups/`, 1920 x 1080, same fonts, tokens and scale-to-fit scrip
 
 - **Two ways for Help to work, chosen at first start, changed any time in Settings > AI**: an AI assistant (Moneta, with Claude, a home AI system or another AI service) or **No AI**. The config value is the provider `none` (`design.md` 4.2); on screen it is `No AI`.
 - **No AI means none anywhere Invictus ships.** No Moneta panel, no Super+A, no Moneta button, no voice, no AI summaries on the Desk, no Collegium, and no AI packages or models on disk.
-- **Help still works.** In Atrium the Help button stays where it is, with the same name. Behind it: short how-to guides, searchable, that ship with the system and work offline; **Ask Alex** (a request); **Let Alex see my screen**.
+- **Help still works.** In Atrium the Help button stays where it is, with the same name. Behind it: short how-to guides, searchable, that ship with the system and work offline; **Ask Support** (a request); **Let Support see my screen**.
 - **No nudging.** Nothing says AI is missing, nothing greys out, nothing suggests turning it on. The only place AI is mentioned on a No AI machine is Settings > AI and one guide that is found only by searching for it.
 - **Guard rails, safety copies, updates, the polkit agent and remote help are unchanged.** No Custodia rule changes (Minerva **[N4]**, `design-no-ai.md`): every guard is OS-level, and the assistant steps become no-ops.
 - **Switching on installs the pieces then; switching off removes them and signs out.** Moneta's memory and past conversations stay on the computer until the person deletes them, with one button on the AI page.
@@ -68,7 +68,7 @@ Mockups: `simple-firstboot-3-help-no-ai-picked.html` (No AI picked), `simple-fir
     - `Claude (your own account)` / `Anthropic's Claude. You sign in next.` **Preselected** (D13: Claude is the default).
     - `A home AI system` / `An AI on this computer or your home network. Nothing leaves your home.` Picking it opens an address field in the card (`Address, like atlas.local`), or offers `Use this computer` when the local model package is installed (D15; the Settings row, `settings.md` 3.9).
     - `Another AI`, collapsed. Opening it adds a third choice, `Another AI service` / `An account you already have with another AI company. It answers; it can't do things by itself.` (the chat-only `openai-compatible` provider; its key goes to the keyring). Never `generic-cli` (SM10).
-  - **No AI**: `Short how-to guides you can search, and Alex when you need a person. Nothing on this computer uses AI.`
+  - **No AI**: `Short how-to guides you can search, and Support when you need a person. Nothing on this computer uses AI.`
 - Clicking a choice inside the AI card also picks the card, so the home AI path costs no extra click.
 - **The card is not preselected.** AI or not is the person's call; a preselected card is a nudge either way. The provider inside the card is preselected, because that one is a technical default. The gold button is disabled until a card is picked, then reads what it does: `Sign in to Claude` (Claude), `Continue` (home AI, another service, No AI).
 - `Set up later` is gone: No AI is the honest "not now", and Settings turns AI on later.
@@ -84,11 +84,11 @@ Why the home AI system is inside the AI card and not a third card (Alex's D13: "
 3. **Sign-in.** The browser opens Claude's sign-in; the window comes back when it is done. The wizard only checks that the credentials file exists; it never sees the token. Then screen 4, with `Moneta is getting ready` in the Help panel until the packages are in.
 4. **Sign-in not finished** (the browser closed, no account yet, offline). Screen 3 comes back with the AI card picked and one line under the cards: `Not signed in yet. You can try again now, or sign in later from Help.` The gold button still reads `Sign in to Claude`; a text button `Later` sits beside it and goes to screen 4. The machine is now in the **Not signed in** state (2.3). Picking No AI here runs `ai off` (no password, N1) and continues.
 
-**A home AI system.** `A home AI system`, the address (or `Use this computer`), `Continue`, the password (same prompt), screen 4. Nothing to sign in to. If the address does not answer, the card says `Can't reach atlas.local. Check the address, or ask Alex.` and the person can still continue: that is the Not signed in state with a home AI.
+**A home AI system.** `A home AI system`, the address (or `Use this computer`), `Continue`, the password (same prompt), screen 4. Nothing to sign in to. If the address does not answer, the card says `Can't reach atlas.local. Check the address, or ask Support.` and the person can still continue: that is the Not signed in state with a home AI.
 
 **Another AI service.** `Another AI`, `Another AI service`, the key, `Continue`, the password, screen 4.
 
-**No AI.** `No AI`, `Continue`, screen 4. Nothing installs. Screen 4's third card changes its line from `Ask a question by talking or typing.` to `Guides for everyday things, and a way to ask Alex.`
+**No AI.** `No AI`, `Continue`, screen 4. Nothing installs. Screen 4's third card changes its line from `Ask a question by talking or typing.` to `Guides for everyday things, and a way to ask Support.`
 
 The friend's machine never needs a terminal on any path.
 
@@ -99,7 +99,7 @@ The friend's machine never needs a terminal on any path.
 **Help** (`simple-help-not-signed-in.html`). Help still works, because the guides install on every machine (`simple-mode.md` 5.3). The panel is the No AI panel with one card on top, lapis (information, nothing is broken):
 
 > **Sign in to start Moneta**
-> Moneta is on this computer but isn't signed in yet. Until then, Help has guides and Alex.
+> Moneta is on this computer but isn't signed in yet. Until then, Help has guides and Support.
 > `Sign in to Claude` · `Other choices`
 
 `Sign in to Claude` opens the same browser sign-in (no password: the program is already there). `Other choices` opens Settings > Moneta. With a home AI the card reads `Moneta can't reach your home AI` / `Check that it is on, or change it in Settings.` / `Try again` · `Other choices`. In Tessera, Super+A opens the Moneta panel showing the same card, and the bar's Moneta button stays. No message card, no badge on the Help button, no reminder: the person chose AI, and nagging them to finish is the nudge we don't make. The card goes away the moment a sign-in works.
@@ -128,7 +128,7 @@ The password is new since the first version of this screen (Minerva N1, accepted
 
 ## 3. Help with No AI (Atrium)
 
-Full design in `simple-mode.md` 5.3. In short: the same button and panel, with a search field (`What do you need help with?`) over the guides, a short list of common ones when the field is empty, and two equal buttons at the bottom, `Ask Alex` and `Let Alex see my screen`. A guide is a title, one line on when it applies, at most seven numbered steps that name what is on screen, one `Open <place>` button that goes straight there, and `Didn't work? Ask Alex about this`.
+Full design in `simple-mode.md` 5.3. In short: the same button and panel, with a search field (`What do you need help with?`) over the guides, a short list of common ones when the field is empty, and two equal buttons at the bottom, `Ask Support` and `Let Support see my screen`. A guide is a title, one line on when it applies, at most seven numbered steps that name what is on screen, one `Open <place>` button that goes straight there, and `Didn't work? Ask Support about this`.
 
 ---
 
@@ -159,7 +159,7 @@ The config is chosen at load: the waybar config and the Hyprland binds read `/et
 | Greeting and date | As now | As now |
 | Now card | Set by Moneta or by hand | Set by hand: `Nothing set. What are you working on?` with an input; `Done` and `Switch` as now |
 | Left column | Open threads (Moneta) | **Today**: today's notes (`~/Invictus/notes/<date>.md`, newest first) and a running timer, if any |
-| Right column | Waiting on you (team repo) | Waiting on you from the system only: `Restart when you're ready`, a safety net that is off or failing, a reply from Alex. Hidden when empty; Today takes the width |
+| Right column | Waiting on you (team repo) | Waiting on you from the system only: `Restart when you're ready`, a safety net that is off or failing, a reply from Support. Hidden when empty; Today takes the width |
 | System row | As now (it is already plain data) | Same, minus the team repo sync state |
 | Bottom input | `Ask Moneta` | `Add a note` (writes to today's notes) |
 | Stoic line | As now | As now |
@@ -177,7 +177,7 @@ In Settings > AI (`settings.md` 3.9).
 **Turning AI off.** Pick `No AI` under Who answers; a confirm opens in the row:
 
 > **Turn off AI?**
-> Moneta and voice are removed from this computer, and you're signed out of Claude on this computer. Moneta's memory and past conversations stay on this computer until you delete them. Help keeps its guides and Ask Alex.
+> Moneta and voice are removed from this computer, and you're signed out of Claude on this computer. Moneta's memory and past conversations stay on this computer until you delete them. Help keeps its guides and Ask Support.
 > `Turn off AI` · `Cancel` (equal weight)
 
 What happens, in order, and which is removed or kept:
@@ -202,14 +202,14 @@ No password to turn off: it only takes capability away, like switching back to C
 
 | Where | AI on | No AI |
 |---|---|---|
-| Error cards' quiet button (`simple-mode.md` 4.1 rule 7) | `Ask Help`, opens Help with the problem written in | `Help with this`, opens the guide for that message (each message names one), or Ask Alex with the message's title filled in when there is no guide |
+| Error cards' quiet button (`simple-mode.md` 4.1 rule 7) | `Help with this`, opens Help with the problem written in | `Help with this`, opens the guide for that message (each message names one), or Ask Support with the message's title filled in when there is no guide |
 | `Your computer is almost full` | `Free up space` opens Help with "Help me free up space" | `Free up space` opens the guide `Free up space` |
 | `No internet` | `Help and updates need the internet.` | `Updates need the internet.` (guides work offline) |
-| `This needs Alex` | Moneta's card | Not used |
-| First start, Wi-Fi `Skip for now` | `everything works offline except Help and updates` | `everything works offline except updates and Ask Alex` |
+| `This needs Support` | Moneta's card | Not used |
+| First start, Wi-Fi `Skip for now` | `everything works offline except Help and updates` | `everything works offline except updates and Ask Support` |
 | Settings search "AI", "assistant", "Claude", "Moneta" | Moneta page | The AI page |
 | Settings > Guard rails, "What Custodia does, in detail" | Includes `Help sticks to a fixed set of tools` | That line is left out (Minerva's G-list item has nothing to apply to; agreed, **[N4]**) |
-| Settings > Safety copies, a net that is failing | `Fix` opens Help with the problem written in | `Fix` opens the guide the net names, or Ask Alex with the problem filled in (rule 7) |
+| Settings > Safety copies, a net that is failing | `Fix` opens Help with the problem written in | `Fix` opens the guide the net names, or Ask Support with the problem filled in (rule 7) |
 | The Help panel while Libertas is on | The guard-rails notice in the header | The same notice as one row under the header (it is not a status word; `simple-mode.md` 5.3) |
 
 ---
@@ -227,7 +227,7 @@ Answered in `design-no-ai.md` section 2 (Minerva, 2026-09-30). Where the answer 
 | N5 | Keeping AI packages off a No AI machine: updates, meta dependencies, a person installing `invictus-dev` | Test NA3 below; `claude-code` moves to `invictus-moneta` |
 | N6 | Kept memory: transcripts can hold anything a person pasted, including secrets. Keep by default, or delete by default, or ask | Keep, listed with its size and `Delete...` on the AI page |
 | N7 | Browser AI features turned off by a root-managed browser policy on No AI machines, and back on (to the browser's default) when AI is turned on | A policy file written by `ai off`; which keys Zen honours is unverified |
-| N8 | Ask Alex without Moneta: the request is written by the person and carries the About page's `Copy details for Alex` block (no serials, MACs or user names). Same M8 preview, same helper queue | Same queue, same preview; "He usually answers within a day" still waits on the inbox (M8) |
+| N8 | Ask Support without Moneta: the request is written by the person and carries the About page's `Copy details for Support` block (no serials, MACs or user names). Same M8 preview, same helper queue | Same queue, same preview; "Support usually answers within a day" still waits on the inbox (M8) |
 
 Proposed tests, adopted and extended by Minerva as NA1 to NA5, with NA6 to NA9 new (`design-no-ai.md` 4; Vera and Janus run them). The originals, for the record:
 
@@ -241,7 +241,7 @@ Proposed tests, adopted and extended by Minerva as NA1 to NA5, with NA6 to NA9 n
 
 ## 8. Reused / new, and why
 
-Reused: the provider `none` (`design.md` 4.2); the Settings Who answers rows and their words, inside the first-start AI card; the polkit agent dialog from Guard rails, for the first-start password; the No AI Help panel and guides, under the Not signed in card; the setup card and the parchment selection border (first start); the Help panel's frame, header, Ask Alex and Let Alex see my screen (Minerva 5.2); Settings' search matcher and its synonym list (guide search); `invictus-settings open` deep links (a guide's `Open <place>` button); the About page's `Copy details for Alex` (what Ask Alex sends); the choice cards and rows from Guard rails and Moneta (the AI page); the guard-rails restart path (stopping Moneta); the G2 safety copy; the Now file (`custom/now` already reads it); the Desk's Now card and its input.
+Reused: the provider `none` (`design.md` 4.2); the Settings Who answers rows and their words, inside the first-start AI card; the polkit agent dialog from Guard rails, for the first-start password; the No AI Help panel and guides, under the Not signed in card; the setup card and the parchment selection border (first start); the Help panel's frame, header, Ask Support and Let Support see my screen (Minerva 5.2); Settings' search matcher and its synonym list (guide search); `invictus-settings open` deep links (a guide's `Open <place>` button); the About page's `Copy details for Support` (what Ask Support sends); the choice cards and rows from Guard rails and Moneta (the AI page); the guard-rails restart path (stopping Moneta); the G2 safety copy; the Now file (`custom/now` already reads it); the Desk's Now card and its input.
 
 New: the guides (`invictus-help`: plain Markdown, no code), the `ai on|off` verb and `/etc/invictus/ai`, the `invictus-moneta` meta, the No AI waybar and bind variants, the Desk's Today column. Nothing existing does these jobs.
 

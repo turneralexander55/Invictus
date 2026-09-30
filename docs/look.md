@@ -322,7 +322,7 @@ A layer-shell panel (namespace `moneta-panel`) that slides in from the right edg
 - Slide in `layersIn` (180 ms); `Super + A` or the bar button toggles; `Esc` closes. Opening does not steal focus from the game or the window under it until you click or start typing into it.
 - Header (48 px): Moneta glyph, `Moneta` in Plex Sans 15 px weight 600, status word in `ash` (`Ready`, `Listening`, `Thinking`, `Working on it`). Right: a collapse button.
 - **Now** strip under the header: the current thread in one line, `parchment`, with a `sol` 3 px left bar. `Threads (4)` collapsed row under it; opening it shows the open threads, one line each, click to switch.
-- Conversation: Moneta's messages on no background, `marble` text, 14 px, line height 1.5. Alex's messages right-aligned on `stone`, radius 12. Code blocks in Plex Mono 13 px on `night`. Tool actions she takes appear as one collapsed line (`Ran 2 commands`) with the details behind it.
+- Conversation: Moneta's messages on no background, `marble` text, 14 px, line height 1.5. The person's messages right-aligned on `stone`, radius 12. Code blocks in Plex Mono 13 px on `night`. Tool actions she takes appear as one collapsed line (`Ran 2 commands`) with the details behind it.
 - Input: 48 px min, `stone`, radius 12, placeholder `Ask Moneta` in `ash`, `sol` border on focus. A mic glyph at the right shows push-to-talk: `ash` idle, `lapis` with a level bar while the pen button is held, `pompeii` if the mic fails.
 - Anything that needs approval (running a command with system access) shows as a card with a 1 px `sol` border (it is where your attention is needed), the exact command in mono, and two buttons of equal weight, `Allow once` and `Deny`, both `marble` on `stone`. Neither is styled as the default, so a habit click does not approve. While the card waits, the input loses its focus border. Never pre-approved, never auto-dismissed.
 
@@ -332,7 +332,7 @@ See `docs/mockups/desk.html`. One job: **what matters now.** It opens on login o
 
 Layout at 1920 x 1080, 1200 px centred column, 32 px gutters:
 
-1. **Greeting line**: `Good evening, Alex` in Cormorant Garamond 36 px `marble`, date under it in Plex Sans 14 px `ash`.
+1. **Greeting line**: `Good evening, <first name>` (the mockup shows `Julia`) in Cormorant Garamond 36 px `marble`, date under it in Plex Sans 14 px `ash`.
 2. **Now** card, full width: the one current focus, 22 px `marble`, with who is on it and since when in `ash`, a `sol` 3 px left bar, and two text buttons: `Done` and `Switch`. If nothing is set: `Nothing set. What are you working on?` with an input.
 3. Two columns under it:
    - **Open threads** (left, 60%): up to 5, one line each with how long ago it was touched, in `ash`. `Show all (n)` link if more. Click opens it in the Moneta panel.
