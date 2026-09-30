@@ -7,8 +7,8 @@ publishes to the `invictus-testing` release.
 | Folder | What goes there | Now |
 |---|---|---|
 | `own/` | Our own packages. They install files from elsewhere in this repo (`scripts/`, `config/`, `theme/`, `assets/`), found at `$startdir/../../..`; `build-repo.sh` stages the whole checkout | `invictus-keyring`, `invictus-tools`, `invictus-branding` |
-| `meta/` | Packages that pull a set of software, one job each (`docs/packages.md`); `sources.txt` says where every name comes from. `invictus-desktop` also carries the desktop config and the first-login unit | `invictus-base`, `-desktop`, `-tessera`, `-atrium`, `-gaming`, `-dev`, `-windows` and `-voice` (placeholders) |
-| `aur/` | AUR PKGBUILDs copied at a reviewed commit, with checksums, and the upstream signing key in `keys/pgp/` when the source is signed. Never built from a live AUR checkout | `spaceship-prompt`, `xwaylandvideobridge` |
+| `meta/` | Packages that pull a set of software, one job each (`docs/packages.md`); `sources.txt` says where every name comes from. `invictus-desktop` also carries the desktop config and the first-login unit | `invictus-base`, `-desktop`, `-tessera`, `-atrium`, `-gaming`, `-dev`, `-moneta` (the AI set), `-windows` and `-voice` (placeholders) |
+| `aur/` | AUR PKGBUILDs copied at a reviewed commit, every checksum pinned (signatures too), and the upstream signing key in `keys/pgp/` when the source is signed. Never built from a live AUR checkout. Moved with `scripts/dev/bump-aur.sh` | `calamares` (live ISO only), `claude-code`, `limine-mkinitcpio-hook`, `limine-snapper-sync`, `proton-ge-custom-bin`, `spaceship-prompt`, `visual-studio-code-bin`, `xwaylandvideobridge`, `zen-browser-bin` |
 | `pinned/` | `hypr.lock`: the exact Arch files of the hypr* set, fetched and verified by `scripts/fetch-pinned.sh` at build time. No binaries in git | 16 packages, Hyprland 0.56.2-3 |
 
 Rules:
@@ -20,9 +20,5 @@ Rules:
 - Moving the pin: `scripts/fetch-pinned.sh --lock-current` in an Arch
   container, run `tests/hyprland-lua/run.sh` against the new stubs, commit.
 
-Still AUR-only and not in `aur/` yet (the sets name them; a machine must
-have them from paru until they are added; `sources.txt` marks them
-`aur-paru`): `zen-browser-bin` (desktop), `proton-ge-custom-bin` (gaming),
-`claude-code` (dev), `limine-mkinitcpio-hook`, `limine-snapper-sync`
-(base). `scripts/dev/adopt.sh` lists any that are missing before it
-changes anything.
+Every AUR package a set names is in `aur/` now (`sources.txt` says `aur`).
+Who moves each pin and when: `docs/packages.md`, "AUR pins".

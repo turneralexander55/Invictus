@@ -4,7 +4,7 @@ For Alex, on the desktop that runs the old hyprdots setup. About 45 minutes,
 most of it waiting for downloads. Your desktop and packages change at step 6.
 Before that: steps 1, 2, 3 and 5 change nothing on the system (step 5 only
 prints), and step 4 installs build tools with `sudo` unless you build in a
-container. Step 9 puts everything back if you want.
+container (docker or podman). Step 9 puts everything back if you want.
 
 What changes: your desktop runs from the Invictus packages and the new Lua
 config (the look Venus designed), and updates come from `invictus-update`
@@ -65,23 +65,23 @@ so you build them once here.
   The build installs build tools with `pacman -S` (makepkg `--syncdeps`), and
   on a system that is not fully up to date that is a partial upgrade, which
   can break things. Reboot if it upgrades the kernel.
-- [ ] ```
-  INVICTUS_SIGN_KEY=FPR scripts/build-repo.sh
+- [ ] If `docker` or `podman` is installed (recommended: no build tools go
+  on your system, and no package code runs where your key is):
   ```
-  It asks for your key's passphrase, may ask for `sudo` to install build
-  tools (cmake for xwaylandvideobridge), downloads the pinned Hyprland set
-  from the Arch archive and checks Arch's signatures. It ends with a list of
-  files in `out/repo`.
-
-  If `docker` or `podman` is installed you can build in a container instead,
-  so no build tools are installed on your system. The container cannot use
-  your key, so it builds and you sign afterwards:
+  INVICTUS_SIGN_KEY=FPR scripts/build-repo.sh --in-container
   ```
-  mkdir -p out/repo
-  scripts/build-repo.sh --in-container --build-only
-  sudo chown -R "$USER" out        # docker only: it leaves root-owned files
-  INVICTUS_SIGN_KEY=FPR scripts/build-repo.sh --no-container --repo-only
-  ```
+  Without either, the same command without `--in-container` builds on your
+  system and may ask for `sudo` to install build tools.
+  The container builds everything (about 20 minutes the first time: it
+  compiles Calamares and two limine tools and downloads Proton GE, Zen, VS
+  Code and Claude Code, about 1.5 GB), then the files come back to you and
+  it signs them here: it asks for your key's passphrase once. It also
+  downloads the pinned Hyprland set from the Arch archive and checks Arch's
+  signatures.
+  You should see `==> Building in ... (no signing key in there)`, later
+  `==> Signing and indexing on this machine` and `==> Signing with key
+  FPR`, and at the end a list of files in `out/repo`, among them
+  `invictus-testing.db` and a `.sig` next to every `.pkg.tar.zst`.
 
 ## 5. Look at the plan
 
@@ -98,8 +98,8 @@ so you build them once here.
     Lua form, a file it could not read). Note them; you can add them to
     `~/.config/hypr/user.lua` or `monitors.lua` by hand later;
   - any **PROBLEM** line. The usual ones:
-    - an AUR package our repo does not carry yet (for example
-      `zen-browser-bin`): install it the old way first, `paru -S <name>`;
+    - an AUR package our repo does not carry: every one the sets use is in
+      it now, so tell the team;
     - `[multilib]` is off: turn it on in `/etc/pacman.conf`, or add
       `--skip gaming`.
   You should see numbered steps `[1]` to `[6]`, the `+[invictus-testing]`

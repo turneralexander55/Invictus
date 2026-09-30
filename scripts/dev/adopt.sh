@@ -345,6 +345,28 @@ preview() {
         info "pacman -Syu would handle $(wc -l < "$TMP/plan.txt") packages: $new new, $ours from [$REPO_NAME]:"
         awk -v r="$REPO_NAME" '$3 == r { print "      " $0 }' "$TMP/plan.txt"
         info "(the rest are Arch packages and upgrades; full list in the backup folder after --apply)"
+        # pacman -Sp does not check conflicts. An installed package that one
+        # of ours conflicts with (code vs visual-studio-code-bin) makes pacman
+        # ask to remove it; with --yes (--noconfirm) the answer is No and the
+        # whole update stops (the adopt-jack2-conflict lesson).
+        local ours_names conflicts line pkg c
+        mapfile -t ours_names < <(awk -v r="$REPO_NAME" '$3 == r { print $1 }' "$TMP/plan.txt")
+        if [[ ${#ours_names[@]} -gt 0 ]]; then
+            conflicts="$(pacman --config "$conf" --dbpath "$db" -Si "${ours_names[@]}" 2>/dev/null \
+                | awk -F' *: ' '/^Name/ { n = $2 } /^Conflicts With/ { if ($2 != "None") print n, $2 }' || true)"
+            while read -r pkg line; do
+                [[ -n "$pkg" ]] || continue
+                for c in $line; do
+                    c="${c%%[<>=]*}"
+                    pacman -Q "$c" >/dev/null 2>&1 || continue
+                    if $YES; then
+                        problem "$pkg replaces $c, which is installed; with --yes pacman would refuse. Run without --yes and answer y to remove $c, or remove it first (sudo pacman -R $c)"
+                    else
+                        info "pacman will ask to remove $c for $pkg (they conflict): answer y"
+                    fi
+                done
+            done <<< "$conflicts"
+        fi
     else
         problem "pacman cannot resolve the packages: $(grep -v '^$' "$TMP/plan.err" | head -5 | tr '\n' ' ')"
         info "An AUR package our repo does not carry yet must be installed first (for example: paru -S <name>)."

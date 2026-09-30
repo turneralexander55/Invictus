@@ -102,9 +102,10 @@ fi
 
 # ---- the legacy machine ---------------------------------------------------------------
 echo "==> Making the legacy machine"
-# Stand-ins for what Alex installed from the AUR with paru.
+# Stand-ins for what Alex installed from the AUR with paru, and for Arch's
+# Code - OSS (`code`), which our visual-studio-code-bin conflicts with.
 id builder >/dev/null 2>&1 || useradd -m builder
-for p in zen-browser-bin claude-code; do
+for p in zen-browser-bin claude-code code; do
     d="$WORK/aur-standins/$p"; mkdir -p "$d"
     printf "pkgname=%s\npkgver=1\npkgrel=1\narch=('any')\nlicense=('custom')\npackage() { :; }\n" "$p" > "$d/PKGBUILD"
 done
@@ -159,8 +160,9 @@ if [[ $rc == 0 ]] && grep -q "^+\[invictus-testing\]" <(sed 's/^    //' "$WORK/d
    && grep -qE '^ +invictus-gaming [^ ]+ invictus-testing$' "$WORK/dry.log" \
    && grep -q "replacing /home/alex/.config/waybar/config.json" "$WORK/dry.log" \
    && grep -q 'hl.bind("SUPER + SHIFT + B", hl.dsp.exec_cmd("firefox --private-window")' "$WORK/dry.log" \
+   && grep -q "pacman will ask to remove code for visual-studio-code-bin" "$WORK/dry.log" \
    && grep -q "Dry run finished. Nothing was changed" "$WORK/dry.log"; then
-    ok "dry run shows the repo block, the packages from our repo, the replaced files and the ported bind"
+    ok "dry run shows the repo block, the packages from our repo, the replaced files, the ported bind and the code/VS Code swap"
 else
     bad "dry run (rc $rc): $(tail -25 "$WORK/dry.log")"
 fi
@@ -170,6 +172,15 @@ if cmp -s "$WORK/before.snap" "$WORK/after-dry.snap" && [[ ! -e /home/alex/.loca
     ok "dry run changed nothing (home, pacman.conf, packages)"
 else
     bad "dry run changed something: $(diff "$WORK/before.snap" "$WORK/after-dry.snap" | head -5)"
+fi
+# Regression, adopt-conflict-noconfirm (2026-09-30): with --yes pacman
+# answers No to "remove code?" and stops the whole update; adopt must say so
+# before changing anything.
+rc=0; as_alex bash "$ADOPT" --server "file://$OUT" --yes > "$WORK/yes.log" 2>&1 || rc=$?
+if [[ $rc == 1 ]] && grep -q "visual-studio-code-bin replaces code, which is installed; with --yes" "$WORK/yes.log"; then
+    ok "adopt-conflict-noconfirm: --yes with code installed stops at the plan and says why"
+else
+    bad "adopt-conflict-noconfirm: rc $rc $(grep -E 'PROBLEM|problem|code' "$WORK/yes.log" | head -3)"
 fi
 rc=0; as_alex bash "$ADOPT" --unsigned-local https://example.org/repo > "$WORK/remote.log" 2>&1 || rc=$?
 if [[ $rc != 0 ]] && grep -q "never allowed" "$WORK/remote.log"; then ok "unsigned mode refuses a URL"
