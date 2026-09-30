@@ -117,6 +117,13 @@ for n in $ALLOWED_OVERLAP; do
         || sbad "$n: expected in invictus-dev and invictus-windows only"
 done
 
+# Regression, adopt-jack2-conflict (2026-09-30): an existing install has
+# jack2 (waybar needs "jack"), and a set that depends on pipewire-jack
+# makes pacman --noconfirm refuse the whole update.
+for pb in "$REPO"/pkgs/meta/*/PKGBUILD; do
+    field "$pb" depends | grep -x pipewire-jack >/dev/null && sbad "adopt-jack2-conflict: $(basename "$(dirname "$pb")") depends on pipewire-jack (optdepends only)"
+done
+
 # invictus-base stays off existing installs: no set depends on it, and
 # adopt.sh installs only desktop, tessera, gaming, dev.
 for pb in "$REPO"/pkgs/meta/*/PKGBUILD; do

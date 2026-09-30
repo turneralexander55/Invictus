@@ -21,7 +21,7 @@ Rules the tests hold (`tests/pkgs/run.sh`, group "package sets"):
 - A set names what we run or rely on directly, not the hard dependencies of what it names (`hyprland` already pulls `xorg-xwayland` and `mesa`'s VA-API driver comes with `mesa`).
 - `pkgs/meta/sources.txt` says where every name comes from (`core`, `extra`, `multilib`, `aur` built from `pkgs/aur`, `aur-paru`, `invictus`). `tests/pkgs/live-arch.sh` rechecks it against Arch and the AUR, checks each command in `tests/pkgs/fixtures/commands.txt` is a file of its package, and resolves every set in one transaction: no conflicts, and Steam gets `vulkan-radeon`/`lib32-vulkan-radeon`, never another driver.
 
-For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera invictus-atrium` (plus `invictus-guardrails` once it exists, design-simple-mode 6.1); gaming, dev, windows and voice are opt-in. Installer jobs these sets need: enable `NetworkManager`, `bluetooth`, `sddm`, `power-profiles-daemon`, `cups.socket`, `avahi-daemon`, `paccache.timer`; add `mdns_minimal [NOTFOUND=return]` before `resolve` on the `hosts` line of `/etc/nsswitch.conf`; nothing for the keyring: Arch's `/etc/pam.d/sddm` already unlocks and starts gnome-keyring at login (`pam_gnome_keyring.so` in auth, password and session, checked in the sddm package).
+For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera invictus-atrium pipewire-jack` (`pipewire-jack` as a target so `jack` resolves to it, see desktop below; plus `invictus-guardrails` once it exists, design-simple-mode 6.1); gaming, dev, windows and voice are opt-in. Installer jobs these sets need: enable `NetworkManager`, `bluetooth`, `sddm`, `power-profiles-daemon`, `cups.socket`, `avahi-daemon`, `paccache.timer`; add `mdns_minimal [NOTFOUND=return]` before `resolve` on the `hosts` line of `/etc/nsswitch.conf`; nothing for the keyring: Arch's `/etc/pam.d/sddm` already unlocks and starts gnome-keyring at login (`pam_gnome_keyring.so` in auth, password and session, checked in the sddm package).
 
 ## invictus-base
 
@@ -56,7 +56,7 @@ For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera
 | `xdg-desktop-portal`, `-hyprland`, `-gtk` | Screen sharing, file pickers, dark-mode setting | apps, autostart |
 | `qt6-wayland`, `qt6-svg` | Qt apps on Wayland; SVG icons (Papirus) in Qt apps | Qt apps |
 | `sddm` | Login | boot |
-| `pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber` | Sound; JACK clients go to PipeWire, not `jack2` | volume keys (`wpctl`), waybar, FreeRDP |
+| `pipewire pipewire-alsa pipewire-pulse wireplumber` | Sound | volume keys (`wpctl`), waybar, FreeRDP |
 | `bluez bluez-utils blueman` | Bluetooth and a window to pair (the voice pen button) | people |
 | `power-profiles-daemon`, `upower` | Power profiles, battery state | Atrium quick settings, Desk |
 | `gnome-keyring`, `libsecret` | Secret store unlocked at login; `secret-tool` | FreeRDP askpass, first boot (design 2.3) |
@@ -73,7 +73,9 @@ For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera
 | `noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-liberation` | Every script, emoji, Arial/Times/Courier metrics | web, documents, games |
 | `zsh zsh-syntax-highlighting zsh-autosuggestions spaceship-prompt fastfetch` | The shipped `~/.zshrc` | every terminal |
 
-Optional: the two flavours, `libva-utils` (vainfo), `seahorse`.
+Optional: the two flavours, `pipewire-jack`, `libva-utils` (vainfo), `seahorse`.
+
+`pipewire-jack` is optional on purpose. waybar, ffmpeg and cava depend on `jack`, and pacman's default provider is `jack2`, so a machine set up by the old scripts (Alex's) has `jack2`; a set that depends on `pipewire-jack` makes `pacman -Syu --noconfirm` stop on the conflict (found by `e2e-adopt.sh`). The ISO names `pipewire-jack` as an install target, so a fresh machine resolves `jack` to it.
 
 ## invictus-tessera
 

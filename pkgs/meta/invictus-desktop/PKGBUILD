@@ -53,10 +53,10 @@ depends=(
   # login
   'sddm'
 
-  # session services: sound (JACK clients too), bluetooth, power profiles
+  # session services: sound, bluetooth, power profiles
   # and battery, the secret store (FreeRDP and first boot keep passwords
   # there), home folders, opening files and links
-  'pipewire' 'pipewire-alsa' 'pipewire-pulse' 'pipewire-jack' 'wireplumber'
+  'pipewire' 'pipewire-alsa' 'pipewire-pulse' 'wireplumber'
   'bluez' 'bluez-utils' 'blueman'
   'power-profiles-daemon' 'upower'
   'gnome-keyring' 'libsecret'
@@ -96,6 +96,11 @@ depends=(
   'fastfetch'
 )
 optdepends=(
+  # Not a depends: waybar, ffmpeg and cava need "jack", which an existing
+  # install already has as jack2, and pipewire-jack conflicts with it, so
+  # pacman --noconfirm would refuse the update. The ISO names it as a
+  # target, so a fresh install resolves "jack" to it.
+  'pipewire-jack: JACK apps play through PipeWire (replaces jack2)'
   'invictus-tessera: the tiling flavour (bar, launcher, binds)'
   'invictus-atrium: the windows-and-taskbar flavour and everyday apps'
   'libva-utils: vainfo, to check video decode on the GPU'

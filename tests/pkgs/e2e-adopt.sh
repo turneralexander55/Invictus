@@ -113,6 +113,12 @@ pacman -U --noconfirm "$WORK"/aur-standins/*/*.pkg.tar.zst > "$WORK/standin.log"
 pacman -S --noconfirm --needed hyprland hyprpaper hypridle hyprlock waybar kitty rofi > "$WORK/legacy-pkgs.log" 2>&1 \
     || { tail -5 "$WORK/legacy-pkgs.log"; exit 1; }
 
+# waybar needs "jack"; pacman's default provider is jack2, so the old
+# install has it, as Alex's machine almost certainly does. Adopt must
+# work around it (regression adopt-jack2-conflict).
+if pacman -Q jack2 >/dev/null 2>&1; then ok "the legacy machine has jack2 (from waybar), like a real one"
+else bad "legacy machine: jack2 not installed, the jack2 regression is not covered"; fi
+
 useradd -m -s /bin/bash alex
 echo 'alex ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/alex
 # shellcheck source=tests/pkgs/lib/legacy-home.sh

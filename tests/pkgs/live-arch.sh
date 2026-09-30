@@ -17,8 +17,10 @@
 # 2. Every command in tests/pkgs/fixtures/commands.txt is a file of the
 #    Arch package it is mapped to (pacman -F), and
 #    tests/pkgs/fixtures/arch-base.txt is still what Arch's base depends on.
-# 3. Every Arch package of every set resolves in one transaction, no two
-#    of them conflict, and Steam's Vulkan drivers resolve to the AMD ones.
+# 3. Every Arch package of every set, plus what the ISO adds as targets
+#    (pipewire-jack), resolves in one transaction, no two of them
+#    conflict, Steam's Vulkan drivers resolve to the AMD ones, and "jack"
+#    to pipewire-jack, not jack2.
 # Arch's sync and file databases are read into a throwaway --dbpath; the
 # container's own are never synced alone.
 # ------------------------------------------------------------
@@ -130,6 +132,7 @@ echo
 echo "== one transaction"
 for pb in "$SRC"/pkgs/meta/*/PKGBUILD; do field "$pb" depends | bare; done | sort -u > "$TMP/deps"
 mapfile -t targets < <(awk 'NR == FNR { d[$1] = 1; next } ($1 in d) && $2 ~ /^(core|extra|multilib)$/ { print $1 }' "$TMP/deps" "$TMP/found")
+targets+=(pipewire-jack)   # the ISO installs it by name (docs/packages.md)
 if "${P[@]}" -Sp --noconfirm --print-format '%n' "${targets[@]}" > "$TMP/plan" 2>"$TMP/plan.err"; then
     # Conflicts among the planned packages (pacman -Sp does not check them).
     mapfile -t plan < "$TMP/plan"
@@ -160,6 +163,8 @@ if "${P[@]}" -Sp --noconfirm --print-format '%n' "${targets[@]}" > "$TMP/plan" 2
     else
         bad "Vulkan drivers wrong: other drivers '${wrong}'"
     fi
+    if grep -qx pipewire-jack "$TMP/plan" && ! grep -qx jack2 "$TMP/plan"; then ok "jack: pipewire-jack, not jack2"
+    else bad "jack resolves to jack2 on a fresh install"; fi
 else
     bad "the sets do not resolve: $(head -5 "$TMP/plan.err" | paste -sd' ')"
 fi
