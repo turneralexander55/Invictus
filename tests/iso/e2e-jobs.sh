@@ -93,7 +93,7 @@ Include = /etc/pacman.d/mirrorlist
 [extra]
 Include = /etc/pacman.d/mirrorlist
 EOF
-pacstrap -C "$W/pacman.conf" -K "$T" base linux mkinitcpio btrfs-progs snapper limine \
+pacstrap -C "$W/pacman.conf" -K "$T" base linux-cachyos mkinitcpio btrfs-progs snapper limine \
     limine-mkinitcpio-hook limine-snapper-sync efibootmgr acl >"$W/pacstrap.log" 2>&1 \
     || { tail -30 "$W/pacstrap.log"; exit 1; }
 # What Calamares' machineid, fstab, users and initcpiocfg would have done.
@@ -116,15 +116,15 @@ check "bootloader job exits 0" test "$rc" -eq 0
 conf="$T/boot/limine.conf"
 check "limine.conf keeps our Dusk header" grep -qx 'interface_branding: Invictus' "$conf"
 check "limine.conf has an Invictus entry" grep -Eq '^/\+?Invictus' "$conf"
-check "limine.conf has linux and linux-lts entries with a kernel path" bash -c "grep -qx '  //linux' '$conf' && grep -qx '  //linux-lts' '$conf' && grep -Eq '^ +path: boot\\(\\):/.*/linux/vmlinuz' '$conf'"
+check "limine.conf has the linux-cachyos entry with a kernel path (the one kernel)" bash -c "grep -qx '  //linux-cachyos' '$conf' && ! grep -qx '  //linux-lts' '$conf' && grep -Eq '^ +path: boot\\(\\):/.*/linux-cachyos/vmlinuz' '$conf'"
 check "the entry carries our command line" grep -q 'cmdline: root=UUID=.* rootflags=subvol=/@ rw quiet splash' "$conf"
 uuid="$(findmnt -n -o UUID --mountpoint "$T")"
 check "the entry finds root by the file system's UUID" grep -q "root=UUID=$uuid" "$conf"
 check "no live ISO parameters leaked in" bash -c "! grep -Eq 'archiso|invictus\\.' '$conf'"
-check "kernel and initramfs are on the ESP" bash -c "compgen -G '$T/boot/*/linux/vmlinuz' >/dev/null && compgen -G '$T/boot/*/linux/initramfs' >/dev/null"
+check "kernel and initramfs are on the ESP" bash -c "compgen -G '$T/boot/*/linux-cachyos/vmlinuz' >/dev/null && compgen -G '$T/boot/*/linux-cachyos/initramfs' >/dev/null"
 check "limine EFI binary on the ESP" test -s "$T/boot/EFI/limine/limine_x64.efi"
 check "no EFI variables here: limine is the fallback loader" test -s "$T/boot/EFI/BOOT/BOOTX64.EFI"
-initrd="$(compgen -G "$T/boot/*/linux/initramfs" | head -n 1)"
+initrd="$(compgen -G "$T/boot/*/linux-cachyos/initramfs" | head -n 1)"
 if [[ -n "$initrd" ]]; then
     lsinitcpio -a "$initrd" >"$W/lsinit" 2>&1 || true
     check "the initramfs has the snapshot overlay unit" grep -q 'overlayfs-setup' <(lsinitcpio "$initrd")

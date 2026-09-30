@@ -6,12 +6,13 @@ What each meta package is for, what is in it and why. Audit of Alex's old lists 
 
 | Set | One job | Who installs it |
 |---|---|---|
-| `invictus-base` | The system under any machine: kernels, firmware, limine with bootable snapshots, btrfs, network, command line. Headless-safe | ISO and installer only. `adopt.sh` never installs it |
+| `invictus-base` | The system under any machine: the kernel, firmware, limine with bootable snapshots, btrfs, network, command line. Headless-safe | ISO and installer only. `adopt.sh` never installs it |
 | `invictus-desktop` | The session both flavours share: Hyprland, login, portals, audio, bluetooth, power, keyring, files, viewers, fonts, the shell the shipped `~/.zshrc` needs, and the config itself | Every machine with a screen |
 | `invictus-tessera` | Tessera, the tiling flavour: waybar, rofi and what its binds and bar open | Every install (users switch flavour live); Alex's machine by `adopt.sh` |
 | `invictus-atrium` | Atrium, the windows-and-taskbar flavour: the everyday apps behind Start, printing, scanning, Flatpak apps, a disk tool. The Atrium shell joins when it is built | Every install |
-| `invictus-gaming` | Steam, Proton GE, gamescope, MangoHud, GameMode, Lutris with umu. Needs `[multilib]` | Opt-in |
-| `invictus-dev` | Build tools, git, Zed and VS Code, Node, Python, podman. No AI | Opt-in |
+| `invictus-office` | LibreOffice and the Office-metric fonts | Installer extra, ticked by default (not on the ISO) |
+| `invictus-gaming` | Steam, Proton GE, gamescope, MangoHud, GameMode, Lutris with umu. Needs `[multilib]` | Opt-in: installer extra |
+| `invictus-dev` | Build tools, git, Zed and VS Code, Node, Python, podman. No AI | Opt-in: installer extra |
 | `invictus-moneta` | The AI set's meta: Claude Code now; the Moneta panel, plugin and MCP server, providers and Collegium as they are built | Only when someone picks an AI (first start or Settings, `invictus-sys ai on`); never on a No AI machine |
 | `invictus-windows` | Placeholder: FreeRDP 3 and rootless podman for the Windows VM | Opt-in, Phase 4 |
 | `invictus-voice` | Placeholder: whisper.cpp with the Vulkan backend, both from `[extra]` | Opt-in, when `invictus-ptt` exists |
@@ -23,7 +24,7 @@ Rules the tests hold (`tests/pkgs/run.sh`, group "package sets"):
 - A set names what we run or rely on directly, not the hard dependencies of what it names (`hyprland` already pulls `xorg-xwayland` and `mesa`'s VA-API driver comes with `mesa`).
 - `pkgs/meta/sources.txt` says where every name comes from (`core`, `extra`, `multilib`, `aur` built from `pkgs/aur`, `aur-paru`, `invictus`). `tests/pkgs/live-arch.sh` rechecks it against Arch and the AUR, checks each command in `tests/pkgs/fixtures/commands.txt` is a file of its package, and resolves every set in one transaction: no conflicts, and Steam gets `vulkan-radeon`/`lib32-vulkan-radeon`, never another driver.
 
-For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera invictus-atrium pipewire-jack` (`pipewire-jack` as a target so `jack` resolves to it, see desktop below; plus `invictus-guardrails` once it exists, design-simple-mode 6.1); gaming, dev, windows are opt-in; moneta and voice (the AI set) are never on the ISO's install list, first start or Settings adds them. `calamares`, `limine-mkinitcpio-hook` and `limine-snapper-sync` are in `pkgs/aur` now (same names as `iso/aur-needed`, which can go). Installer jobs these sets need: enable `NetworkManager`, `bluetooth`, `sddm`, `power-profiles-daemon`, `cups.socket`, `avahi-daemon`, `paccache.timer`; add `mdns_minimal [NOTFOUND=return]` before `resolve` on the `hosts` line of `/etc/nsswitch.conf`; nothing for the keyring: Arch's `/etc/pam.d/sddm` already unlocks and starts gnome-keyring at login (`pam_gnome_keyring.so` in auth, password and session, checked in the sddm package).
+For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera invictus-atrium pipewire-jack` (`pipewire-jack` as a target so `jack` resolves to it, see desktop below; plus `invictus-guardrails` once it exists, design-simple-mode 6.1); office, gaming, dev and the CJK fonts are installer extras (see "Extras" below), windows is opt-in; moneta and voice (the AI set) are never on the ISO's install list, first start or Settings adds them. `calamares`, `limine-mkinitcpio-hook` and `limine-snapper-sync` are in `pkgs/aur` now (same names as `iso/aur-needed`, which can go). Installer jobs these sets need: enable `NetworkManager`, `bluetooth`, `sddm`, `power-profiles-daemon`, `cups.socket`, `avahi-daemon`, `paccache.timer`; add `mdns_minimal [NOTFOUND=return]` before `resolve` on the `hosts` line of `/etc/nsswitch.conf`; nothing for the keyring: Arch's `/etc/pam.d/sddm` already unlocks and starts gnome-keyring at login (`pam_gnome_keyring.so` in auth, password and session, checked in the sddm package).
 
 ## invictus-base
 
@@ -31,9 +32,9 @@ For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera
 |---|---|---|
 | `base` | Arch's minimal system | everything |
 | `invictus-keyring` | Trusts our repo's key | pacman |
-| `linux`, `linux-lts` | Kernel, and the second boot entry (design 2.1) | boot |
+| `linux-cachyos` | The one kernel (Alex, 2026-09-30): CachyOS's generic x86-64 build, pinned in `pkgs/pinned/cachyos.lock`, verified with CachyOS's key and re-signed into `[invictus]` (the CachyOS repos are never added). Rollback of a bad kernel is a snapshot entry in limine, which boots that snapshot's own kernel. `linux-cachyos-headers` is optional (DKMS; pulls clang, llvm, lld) | boot |
 | `mkinitcpio` | The initramfs the limine hook drives | `limine-mkinitcpio-hook` |
-| `linux-firmware` | GPU, Wi-Fi, bluetooth firmware for any machine a friend brings | kernel |
+| `linux-firmware-{amd,amdgpu,atheros,broadcom,cirrus,intel,mediatek,other,radeon,realtek,ti}` | GPU, Wi-Fi, bluetooth firmware for any machine a friend brings: Arch's `linux-firmware` split without `linux-firmware-nvidia` (100 MB; an automatic installer extra on NVIDIA machines) | kernel |
 | `sof-firmware` | Laptop audio (Intel and AMD SOF DSPs) | kernel |
 | `amd-ucode`, `intel-ucode` | CPU microcode; AMD GPUs only, but friends' CPUs may be Intel | limine entries |
 | `fwupd` | Firmware updates for SSDs, docks, laptops (LVFS) | Desk later |
@@ -72,10 +73,10 @@ For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera
 | `zen-browser-bin` | Browser (AUR) | Super+W, Atrium "Internet" |
 | `papirus-icon-theme`, `capitaine-cursors`, `adw-gtk-theme`, `qt6ct` | Icons, the cursor `env.lua` sets (`XCURSOR_THEME`), the GTK theme `invictus-theme` recolours, the Qt platform theme `env.lua` sets (`QT_QPA_PLATFORMTHEME=qt6ct`) | theme tool, rofi, Qt apps |
 | `fontconfig`, `ttf-ibm-plex`, `ttf-nerd-fonts-symbols-mono` | The UI and mono face and the glyph font the config names | kitty, waybar, rofi, swaync, first login |
-| `noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-liberation` | Every script, emoji, Arial/Times/Courier metrics | web, documents, games |
+| `noto-fonts noto-fonts-emoji ttf-liberation` | Latin, Greek, Cyrillic and most scripts, emoji, Arial/Times/Courier metrics (Chinese, Japanese and Korean: `noto-fonts-cjk`, an installer extra) | web, documents, games |
 | `zsh zsh-syntax-highlighting zsh-autosuggestions spaceship-prompt fastfetch` | The shipped `~/.zshrc` | every terminal |
 
-Optional: the two flavours, `pipewire-jack`, `libva-utils` (vainfo), `seahorse`.
+Optional: the two flavours, `pipewire-jack`, `libva-utils` (vainfo), `seahorse`, `noto-fonts-cjk`.
 
 `pipewire-jack` is optional on purpose. waybar, ffmpeg and cava depend on `jack`, and pacman's default provider is `jack2`, so a machine set up by the old scripts (Alex's) has `jack2`; a set that depends on `pipewire-jack` makes `pacman -Syu --noconfirm` stop on the conflict (found by `e2e-adopt.sh`). The ISO names `pipewire-jack` as an install target, so a fresh machine resolves `jack` to it.
 
@@ -97,13 +98,39 @@ Optional: `invictus-gaming` (Super+G), `invictus-dev` (Super+T opens Zed).
 | Package | Why | Used by |
 |---|---|---|
 | `invictus-desktop` | The shared session | |
-| `libreoffice-fresh`, `ttf-carlito`, `ttf-caladea` | Documents; Calibri and Cambria metrics | "Documents" |
 | `gnome-calculator`, `gnome-text-editor` | Calculator, plain text | Start tiles |
 | `cups system-config-printer ipp-usb nss-mdns` | Driverless network and USB printers | "Printers" |
 | `simple-scan`, `sane-airscan` | Driverless scanners | All apps |
 | `flatpak bazaar flatseal` | Per-user Flathub apps (design-simple-mode 3.1) | "Get apps" |
 | `gnome-disk-utility` | Format a USB stick without a terminal | All apps |
 | `gvfs-afc` | Photos from an iPhone | Files |
+
+Optional: `invictus-office` (the "Documents" tile), an installer extra.
+
+## invictus-office
+
+LibreOffice left `invictus-atrium` on 2026-09-30 to keep the ISO under 2 GiB (it is about 165 MB of packages). The installer's Extras page offers it, ticked by default.
+
+| Package | Why | Used by |
+|---|---|---|
+| `invictus-desktop` | The shared session | |
+| `libreoffice-fresh`, `ttf-carlito`, `ttf-caladea` | Documents; Calibri and Cambria metrics | Atrium "Documents" |
+
+## Extras (installer)
+
+What the ISO leaves out so it stays under GitHub's 2 GiB release asset limit, and the installer can add from our signed repo (Alex, 2026-09-30: "Keep the iso small and offer those different packages in the install wizard"). `scripts/lib/extras.list` (installed as `/usr/share/invictus/extras.list`) is the only list of names the installer and `pending-extras` accept; `tests/iso/calamares.py` checks the Extras page matches it.
+
+| Extra | On the Extras page as | Default | Size (packages) |
+|---|---|---|---|
+| `invictus-office` | Office | ticked | about 165 MB |
+| `invictus-gaming` | Games | not ticked | Steam, Proton GE (about 500 MB) and 32-bit libraries |
+| `invictus-dev` | Programming | not ticked | VS Code, Zed, Node, podman |
+| `noto-fonts-cjk` | Chinese, Japanese and Korean | not ticked | about 190 MB |
+| `linux-firmware-nvidia` | not shown: added when the machine has an NVIDIA graphics card | automatic | about 100 MB |
+
+How they install: the page is Calamares' `netinstall` (both install paths); `installer/modules/invictusextras` hands the ticks to `installer/jobs/extras.sh`, which runs `pacman -Syu --needed` inside the new system with its own `pacman.conf` and keys. Without internet the install still finishes: the names go to `/var/lib/invictus/pending-extras` and `invictus-extras.service` (from `invictus-tools`) installs them on the first start with internet, trying every 10 minutes. Settings will offer the same list once it exists.
+
+Discord stayed on the ISO: Arch's `discord` is 2 MB (6.5 MB installed).
 
 ## invictus-gaming
 
@@ -218,5 +245,5 @@ Coming with later phases: `rustdesk-bin` (kuhtoxo) for `invictus-guardrails`.
 
 ## Open questions
 
-- LibreOffice native in `invictus-atrium` (updates and rollback with the system) or a Flatpak (DS5)? Native here until decided.
+- LibreOffice native (updates and rollback with the system) or a Flatpak (DS5)? Native, in `invictus-office`, until decided.
 - `xwaylandvideobridge`: only Discord under XWayland needs it. If Discord shares screens natively under Wayland on Alex's machine (not checked here), drop it and its autostart line.

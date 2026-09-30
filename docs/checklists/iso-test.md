@@ -1,7 +1,8 @@
 # Try the Invictus ISO on real hardware
 
-For Alex. About an hour and a half: 10 minutes to make the stick, 15 to
-try the live desktop, 20 to install, the rest to check snapshots. You need a
+For Alex. About two hours: 10 minutes to make the stick, 15 to
+try the live desktop, 20 to install, the rest to check snapshots and a
+second, offline install for the extras (section 8). You need a
 USB stick (8 GB or more) and a **spare disk** in the PC, or a spare PC. The
 install erases the disk you pick; nothing else is touched unless you pick it.
 
@@ -101,6 +102,11 @@ The installer's pages, left column top to bottom:
   Pick `Tessera`.
 - [ ] **Guard rails**: `Custodia` (preselected) and `Libertas`. Pick
   `Libertas` for your own machine, or `Custodia` to see a friend's setup.
+- [ ] **Extras**: a list with tick boxes: `Office` (ticked), `Games`,
+  `Programming`, `Chinese, Japanese and Korean`. The text at the top says
+  they come from the internet and that the install still finishes without
+  it. For this first test be online (cable, or Wi-Fi joined from the live
+  desktop's network icon) and tick `Office` and `Games`.
 - [ ] **Users**: your name, login name (filled in from the name), computer
   name (`<first name>-invictus`), password twice. There is no separate
   administrator password: you are the administrator, root stays locked.
@@ -115,8 +121,10 @@ The installer's pages, left column top to bottom:
   tick `I've saved the photos and files I want to keep.`
 - [ ] **Install**: a quiet screen, "Copying Invictus to the disk", with a
   progress bar and the current step under it: Tidying up the live session,
-  Setting up your account, Setting up start-up, Setting up safety copies.
-  10 to 25 minutes.
+  Setting up your account, Setting up start-up, Adding the extras you
+  picked, Setting up safety copies. 10 to 25 minutes, plus the extras'
+  download (Games is about 1.5 GB). The bar does not move during the
+  extras step; that is expected.
 - [ ] **Done**: "All done" with `Restart now` ticked. Click `Done`, take
   the stick out when the screen goes black.
 
@@ -129,10 +137,10 @@ forgets it on restart): in a terminal,
 ## 6. First start
 
 - [ ] The start-up menu: dark background, `Invictus` in gold at the top,
-  entries for `linux` and `linux-lts` under `Invictus`, and a `Snapshots`
-  group with "Fresh install" (it may only appear from the second start:
-  the snapshot service adds it on first boot). Starts `linux` after 3
-  seconds.
+  one entry, `linux-cachyos`, under `Invictus` (there is no second
+  kernel any more), and a `Snapshots` group with "Fresh install" (it may
+  only appear from the second start: the snapshot service adds it on
+  first boot). Starts `linux-cachyos` after 3 seconds.
 - [ ] In the firmware's own boot menu (F11/F12) the disk is listed as
   `Invictus`.
 - [ ] The splash again, then the login screen. Log in with your password.
@@ -150,10 +158,17 @@ forgets it on restart): in a terminal,
   sudo snapper -c home get-config | grep -E 'ALLOW_GROUPS|SYNC_ACL'   # users, yes
   systemctl is-active NetworkManager bluetooth sddm cups.socket avahi-daemon
   cat /etc/invictus/release             # version, channel=testing, build, installed=
+  uname -r                              # ends in -cachyos
+  pacman -Q invictus-office invictus-gaming   # both installed (the extras you ticked)
+  ls /var/lib/invictus/pending-extras   # "No such file": nothing left over
   ```
   A dev ISO's release file says `keyring=dev-throwaway`: that machine
   cannot install updates from the real repo until the real signing key
-  exists. Fine for this test; reinstall from a release ISO later.
+  exists. Fine for this test; reinstall from a release ISO later. The
+  same goes for extras: on a dev ISO pacman refuses the published repo's
+  signatures, so the ticked extras stay pending
+  (`/var/lib/invictus/pending-extras` lists them). Test the extras lines
+  above with a release ISO.
 
 ## 7. Boot a snapshot from the limine menu
 
@@ -171,8 +186,39 @@ forgets it on restart): in a terminal,
   shows the snapshot's path (`.snapshots/<n>/snapshot`).
 - [ ] To keep the machine at that snapshot: `sudo limine-snapper-restore`,
   pick the same snapshot, confirm, restart. Afterwards, normal boot has no
-  `cowsay`. To go back instead: just restart and pick `linux`; `cowsay`
-  is still there.
+  `cowsay`. To go back instead: just restart and pick `linux-cachyos`;
+  `cowsay` is still there.
+- [ ] Each snapshot keeps its own kernel, which is what makes one kernel
+  safe: `sudo limine-snapper-info` lists the snapshots with their kernel
+  versions and "verified", and `sudo ls /boot/*/limine_history/` shows
+  copies of `vmlinuz` and `initramfs`. The real test is the next
+  linux-cachyos update: after it, pick the snapshot from before the
+  update in `Snapshots`, and `uname -r` shows the old version.
+
+## 8. Extras without internet
+
+A second install on the spare disk (or a friend's test machine), this
+time offline.
+
+- [ ] Unplug the network cable and do not join Wi-Fi on the live desktop.
+- [ ] Install with the plain path (the normal boot entry). On **Extras**
+  leave `Office` ticked and also tick `Chinese, Japanese and Korean`.
+- [ ] The install finishes as usual (the extras step is quick and does
+  not show an error).
+- [ ] First start, log in, still offline:
+  ```
+  cat /var/lib/invictus/pending-extras        # invictus-office, noto-fonts-cjk
+  systemctl is-enabled invictus-extras.service # enabled
+  ```
+- [ ] Connect to the network. Within about 10 minutes (or restart):
+  ```
+  pacman -Q invictus-office noto-fonts-cjk     # both installed
+  ls /var/lib/invictus/pending-extras          # "No such file"
+  systemctl is-enabled invictus-extras.service # disabled
+  journalctl -u invictus-extras -b             # "pending-extras: done"
+  ```
+- [ ] While it runs, `Power off` from the desktop is held back until it
+  finishes (a shutdown in the middle of an install would break things).
 
 ## What to send back
 
@@ -185,6 +231,8 @@ Tell Moneta, with a phone photo where a screen looked wrong:
 5. The outputs of step 6 that did not match.
 6. Whether the snapshot boot and `limine-snapper-restore` did what step 7
    says.
+7. The extras: installed during the install (online), and after the
+   first start with internet (step 8).
 
 ## What was not tested before you
 
@@ -196,3 +244,8 @@ Tell Moneta, with a phone photo where a screen looked wrong:
   instead, where the firmware boot entry could not be written.
 - NVRAM (`Invictus` in the firmware menu), Plymouth on a real screen,
   suspend, Wi-Fi in the live system, Ventoy itself.
+- The linux-cachyos kernel on real hardware (it replaced linux and
+  linux-lts on 2026-09-30), and a snapshot boot across a kernel update.
+- The Extras page and its install, online and offline: the jobs were
+  tested with a fake target, not a real download. The NVIDIA firmware
+  extra (added by itself on a machine with an NVIDIA card).
