@@ -198,6 +198,8 @@ The sidebar entry and the title read **AI**: the name of a thing that is not on 
 
 ### 3.10 Support
 
+Minerva (`design-inbox.md`, 2026-09-30): this page also gets **Connect to Support** (paste the code, password) and **Disconnect** (one click), **Your requests** with their states, the connection's end date, and the top line reads `/etc/invictus/helper.conf`, which only the hold-list password prompt can change (3.5 there).
+
 - **Top line**: `Sol Invictus support · solinvictus.support@gmail.com` (from `helper_person` and `helper_contact`; a person's name and address when the owner set them).
 - **Let Support see my screen**: the same label as the Help panel's button, and it starts a help session exactly as that button does (Minerva 5.2): the helper's RustDesk ID only, Accept on the person's screen, the banner and Stop. While a session runs, this page shows `Support is helping now` and `Stop`.
 - **Ask Support**: opens the Help panel with Ask Support ready (the helper request, `simple-mode.md` 5.1). One place for the request, not two.

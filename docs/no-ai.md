@@ -227,7 +227,7 @@ Answered in `design-no-ai.md` section 2 (Minerva, 2026-09-30). Where the answer 
 | N5 | Keeping AI packages off a No AI machine: updates, meta dependencies, a person installing `invictus-dev` | Test NA3 below; `claude-code` moves to `invictus-moneta` |
 | N6 | Kept memory: transcripts can hold anything a person pasted, including secrets. Keep by default, or delete by default, or ask | Keep, listed with its size and `Delete...` on the AI page |
 | N7 | Browser AI features turned off by a root-managed browser policy on No AI machines, and back on (to the browser's default) when AI is turned on | A policy file written by `ai off`; which keys Zen honours is unverified |
-| N8 | Ask Support without Moneta: the request is written by the person and carries the About page's `Copy details for Support` block (no serials, MACs or user names). Same M8 preview, same helper queue | Same queue, same preview; "Support usually answers within a day" still waits on the inbox (M8) |
+| N8 | Ask Support without Moneta: the request is written by the person and carries the About page's `Copy details for Support` block (no serials, MACs or user names). Same M8 preview, same helper queue | Same queue, same preview; "Support usually answers within a day" still waits on the inbox (M8) Delivery: `design-inbox.md` (2026-09-30). |
 
 Proposed tests, adopted and extended by Minerva as NA1 to NA5, with NA6 to NA9 new (`design-no-ai.md` 4; Vera and Janus run them). The originals, for the record:
 

@@ -290,8 +290,8 @@ Clean template: authored fresh in `collegium/template/` in the invictus repo, ge
 1. Collect by allowlist only: `/etc/invictus/release`, package versions of the invictus set, `hyprctl version`, monitor list, GPU model, kernel, the last 200 lines of the Hyprland log, `journalctl -b -p err` (through `invictus-sys report-collect`), the failing unit's last 100 lines if named, `snapper list`, the Moneta panel's last action ids from Acta. Never home file contents, never `~/.claude`, `~/.ssh`, keyrings, WinApps or Windows profiles, never full environment dumps.
 2. Scrub: a pattern scanner for tokens (`sk-ant-`, `ghp_`, `AKIA`, PEM headers, `password=`, `RDP_PASS=`), IPs outside RFC1918 optional, e-mail addresses. A hit blocks sending and names the line.
 3. Preview: the full text in a window, editable, with a description field. Nothing is sent until the user presses Send.
-4. Send: opens the invictus repo's new-issue page with title and body prefilled (for family with repo access, the URL length limit means long logs are attached by the user), or a mail draft (`xdg-email`) to the address in `/etc/invictus/report.conf` (owner decision D9). The bundle is also saved under `~/Invictus/reports/`.
-5. Where it lands: GitHub issues on the invictus repo, labelled `from-machine`. Moneta triages; nothing on the sending side is automated in v1. Automation (an inbox service with per-device enrolment tokens issued by Alex, or a bot mailbox Iris reads) is owner decision D9, and if chosen gets its own design addendum and pen test.
+4. Send: opens the invictus repo's new-issue page with title and body prefilled (for family with repo access, the URL length limit means long logs are attached by the user), or a mail draft (`xdg-email`) to the address in `/etc/invictus/report.conf` (owner decision D9). The bundle is also saved under `~/Invictus/reports/`. Revised (design-inbox.md 3.5, 2026-09-30): the mail draft goes to `helper_contact` in `/etc/invictus/helper.conf` (shipped `solinvictus.support@gmail.com`); `report.conf` holds no address.
+5. Where it lands: GitHub issues on the invictus repo, labelled `from-machine`. Moneta triages; nothing on the sending side is automated in v1. Automation (an inbox service with per-device enrolment tokens issued by Alex, or a bot mailbox Iris reads) is owner decision D9, and if chosen gets its own design addendum and pen test. **DS3 approved (2026-09-30): the automated inbox is designed in `design-inbox.md` (GitHub issues, one private repo per device under a machine account, per-device fine-grained tokens, offline queue, authenticated replies); it changes A2, A7, A12 and S1 as its section 10 lists.**
 
 ### 4.6 ADHD support (Desk and Moneta panel behaviour)
 
@@ -462,7 +462,7 @@ Settled (Moneta, 2026-09-30): Invictus (the distro), the Desk (dashboard; code n
 | D6 | Disk encryption default: off (offered) or on | Off by default, offered in the installer |
 | D7 | Windows licence: Alex's own key per VM; the VM is unactivated otherwise | Acknowledge |
 | D8 | Which Bluetooth pen button (must be a HID button); or a keyboard key as a first step | Buy one that lists "camera shutter / presenter" HID; use a keyboard key until it arrives |
-| D9 | Report inbox: manual (issue form or mail draft) in v1, or an automated inbox (needs its own design and pen test) | Manual in v1; revisit after five reports |
+| D9 | Report inbox: manual (issue form or mail draft) in v1, or an automated inbox (needs its own design and pen test) | Manual in v1; revisit after five reports. Answered by DS3 (approved 2026-09-30): `design-inbox.md`. |
 | D10 | Channel policy: Alex on testing, family on stable, promotion weekly | Yes |
 | D11 | Wallpapers: replace the anime images (copyright) with own or CC0 art | Replace |
 | D12 | SDDM theme: restore blackglass from git history (it has its own licence) or commission a Roman one from Venus | Venus, Phase 6; blackglass meanwhile if it is still in history |
