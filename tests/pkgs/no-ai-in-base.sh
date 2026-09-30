@@ -41,7 +41,9 @@ CONF="$TMP/pacman.conf"
 awk -v repo="$REPO_DIR" '
     /^\[options\]/ { print; next }
     /^\[core\]/ && !done { printf "[invictus-testing]\nSigLevel = Never\nServer = file://%s\n\n", repo; done = 1 }
-    { print }' /etc/pacman.conf > "$CONF"
+    { print }' /etc/pacman.conf | sed '/^DownloadUser/d' > "$CONF"
+# (no DownloadUser: pacman's download user could not read a repo in a
+# private temp folder or write this throwaway dbpath)
 grep -qx '\[multilib\]' "$CONF" || printf '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n' >> "$CONF"
 DB="$TMP/db"
 mkdir -p "$DB/sync" "$DB/local"
@@ -61,15 +63,30 @@ for m in "${metas[@]}"; do
 done
 [[ ${#checked[@]} -ge 8 ]] || bad "only ${#checked[@]} non-AI invictus packages in the repo: ${checked[*]}"
 
-# All of them in one transaction, as a machine with every non-AI set gets.
-# AUR names our repo does not carry (paru) cannot resolve; leave them out.
-if "${P[@]}" -Sp --print-format '%n' "${checked[@]}" > "$TMP/all" 2> "$TMP/all.err"; then
-    for ai in $AI_PKGS; do
-        grep -qx "$ai" "$TMP/all" && bad "installing every non-AI set pulls $ai"
+# All of them in one transaction, as a machine with every non-AI set gets
+# (pacman picks providers here, which pactree does not). Names no repo has
+# (the placeholder keyring is not built until the real key is in) are
+# assumed installed and reported; an AI name is never assumed.
+assume=() assumed=()
+for try in 1 2; do
+    if "${P[@]}" -Sp --print-format '%n' "${assume[@]}" "${checked[@]}" > "$TMP/all" 2> "$TMP/all.err"; then
+        for ai in $AI_PKGS; do
+            grep -qx "$ai" "$TMP/all" && bad "installing every non-AI set pulls $ai"
+        done
+        [[ ${#assumed[@]} -eq 0 ]] || echo "note  not in any repo, assumed installed: ${assumed[*]}"
+        break
+    fi
+    # pacman prints the reasons (":: unable to satisfy ...") on stdout
+    mapfile -t missing < <(cat "$TMP/all" "$TMP/all.err" | sed -n "s/.*unable to satisfy dependency '\([^'<>=]*\).*/\1/p" | sort -u)
+    if [[ $try == 2 || ${#missing[@]} -eq 0 ]]; then
+        bad "the non-AI sets do not resolve together: $(cat "$TMP/all" "$TMP/all.err" | grep -v '^$' | head -6 | tr '\n' ' ')"
+        break
+    fi
+    for n in "${missing[@]}"; do
+        if [[ " $AI_PKGS " == *" $n "* ]]; then bad "a non-AI set needs $n, which is in the AI set"; fi
+        assume+=(--assume-installed "$n"); assumed+=("$n")
     done
-else
-    bad "the non-AI sets do not resolve together: $(head -3 "$TMP/all.err")"
-fi
+done
 
 if [[ $fail == 0 ]]; then
     ok "no-ai-in-base: ${#checked[@]} non-AI packages (${checked[*]}) pull none of: $AI_PKGS"

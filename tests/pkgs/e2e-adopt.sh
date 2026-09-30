@@ -105,9 +105,11 @@ echo "==> Making the legacy machine"
 # Stand-ins for what Alex installed from the AUR with paru, and for Arch's
 # Code - OSS (`code`), which our visual-studio-code-bin conflicts with.
 id builder >/dev/null 2>&1 || useradd -m builder
+# Version 9999: newer than [extra]'s real code, so pacman -Syu keeps the
+# stand-in (with a low version it pulled the real one and its electron).
 for p in zen-browser-bin claude-code code; do
     d="$WORK/aur-standins/$p"; mkdir -p "$d"
-    printf "pkgname=%s\npkgver=1\npkgrel=1\narch=('any')\nlicense=('custom')\npackage() { :; }\n" "$p" > "$d/PKGBUILD"
+    printf "pkgname=%s\npkgver=9999\npkgrel=1\narch=('any')\nlicense=('custom')\npackage() { :; }\n" "$p" > "$d/PKGBUILD"
 done
 chown -R builder "$WORK/aur-standins"
 for d in "$WORK"/aur-standins/*/; do

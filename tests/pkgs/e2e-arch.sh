@@ -103,7 +103,9 @@ fi
 
 # 3. tampering is caught
 victim="$(find "$OUT" -name 'invictus-dev-*.pkg.tar.zst' | head -1)"
-printf 'x' >> "$victim"
+# change one byte in place: same size, so only the checksum and the
+# signature can catch it (an appended byte fails pacman's size check first)
+printf 'x' | dd of="$victim" bs=1 seek=200 conv=notrunc status=none
 rm -f /var/cache/pacman/pkg/invictus-dev-*
 # -dd: fetch only this package, so the refusal can only be its signature
 if pacman -Sw --noconfirm -dd invictus-dev >"$WORK/tamper.log" 2>&1; then
