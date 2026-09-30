@@ -152,7 +152,7 @@ Reuses nothing from waybar's `pavucontrol` / `nm-connection-editor` clicks: thos
 | Print Screen | Screenshot to Pictures, with a message `Screenshot saved in Pictures` | Same |
 | Volume, brightness, media keys | As in Tessera | Hardware keys should just work |
 
-Everything else in Tessera is off in Atrium, on purpose: `Super + Delete` (log out, after a yes/no confirm), `Super + Q`, the workspace keys, float and fullscreen toggles. A stray chord in Atrium does nothing rather than something surprising. Check for Vulcan: the Windows-key-alone bind is a release bind on `SUPER_L`; it must not fire when Super was part of a chord (Hyprland's `bindr` behaviour, unverified on 0.56 Lua).
+Everything else in Tessera is off in Atrium, on purpose: `Super + Delete` (log out, after a yes/no confirm), `Super + Q`, the workspace keys, float and fullscreen toggles. A stray chord in Atrium does nothing rather than something surprising. Check for Vulcan: the Windows-key-alone bind is a release bind on `SUPER_L`; it must not fire when Super was part of a chord (Hyprland's `bindr` behaviour, unverified on 0.56 Lua). Read in the 0.56.2 source for the Tessera Desk's Super tap (`desk.md` 1.1): a bind that fires during the chord shadows the release bind, but Super plus an unbound key does not.
 
 ### 2.8 Messages on screen, and several monitors
 
@@ -343,7 +343,7 @@ Taps: find how to print: Help, type `print`, the guide: 2 clicks and a word. Ask
 | Lock screen, login, boot splash | Unchanged. The lock's Marcus Aurelius line stays |
 | Type | IBM Plex Sans everywhere, sizes up one step: 15 px in the taskbar (13 in Tessera), 16 px in Help and messages, 14 px on tiles. Settings > Screen > Text size scales everything |
 | Shell stays dark, apps follow light or dark | Shell unchanged. Apps default to **light** in Atrium (dark in Tessera): most documents and web pages are light, and look.md's Dawn was made for exactly this reader. Settings > Look switches it |
-| The Desk | Not shown in Atrium. It is Alex's work dashboard; its "what matters now" job is done by messages and Help |
+| The Desk | Not shown in Atrium unless the person has a team (Collegium set up); then it is an ordinary app in Start (`desk.md` 1.3). Without a team its "what matters now" job is done by messages and Help |
 
 ---
 
@@ -434,4 +434,4 @@ New, because nothing does the job: the Quickshell Atrium shell (taskbar, Start, 
 | Lock and Log out in Start | One person per computer; the lock is automatic |
 | A red close button | Red means something is wrong |
 | A Atrium/Tessera question at first start | A choice a non-technical person can't make well, reversible in 3 clicks |
-| The Desk | Alex's work dashboard |
+| The Desk, without a team | Alex's work dashboard; with a team it is an app in Start (`desk.md` 1.3) |

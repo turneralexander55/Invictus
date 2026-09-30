@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Desk card with mockups</title><meta name="description" content="Invictus Desk on Tessera: a decision card with three mockups awaiting Approve or Deny, comment being typed.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cormorant+SC:wght@500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"><style>
+:root{
+ --night:#14120F;--basalt:#1C1A16;--stone:#27241F;--line:#3A352D;
+ --marble:#ECE6DA;--parchment:#BDB4A3;--ash:#968E7F;
+ --sol:#E0A64B;--sol-bright:#F0C274;--pompeii:#D9725A;--laurel:#94AD7B;
+ --lapis:#7C9FD4;--verdigris:#72ACA3;--tyrian:#B388B0;--c8:#857D6F;
+ --sans:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;
+ --sc:"Cormorant SC",serif;--serif:"Cormorant Garamond",serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#0b0a08;overflow:hidden;height:100%}
+body{font-family:var(--sans);color:var(--marble);-webkit-font-smoothing:antialiased}
+.stage{width:1920px;height:1080px;position:relative;overflow:hidden;transform-origin:0 0;background:var(--night)}
+.wall{position:absolute;inset:0;
+ background:
+  radial-gradient(circle at 70% 79%, #F0C274 0 58px, rgba(240,194,116,.0) 60px),
+  radial-gradient(ellipse 900px 520px at 70% 80%, rgba(224,166,75,.55), rgba(160,104,44,.28) 30%, rgba(90,63,30,.18) 55%, rgba(20,18,15,0) 80%),
+  linear-gradient(180deg,#14120F 0%,#17140F 45%,#2A2016 74%,#3A2A18 84%);
+}
+.wall::after{content:"";position:absolute;left:0;right:0;top:84%;bottom:0;
+ background:linear-gradient(180deg,#1A1712 0%,#14120F 100%);border-top:1px solid rgba(224,166,75,.25)}
+.glass{background:rgba(28,26,22,.94);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--line)}
+.mono{font-family:var(--mono)}
+svg{display:block}
+/* bar */
+.bar{position:absolute;top:0;left:0;right:0;height:32px;background:rgba(20,18,15,.82);backdrop-filter:blur(18px);
+ border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:13px;color:var(--parchment);z-index:20}
+.bar .l,.bar .r{display:flex;align-items:center;gap:4px;flex:1}
+.bar .r{justify-content:flex-end}
+.bar .c{position:absolute;left:50%;transform:translateX(-50%);font-weight:600;font-size:14px;color:var(--marble);font-family:var(--sans);font-variant-numeric:tabular-nums}
+.m{padding:0 10px;height:24px;display:flex;align-items:center;gap:6px;border-radius:6px;position:relative}
+.ws{display:flex;font-family:var(--mono)}
+.ws span{width:22px;height:32px;display:flex;align-items:center;justify-content:center;color:var(--ash)}
+.ws .occ{color:var(--parchment)}
+.ws .act{color:var(--marble);box-shadow:inset 0 -2px var(--sol)}
+.title{color:var(--ash)}
+.now{color:var(--parchment)} .now b{font-weight:400;color:var(--ash)}
+.dot{position:absolute;top:3px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--sol)}
+
+:root{--id1:#6F93C4;--id2:#62A39A;--id3:#8FA06A;--id4:#A983A9;--id5:#8C87CC;--id6:#7E9AA8;--id7:#6AA37E;--id8:#B07F92}
+.desk{position:absolute;top:32px;left:0;right:0;bottom:0;background:var(--night)}
+.wrap{position:absolute;left:80px;right:80px;top:22px;bottom:0}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;height:70px}
+.dt{font-family:var(--sc);font-size:32px;font-weight:500;letter-spacing:.1em;color:var(--marble);line-height:1}
+.greet{font-family:var(--serif);font-size:38px;font-weight:500;color:var(--marble);line-height:1}
+.upd{font-size:13px;color:var(--ash);margin-top:8px}
+.upd b{font-weight:400;color:var(--parchment)}
+.gl{display:flex;gap:12px}
+.gt{width:208px;height:66px;background:var(--basalt);border:1px solid var(--line);border-radius:10px;padding:9px 14px;display:flex;align-items:center;gap:12px;position:relative}
+.gt .n{font-size:26px;font-weight:600;color:var(--marble);font-variant-numeric:tabular-nums;line-height:1}
+.gt .t{font-size:12px;color:var(--parchment);line-height:1.35}
+.gt .t i{font-style:normal;color:var(--ash)}
+.gt .t .w{color:var(--pompeii)}
+.gt.need{box-shadow:inset 3px 0 var(--marble)}
+.spark{display:flex;align-items:flex-end;gap:3px;height:28px;margin-left:auto}
+.spark span{width:6px;background:var(--ash);border-radius:1px}
+.spark span:last-child{background:var(--marble)}
+.nowc{margin-top:18px;height:62px;background:var(--basalt);border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;padding:0 16px 0 20px;gap:18px;position:relative}
+.nowc.f{border-color:var(--sol);box-shadow:inset 3px 0 var(--sol)}
+.nowc .lb{font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--ash)}
+.nowc .big{font-size:20px;color:var(--marble)}
+.nowc .meta{font-size:13px;color:var(--ash)}
+.nowc .sp{flex:1}
+.tbtn{font-size:13px;color:var(--parchment);padding:7px 12px;border-radius:8px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.tbtn.b{background:var(--stone);color:var(--marble)}
+.k{font-family:var(--mono);font-size:11px;line-height:16px;color:var(--parchment);border:1px solid var(--line);border-radius:4px;padding:0 5px;min-width:18px;text-align:center;display:inline-block}
+.tabs{display:flex;gap:4px;margin-top:14px;height:38px;align-items:stretch;border-bottom:1px solid var(--line)}
+.tab{display:flex;align-items:center;gap:8px;padding:0 14px;font-size:14px;color:var(--parchment)}
+.tab.cur{color:var(--marble);font-weight:600;box-shadow:inset 0 -2px var(--marble)}
+.tab .c{font-size:12px;color:var(--ash);font-weight:400}
+.tab .c.n{color:var(--marble)}
+.tab .kk{font-family:var(--mono);font-size:11px;color:var(--ash)}
+.tabs .sync{margin-left:auto;display:flex;align-items:center;font-size:12px;color:var(--ash);gap:8px}
+.cols{position:absolute;left:0;right:0;bottom:30px;display:grid;grid-template-columns:640px 560px 480px;gap:40px}
+.col{overflow:hidden;min-height:0}
+.sh{display:flex;align-items:center;gap:10px;height:36px;font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--parchment);text-transform:uppercase}
+.sh .cv{width:12px;color:var(--ash);font-size:10px}
+.sh .cnt{font-size:12px;color:var(--ash);letter-spacing:0;text-transform:none;font-weight:400}
+.sh .pill{background:var(--marble);color:var(--night);border-radius:10px;padding:0 8px;font-size:12px;line-height:19px;letter-spacing:0}
+.sh .sum{font-weight:400;letter-spacing:0;text-transform:none;color:var(--ash)}
+.sh .sum .w{color:var(--pompeii)}
+.sh .rt{margin-left:auto;display:flex;gap:8px;align-items:center;letter-spacing:0;text-transform:none;font-weight:400}
+.sh.shut{border-top:1px solid var(--line)}
+.pbtn{font-size:13px;color:var(--marble);border:1px solid var(--line);border-radius:18px;padding:5px 12px;display:flex;align-items:center;gap:8px}
+.card{background:var(--basalt);border:1px solid var(--line);border-radius:10px;padding:12px 16px 12px 16px;margin-bottom:10px;position:relative}
+.card.sel{border-color:var(--parchment)}
+.card.f{border-color:var(--sol);box-shadow:inset 3px 0 var(--sol)}
+.cm{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ash)}
+.kind{display:flex;align-items:center;gap:6px;font-weight:600;letter-spacing:.06em;color:var(--parchment);text-transform:uppercase}
+.ct{font-size:15px;color:var(--marble);margin-top:6px;line-height:1.35}
+.cb{font-size:13px;color:var(--parchment);margin-top:4px;line-height:1.45}
+.ans{display:flex;gap:8px;margin-top:10px;align-items:center}
+.fld{flex:1;height:34px;background:var(--stone);border:1px solid var(--line);border-radius:8px;font-size:13px;color:var(--ash);display:flex;align-items:center;padding:0 10px}
+.fld.f{display:block;border-color:var(--sol);color:var(--marble);height:auto;min-height:56px;padding:8px 10px;line-height:1.4}
+.caret{display:inline-block;width:2px;height:17px;background:var(--sol);vertical-align:-3px;margin-left:1px}
+.col.ovf{-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(180deg,#000 calc(100% - 36px),transparent)}
+.nowc .tmr{font-family:var(--mono);font-size:15px;color:var(--marble);font-variant-numeric:tabular-nums}
+.nowc .tmr i{font-style:normal;font-family:var(--sans);font-size:12px;color:var(--ash);margin-left:6px}
+.cam{width:34px;height:34px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--ash)}
+.ab{height:34px;width:112px;background:var(--stone);border-radius:8px;color:var(--marble);font-size:13px;display:flex;align-items:center;justify-content:center;gap:10px}
+.foot{display:flex;gap:16px;margin-top:8px;font-size:12px;color:var(--ash);align-items:center}
+.foot span{display:flex;gap:6px;align-items:center}
+.bar4{height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.bar4 i{display:block;height:100%}
+.tick{width:22px;height:22px;border:1.5px solid var(--parchment);border-radius:5px;flex:none}
+.queue{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--parchment);padding:9px 14px;border:1px dashed var(--line);border-radius:10px}
+.queue .sp{flex:1}
+.agent{padding:7px 12px 7px 14px;background:var(--basalt);border-radius:8px;margin-bottom:6px}
+.agent .a1{display:flex;align-items:center;gap:8px;font-size:14px}
+.agent .dotg{width:7px;height:7px;border-radius:50%;background:var(--laurel)}
+.agent .role{color:var(--ash);font-size:13px}
+.agent .for{margin-left:auto;font-size:12px;color:var(--ash)}
+.agent .task{font-size:13px;color:var(--parchment);margin-top:3px;display:flex;gap:10px;align-items:center}
+.agent .task .bar4{width:90px;flex:none}
+.idle{font-size:12px;color:var(--ash);margin:4px 0 6px 2px}
+.wsf{display:flex;align-items:center;gap:10px;height:34px;padding:0 12px;background:var(--basalt);border-radius:8px;margin-bottom:6px;font-size:13px;color:var(--marble)}
+.wsf .nm{font-weight:600;letter-spacing:.06em;font-size:12px}
+.wsf .bar4{width:70px}
+.wsf .s{color:var(--ash)}
+.wsf .s .w{color:var(--pompeii)}
+.sub{font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--ash);margin:5px 0 3px 14px}
+.row{display:flex;flex-direction:column;gap:4px;padding:6px 12px 7px 14px;background:var(--basalt);border-radius:8px;margin:0 0 5px 12px;position:relative}
+.row::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:2px;background:var(--h)}
+.row .r1{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--marble)}
+.row .r1 .p{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}
+.row .st{font-size:12px}
+.row .bar4 i{background:var(--h)}
+.pd{display:flex;align-items:center;gap:10px;height:32px;padding:0 12px;border:1px solid var(--line);border-radius:8px;margin:2px 0 0 12px;font-size:13px;color:var(--parchment)}
+.pd .s{color:var(--ash)}
+.mstat{font-size:13px;color:var(--ash);margin:0 0 10px 2px}
+.comp{height:42px;background:var(--stone);border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;gap:10px;padding:0 8px 0 14px;font-size:14px;color:var(--ash)}
+.chip{font-size:12px;color:var(--parchment);background:var(--basalt);border:1px solid var(--line);border-radius:12px;padding:1px 9px}
+.note{margin-top:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.note .nm{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--ash)}
+.note .nm .st{margin-left:auto}
+.note .tx{font-size:14px;color:var(--marble);margin-top:4px;line-height:1.45}
+.rep{margin:8px 0 0 0;padding-left:12px;border-left:2px solid var(--lapis)}
+.rep .nm b{color:var(--lapis);font-weight:500}
+.newt{font-size:11px;color:var(--night);background:var(--lapis);border-radius:8px;padding:0 6px;line-height:16px}
+.more{font-size:13px;color:var(--parchment);margin-top:10px;display:flex;gap:8px;align-items:center}
+.hint{position:absolute;left:0;right:0;bottom:0;height:30px;display:flex;align-items:center;justify-content:center;gap:18px;font-size:12px;color:var(--ash);border-top:1px solid var(--line)}
+.hint span{display:flex;gap:6px;align-items:center}
+.thumbs{display:flex;gap:10px;margin-top:10px}
+.th{width:176px}
+.th .im{height:99px;border:1px solid var(--line);border-radius:6px;background:var(--night);position:relative;overflow:hidden}
+.th .cap{font-size:12px;color:var(--parchment);margin-top:5px}
+.th .im .b{position:absolute;left:0;right:0;top:0;height:4px;background:#241f19}
+.th .im i{position:absolute;background:var(--basalt);border-radius:2px}
+.sys{display:flex;gap:28px;font-size:13px;color:var(--parchment)}
+.sys b{font-weight:400;color:var(--ash);margin-right:6px}
+.dq{font-family:var(--serif);font-style:italic;font-size:16px;color:var(--ash);text-align:right}
+.dq span{font-style:normal;font-family:var(--sans);font-size:12px}
+.nrow{display:flex;gap:14px;padding:10px 0;border-top:1px solid var(--line);font-size:15px;color:var(--marble);line-height:1.45}
+.nrow .tm{font-family:var(--mono);font-size:13px;color:var(--ash);width:46px;flex:none;padding-top:2px}
+.srow{display:flex;align-items:center;gap:14px;padding:12px 0;border-top:1px solid var(--line)}
+.srow:first-of-type{border-top:0}
+.srow .tx{flex:1;font-size:15px;color:var(--marble);line-height:1.4}
+.srow .tx div{font-size:13px;color:var(--ash)}
+.sb{font-size:13px;color:var(--marble);background:var(--stone);padding:7px 12px;border-radius:8px;white-space:nowrap}
+.timer{display:flex;align-items:center;gap:16px;padding:14px 16px;background:var(--stone);border-radius:10px;margin-bottom:6px}
+.timer .tt{font-family:var(--mono);font-size:26px;color:var(--marble);font-variant-numeric:tabular-nums}
+.timer .tl{font-size:13px;color:var(--parchment);flex:1;line-height:1.4}
+.timer .tl div{color:var(--ash);font-size:12px}
+.addn{margin-top:12px;height:44px;background:var(--stone);border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;gap:10px;padding:0 10px 0 14px;font-size:14px;color:var(--ash)}
+</style></head>
+<body><div class="stage"><div class="bar">
+ <div class="l"><div class="m"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-linecap="round" style="color:var(--marble)"><g stroke-width="1.5"><line x1="8" y1="2" x2="8" y2="4"/><line x1="3.2" y1="4.2" x2="4.6" y2="5.6"/><line x1="12.8" y1="4.2" x2="11.4" y2="5.6"/></g><g stroke-width="1" stroke-linecap="butt"><line x1="1" y1="10.5" x2="3" y2="10.5"/><line x1="13" y1="10.5" x2="15" y2="10.5"/></g><circle cx="8" cy="9.5" r="3.2" fill="currentColor" stroke="none"/><line x1="1.5" y1="14" x2="14.5" y2="14" stroke-width="1.5"/></svg></div>
+  <div class="ws"><span class="act">1</span><span class="occ">2</span><span>3</span></div>
+  <div class="m title">Desk</div></div>
+ <div class="c mono" style="font-family:var(--sans)">21:14</div>
+ <div class="r">
+  <div class="m now"><b>Now ·</b> Port the waybar config to Lua</div>
+  <div class="m"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></div>
+  <div class="m"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg><span class="mono">12</span></div>
+  <div class="m"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6h2.5L8.5 3v10L5 10H2.5z"/><path d="M11 5.5a3.5 3.5 0 0 1 0 5M12.8 3.8a6 6 0 0 1 0 8.4"/></svg><span class="mono">45%</span></div>
+  <div class="m"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="9.5" width="12" height="4" rx="1"/><path d="M5 9.5V6.5h6v3M8 6.5V2.5"/></svg></div>
+  <div class="m"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11V7a4 4 0 0 1 8 0v4l1.2 1.5H2.8zM6.5 14h3"/></svg></div>
+  <div class="m" ><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="var(--parchment)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.3"/><path d="M5.2 10.6V5.6L8 8.8l2.8-3.2v5"/></svg></div>
+ </div></div>
+<div class="desk"><div class="wrap"><div class="hdr"><div><div class="dt">Alex&rsquo;s Desk</div><div class="upd">Updated 21:04 by <b>Moneta</b> &middot; Wednesday 30 September</div></div><div class="gl"><div class="gt need"><div class="n">7</div><div class="t">Need you<br><i>8 on your list · 2 later</i></div></div><div class="gt"><div class="n">13</div><div class="t">In progress<br><span class="w">2 blocked</span></div></div><div class="gt"><div class="n">35</div><div class="t">Done<br><i>last 7 days</i></div><div class="spark" title="Done per day"><span style="height:10px"></span><span style="height:20px"></span><span style="height:6px"></span><span style="height:26px"></span><span style="height:16px"></span><span style="height:13px"></span><span style="height:23px"></span></div></div></div></div><div class="nowc"><span class="lb">NOW</span><span class="big">Port the waybar config to Lua</span><span class="meta">Vulcan · Invictus · since 18:40 · 2 of 4 parts</span><span class="sp"></span><span class="tbtn b">Done <span class="k">Space</span></span><span class="tbtn">Switch <span class="k">S</span></span><span class="tbtn">Timer <span class="k">T</span></span></div><div class="tabs"><div class="tab cur"><span class="kk">0</span>All projects<span class="c n">7 need you</span></div><div class="tab"><span class="kk">1</span>Liberalitas<span class="c n">4 need you</span></div><div class="tab"><span class="kk">2</span>Invictus<span class="c n">3 need you</span></div><div class="tab"><span class="kk">3</span>HawkSearch<span class="c">nothing needs you</span></div><div class="tab"><span class="kk">4</span>The Desk<span class="c">nothing needs you</span></div><div class="sync"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a5 5 0 0 1 8.5-3.5L13 6M13 3v3h-3M13 8a5 5 0 0 1-8.5 3.5L3 10M3 13v-3h3"/></svg>Synced with your phone 21:06</div></div><div class="cols" style="top:216px"><div class="col ovf"><div class="sh"><span class="cv">&#9662;</span>Needs you<span class="pill">7</span><span class="sum">3 shown, the rest wait their turn</span></div><div class="card sel"><div class="cm"><span class="kind"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v12M3 5h10M3 5l-1.5 4h3zM13 5l-1.5 4h3zM5 14h6"/></svg>Decide</span>· Venus · Invictus · 12 min ago · 3 mockups</div><div class="ct">Approve: the Desk becomes the Invictus home screen, opened with a tap of Super. Deny: keep the Desk on the bar&rsquo;s mark only</div><div class="cb">Recommended: approve. Same sections and words as the Desk on your phone, laid out for 1920 and the keyboard.</div><div class="thumbs"><div class="th"><div class="im"><div class="b"></div><i style="left:8px;top:9px;width:60px;height:6px"></i><i style="left:8px;top:19px;width:160px;height:7px"></i><i style="left:8px;top:32px;width:56px;height:62px"></i><i style="left:68px;top:32px;width:50px;height:62px"></i><i style="left:122px;top:32px;width:46px;height:62px"></i></div><div class="cap">Desk, full</div></div><div class="th"><div class="im"><div class="b"></div><i style="left:8px;top:9px;width:70px;height:7px"></i><i style="left:8px;top:21px;width:160px;height:8px"></i><i style="left:8px;top:35px;width:94px;height:52px"></i><i style="left:108px;top:35px;width:60px;height:36px"></i></div><div class="cap">Desk, No AI</div></div><div class="th"><div class="im"><div class="b"></div><i style="left:8px;top:9px;width:60px;height:6px"></i><i style="left:8px;top:19px;width:160px;height:7px"></i><i style="left:8px;top:32px;width:56px;height:62px;box-shadow:inset 0 0 0 1px #BDB4A3"></i><i style="left:68px;top:32px;width:50px;height:62px"></i><i style="left:122px;top:32px;width:46px;height:62px"></i></div><div class="cap">Card with mockups</div></div></div><div class="foot" style="margin-top:6px"><span>Open full size <span class="k">M</span></span></div><div class="ans"><div class="fld f">Yes. Keep the key letters on the buttons, I learn them that way.<span class="caret"></span></div><div class="cam"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5h2.5L6 3.5h4l1.5 2H14v7H2z"/><circle cx="8" cy="9" r="2.3"/></svg></div><div class="ab">Approve <span class="k">A</span></div><div class="ab">Deny <span class="k">D</span></div></div><div class="foot"><span>Later <span class="k">L</span></span><span>Note to Moneta <span class="k">N</span></span><span style="margin-left:auto">To send with the comment: <span class="k">Esc</span> then <span class="k">A</span> or <span class="k">D</span></span></div></div><div class="card"><div class="cm"><span class="kind"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5 8.2l2 2 4-4.4"/></svg>Check</span>· Vulcan · Invictus · 2 h ago</div><div class="ct">Atrium taskbar build: try it on the laptop</div><div style="display:flex;align-items:center;gap:10px;margin-top:6px"><div class="bar4" style="flex:1"><i style="width:80%;background:var(--id2)"></i></div><span style="font-size:13px;font-weight:600">80%</span></div><div class="cb">Open Start, pin two apps, close one with &times;. Pass if nothing surprised you.</div><div class="ans"><div class="fld">Comment (optional) <span style="margin-left:auto" class="k">C</span></div><div class="cam"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5h2.5L6 3.5h4l1.5 2H14v7H2z"/><circle cx="8" cy="9" r="2.3"/></svg></div><div class="ab">Pass <span class="k">P</span></div><div class="ab">Fail <span class="k">F</span></div></div><div class="foot"><span>Later <span class="k">L</span></span><span>Note to Moneta <span class="k">N</span></span></div></div><div class="card"><div class="cm"><span class="kind"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3l2 1.5"/></svg>Today</span>· Iris · Liberalitas · 1 of 3</div><div style="display:flex;gap:12px;align-items:flex-start;margin-top:6px"><div style="flex:1"><div class="ct" style="margin-top:0">Reply to the lawyer with two dates next week</div><div class="cb">Unblocks: the LLC filing.</div></div><div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ash)"><span class="k">Space</span><div class="tick"></div></div></div><div class="foot"><span>Later <span class="k">L</span></span><span>Note to Moneta <span class="k">N</span></span></div></div><div class="queue">4 more wait here. Each one moves up when you answer one.<span class="sp"></span>Show all <span class="k">Enter</span></div><div class="sh shut" style="margin-top:8px"><span class="cv">&#9656;</span>Later<span class="cnt">2</span></div><div class="sh shut"><span class="cv">&#9656;</span>Your list<span class="cnt">8 · <span style="color:var(--pompeii)">1 due</span></span></div><div class="sh shut"><span class="cv">&#9656;</span>Guides<span class="cnt">1</span></div><div class="sh shut"><span class="cv">&#9656;</span>Done<span class="cnt">12 this week</span></div></div><div class="col"><div class="sh"><span class="cv">&#9662;</span>Team now<span class="sum">3 working</span><span class="rt"><span class="pbtn">Team (21)</span></span></div><div class="agent"><div class="a1"><span class="dotg"></span><b style="font-weight:600">Vulcan</b><span class="role">Lead engineer</span><span class="for">for 42 min</span></div><div class="task"><span style="flex:1">Invictus: Desk data store, first cut</span><div class="bar4"><i style="width:30%;background:var(--laurel)"></i></div><span style="color:var(--ash);font-size:12px">30%</span></div></div><div class="agent"><div class="a1"><span class="dotg"></span><b style="font-weight:600">Venus</b><span class="role">Designer</span><span class="for">for 18 min</span></div><div class="task"><span style="flex:1">Invictus: the Desk on Tessera, mockups</span></div></div><div class="agent"><div class="a1"><span class="dotg"></span><b style="font-weight:600">Janus</b><span class="role">Pen tester</span><span class="for">for 1 h 5 min</span></div><div class="task"><span style="flex:1">Liberalitas: export, pen test round 2</span><div class="bar4"><i style="width:60%;background:var(--laurel)"></i></div><span style="color:var(--ash);font-size:12px">60%</span></div></div><div class="idle">Idle: Clio, Diana, Felix, Vera and 14 more</div><div class="sh shut"><span class="cv">&#9662;</span>In progress<span class="cnt">13</span><span class="sum">· <span class="w">2 blocked</span> · 1 checked by you</span></div><div class="wsf"><span class="cv" style="color:var(--ash);font-size:10px">&#9656;</span><span class="nm">LIBERALITAS</span><span class="s">7 · 72% · <span class="w">1 blocked</span></span><span style="margin-left:auto"></span><div class="bar4"><i style="width:72%;background:var(--parchment)"></i></div></div><div class="wsf"><span class="cv" style="color:var(--ash);font-size:10px">&#9662;</span><span class="nm">INVICTUS</span><span class="s">6 · 55% · <span class="w">1 blocked</span></span><span style="margin-left:auto"></span><div class="bar4"><i style="width:55%;background:var(--parchment)"></i></div></div><div class="sub">BLOCKED · 1</div><div class="row" style="--h:var(--id4)"><div class="r1"><span>Windows VM: seamless apps</span><span class="st" style="color:var(--pompeii)">blocked</span><span class="p">35%</span></div><div class="bar4"><i style="width:35%"></i></div></div><div class="sub">CHECKED BY YOU · 1</div><div class="row" style="--h:var(--id1)"><div class="r1"><span>Moneta panel: approval cards</span><span class="st" style="color:var(--parchment)">You: Fail, with the team</span><span class="p">90%</span></div><div class="bar4"><i style="width:90%"></i></div></div><div class="sub">ON TRACK · 4</div><div class="row" style="--h:var(--id2)"><div class="r1"><span>ISO and the Install button</span><span class="p">85%</span></div><div class="bar4"><i style="width:85%"></i></div></div><div class="row" style="--h:var(--id5)"><div class="r1"><span>Themes: four sets and the picker</span><span class="p">70%</span></div><div class="bar4"><i style="width:70%"></i></div></div><div class="row" style="--h:var(--id3)"><div class="r1"><span>Push-to-talk pen button</span><span class="p">40%</span></div><div class="bar4"><i style="width:40%"></i></div></div><div class="row" style="--h:var(--id6)"><div class="r1"><span>The Desk on Invictus</span><span class="p">20%</span></div><div class="bar4"><i style="width:20%"></i></div></div><div class="pd"><span class="cv" style="color:var(--ash);font-size:10px">&#9656;</span>Paused and done<span class="s">1 paused · 2 done</span></div><div class="sh shut" style="margin-top:8px"><span class="cv">&#9656;</span>Design decisions<span class="cnt">14</span></div><div class="sh shut"><span class="cv">&#9656;</span>From the team<span class="cnt">2</span></div></div><div class="col"><div class="sh"><span class="cv">&#9662;</span>Moneta<span class="newt">2 new</span><span class="rt"><span class="pbtn">Push to Moneta</span></span></div><div class="mstat">Since your last push: 1 note, 2 answers.</div><div class="comp">Note to Moneta<span style="margin-left:auto" class="chip">For: Invictus</span><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5h2.5L6 3.5h4l1.5 2H14v7H2z"/><circle cx="8" cy="9" r="2.3"/></svg><span class="k">N</span></div><div class="note"><div class="nm">You · 12 min ago <span class="chip">Invictus</span><span class="st">Moneta replied</span></div><div class="tx">The Now line in the bar should open the Desk, not the panel. I click it when I&rsquo;ve lost the thread.</div><div class="rep"><div class="nm"><b>Moneta</b> · 3 min ago <span class="newt">New</span></div><div class="tx">Agreed. Venus has it in the Desk design; one record posted.</div></div></div><div class="note"><div class="nm">You · 1 h ago <span class="chip">About: Windows VM: seamless apps</span><span class="st">Seen</span></div><div class="tx">Word opened on the wrong monitor twice today.</div></div><div class="note"><div class="nm">You · yesterday <span class="chip">Liberalitas</span><span class="st">Moneta replied</span></div><div class="tx">Can Iris move the lawyer task to Today?</div><div class="rep"><div class="nm"><b>Moneta</b> · yesterday <span class="newt">New</span></div><div class="tx">Done. It is in Needs you.</div></div></div><div class="more">All notes (23)</div></div></div><div class="hint"><span><span class="k">↑↓←→</span>move</span><span><span class="k">Enter</span>open</span><span><span class="k">A / D</span>approve, deny</span><span><span class="k">P / F</span>pass, fail</span><span><span class="k">Space</span>tick</span><span><span class="k">L</span>later</span><span><span class="k">N</span>note to Moneta</span><span><span class="k">0–4</span>project</span><span><span class="k">?</span>all keys</span><span><span class="k">Esc</span>close</span></div></div></div></div><script>
+(function(){var s=document.querySelector('.stage');function f(){var k=Math.min(1,innerWidth/1920);
+s.style.transform='scale('+k+')';document.body.style.height=(1080*k)+'px'}addEventListener('resize',f);f()})();
+</script></body></html>

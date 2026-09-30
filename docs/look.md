@@ -11,7 +11,7 @@ Mockups (`docs/mockups/`, each 1920 x 1080, self-contained HTML, fonts from Goog
 | `desktop-moneta-panel.html` | The Moneta panel open, with an approval request |
 | `lock-typing.html` | Lock screen, password being typed |
 | `login.html` | Login (SDDM), last user preselected |
-| `desk.html` | The Desk home dashboard |
+| `desk.html` | The first Desk sketch (superseded by `desk-*.html`, `docs/desk.md`) |
 | `brand-sheet.html` | Mark, palette and type on one page |
 | `themes.html` | The four themes side by side (bar, a focused terminal, the launcher) and the theme picker open |
 | `motion.html` | Motion, playing: log in, unlock, window open and focus, workspace switch, notification, theme switch. Buttons switch Showcase / Calm / Off and replay one moment |
@@ -211,7 +211,7 @@ Module details:
 - **Workspaces** (`hyprland/workspaces`, `all-outputs false`, persistent 1-3 / 4-6 / 7-9 as now). Arabic numerals in Plex Mono, 22 px wide buttons. Empty: `ash`. Has windows: `parchment`. Active: `marble` with a 2 px `sol` bar under the number (`box-shadow: inset 0 -2px #E0A64B`). Urgent: `pompeii` number. Numbers match the keys you press, so no Roman numerals here.
 - **Window title** (`hyprland/window`, `separate-outputs true`, `max-length 60`): `ash`, 13 px. Empty desktop: hidden.
 - **Clock**: `%H:%M`, Plex Sans 14 px weight 600, `marble`. Tooltip: `%A %d %B %Y`. Click toggles a calendar in the tooltip.
-- **Now** (custom module, depends on the assistant's architecture): the one thing Moneta says you are doing, for example `Now · Port waybar to Lua`, `parchment`, max 40 characters. Click opens the Moneta panel on the threads list. Hidden when nothing is set. This is the ADHD anchor: one line, always in the same place. With No AI (`no-ai.md` 4) it stays, set by hand from the Desk, and a click opens the Desk.
+- **Now** (custom module, depends on the assistant's architecture): the one thing Moneta says you are doing, for example `Now · Port waybar to Lua`, `parchment`, max 40 characters. Click opens the Desk with the keyboard on its Now card (changed 2026-09-30, `desk.md` 1.2; it opened the Moneta panel's threads, which the Desk's Switch now lists). Hidden when nothing is set. This is the ADHD anchor: one line, always in the same place. With No AI (`no-ai.md` 4) it stays, set by hand from the Desk. A running timer adds whole minutes (`· 19 min`), never seconds.
 - **Updates**: `󰮯 12` in `parchment`; hidden at 0. Click opens the update terminal as now.
 - **System alert** (replaces the GPU, CPU and memory pills): hidden while CPU < 90%, GPU temp < 90 °C, RAM < 90% and root disk < 90%. When one is over, shows that one reading in `pompeii`, e.g. `󰢮 94 °C`. Tooltip always lists all four. Poll every 5 s, not 2.
 - **Volume** (`pulseaudio`): icon + number, muted shows the muted icon in `ash`. Scroll 5%. Click opens `pavucontrol`.
@@ -328,22 +328,9 @@ A layer-shell panel (namespace `moneta-panel`) that slides in from the right edg
 
 ### The Desk (home dashboard)
 
-See `docs/mockups/desk.html`. One job: **what matters now.** It opens on login on the primary monitor and on `Super + D` (a special workspace, so it slides over whatever is there and slides away). Uses the same tokens as everything else and follows light/dark (Dawn) as apps do.
+Designed in `docs/desk.md` (2026-09-30), with mockups `desk-tessera.html`, `desk-card-mockups.html` and `desk-no-ai.html`. In short: the home screen of Tessera, shown and hidden with a tap of Super, three columns (you, the team, Moneta) with the claude.ai Desk's sections and words, keyboard first, one gold. The first sketch (`desk.html`, greeting, Now, Open threads, Waiting on you) is kept for history.
 
-Layout at 1920 x 1080, 1200 px centred column, 32 px gutters:
-
-1. **Greeting line**: `Good evening, <first name>` (the mockup shows `Julia`) in Cormorant Garamond 36 px `marble`, date under it in Plex Sans 14 px `ash`.
-2. **Now** card, full width: the one current focus, 22 px `marble`, with who is on it and since when in `ash`, a `sol` 3 px left bar, and two text buttons: `Done` and `Switch`. If nothing is set: `Nothing set. What are you working on?` with an input.
-3. Two columns under it:
-   - **Open threads** (left, 60%): up to 5, one line each with how long ago it was touched, in `ash`. `Show all (n)` link if more. Click opens it in the Moneta panel.
-   - **Waiting on you** (right, 40%): items the team needs from Alex, from the team repo, up to 4, each with one action button.
-4. **System** row, small, bottom: updates available, last snapshot time (`laurel` if under 24 h, `pompeii` if older than 7 days), disk free on `/`, and the team repo sync state. Plain text, one line.
-5. **Ask Moneta** input, bottom, full width.
-6. A line from the Stoics, 14 px Cormorant Garamond italic `ash`, bottom right. Same rotating list as the lock screen.
-
-With No AI the Desk shows facts only: Today (notes and timer) instead of Open threads, system items in Waiting on you, `Add a note` instead of Ask Moneta (`no-ai.md` 4).
-
-Cut from the Desk: weather, news, calendar grid, app shortcuts (that is the launcher's job), system graphs (that is btop's job). If Alex wants a calendar later, it replaces "Waiting on you" only when there is an event in the next 2 hours.
+Cut from the Desk: weather, news, calendar grid, app shortcuts (that is the launcher's job), system graphs (that is btop's job).
 
 ## Themes
 
