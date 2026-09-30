@@ -168,7 +168,7 @@ local function loadConfig(over)
 end
 
 local L0 = loadConfig({})
-local hl, state = L0.hl, L0.state
+local state = L0.state
 local requiredModules, moduleErrors = L0.requiredModules, L0.moduleErrors
 local mainChunk, loadErr, mainOk, mainErr = L0.mainChunk, L0.loadErr, L0.mainOk, L0.mainErr
 
@@ -547,12 +547,17 @@ end)
 local REMOVED_EXECS = {
     mako = true, -- second notification daemon; swaync stays
 }
+-- Old autostart commands that now run behind another step (docs/look.md, Themes:
+-- `invictus-theme apply` runs once at session start, before waybar).
+local WRAPPED_EXECS = {
+    waybar = "invictus-theme apply; waybar",
+}
 
 test("autostart runs the same commands as autostart.conf, once at start", function(check)
     local want = {}
     for _, kw in ipairs(old.auto.keywords) do
         local cmd = trim((kw.value:gsub("%s*&%s*$", "")))
-        if kw.kind == "exec-once" and not REMOVED_EXECS[cmd] then table.insert(want, cmd) end
+        if kw.kind == "exec-once" and not REMOVED_EXECS[cmd] then table.insert(want, WRAPPED_EXECS[cmd] or cmd) end
     end
     for cmd in pairs(REMOVED_EXECS) do
         for _, got in ipairs(state.execs) do check(got ~= cmd, cmd .. " is still autostarted") end

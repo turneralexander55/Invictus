@@ -245,8 +245,8 @@ c = kitty_opts("calm")
 check(c["cursor_trail"] == "3" and c["cursor_trail_decay"] == "0.08 0.3" and c["cursor_stop_blinking_after"] == "15", "kitty Calm = Venus's shorter values", str(c))
 o = kitty_opts("off")
 check(o["cursor_trail"] == "0" and o["cursor_blink_interval"] == "0", "kitty Off: no trail, no blink", str(o))
-check("include motion/showcase.conf" in kc and "globinclude ~/.config/invictus/motion.d/kitty.conf" in kc
-      and kc.index("include motion/showcase.conf") < kc.index("globinclude ~/.config/invictus/motion.d/kitty.conf"),
+check("include motion/showcase.conf" in kc and "include ~/.config/invictus/motion.d/kitty.conf" in kc
+      and kc.index("include motion/showcase.conf") < kc.index("include ~/.config/invictus/motion.d/kitty.conf"),
       "kitty: Showcase is the default, the motion.d link overrides it")
 
 btop = (config / "btop/btop.conf").read_text()

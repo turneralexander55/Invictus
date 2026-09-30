@@ -1,11 +1,13 @@
 /* Entrance accent, Dusk: the sunrise bar. The 3 px sol bar and a warm wash from
-   the left edge settle in 300 ms, once (opacity and box-shadow only). It is the
+   the left edge settle in 300 ms, once (box-shadow only), then the bar fades out
+   so gold stays "you are here", not "new mail". It is the
    default for every theme; the other three shapes (dye, ripple, beam) are in
    accents/ for a per-theme switch. Critical notifications get none: their
    pompeii bar is already there. */
 @keyframes sunrise {
     from { box-shadow: inset 3px 0 @sol, inset 24px 0 32px -24px alpha(@sol, .5); }
-    to   { box-shadow: inset 3px 0 @sol; }
+    50%  { box-shadow: inset 3px 0 @sol, inset 24px 0 32px -24px alpha(@sol, 0); }
+    to   { box-shadow: inset 3px 0 alpha(@sol, 0), inset 24px 0 32px -24px alpha(@sol, 0); }
 }
 
 .notification-row .notification {

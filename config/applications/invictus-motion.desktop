@@ -9,5 +9,5 @@ Terminal=false
 Categories=Settings;DesktopSettings;
 Keywords=motion;animation;animations;calm;off;
 # Hidden until the invictus-motion command exists (the picker that writes
-# ~/.config/invictus/motion, links motion.d/ and reloads); then delete this line.
+# ~/.config/invictus/motion, applies the per-app files and reloads); then delete this line.
 NoDisplay=true

@@ -1,5 +1,5 @@
 /* Calm: no entrance accent, only swaync's own slide (transition-time 150 in config.json).
-   The motion switcher links ~/.config/invictus/motion.d/swaync.css here. */
+   The motion switcher copies this over ~/.config/swaync/motion.css. */
 .notification-row .notification,
 .notification-default-action .image {
     animation: none;

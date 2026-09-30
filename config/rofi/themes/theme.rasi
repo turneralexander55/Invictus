@@ -1,5 +1,8 @@
 /* Launcher (docs/look.md, Rofi). Colours are tokens, never hex:
-   colors-fallback.rasi is Dusk; the current theme's file loads after it and wins. */
+   colors-fallback.rasi is Dusk; the current theme's file loads after it and wins.
+   The fallback covers tokens a stale generated file lacks. A missing generated file
+   is not covered: rofi shows an error popup (checked on 1.7.5), so
+   invictus-theme apply must have run (autostart.lua does). */
 @import "~/.config/rofi/themes/colors-fallback.rasi"
 @import "~/.config/invictus/current/rofi-colors.rasi"
 
@@ -32,10 +35,9 @@ inputbar {
     border: 1px;
     border-color: @sol;
     border-radius: 8px;
-    padding: 0 12px;
+    padding: 8px 12px;
     spacing: 10px;
     children: [ textbox-search, entry ];
-    /* 44 px total: 1 px borders + 42 px content */
     expand: false;
 }
 
@@ -45,7 +47,6 @@ textbox-search {
     font: "Symbols Nerd Font Mono 15";
     text-color: @ash;
     vertical-align: 0.5;
-    padding: 12px 0;
 }
 
 entry {

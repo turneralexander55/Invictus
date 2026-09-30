@@ -2,17 +2,19 @@
    Waybar: one continuous bar (docs/look.md, Waybar)
    ------------------------------------------------------------
    Colours are tokens, never hex:
-   - colors-fallback.css   Dusk, loaded first
+   - colors-fallback.css   Dusk, loaded first (covers tokens a stale generated
+     file lacks; it cannot cover a missing file, see the note below)
    - ../invictus/current/waybar-colors.css   the current theme, written by
      invictus-theme; loaded second so it wins
    Motion: motion.css holds the Showcase durations (the default). The motion
-   switcher points ~/.config/invictus/motion.d/waybar.css at motion/calm.css
-   or motion/off.css to override them; the import is last.
+   switcher copies motion/calm.css or motion/off.css over ~/.config/waybar/motion.css.
+
+   Every @import must exist: waybar exits if one is missing (checked on 0.9.24).
+   invictus-theme apply writes the theme file before waybar starts (autostart.lua).
    ============================================================ */
 @import url("colors-fallback.css");
 @import url("../invictus/current/waybar-colors.css");
 @import url("motion.css");
-@import url("../invictus/motion.d/waybar.css");
 
 * {
     border: none;

@@ -1,15 +1,18 @@
 /* ============================================================
    swaync (GTK 4): notifications and the control centre
    (docs/look.md, Notifications). Colours are tokens, never hex:
-   colors-fallback.css is Dusk; the current theme's file loads after it.
-   The entrance accent is in accent.css (Dusk's sunrise bar); the motion
-   switcher points ~/.config/invictus/motion.d/swaync.css at motion/calm.css
-   or motion/off.css to turn it off.
+   colors-fallback.css is Dusk; the current theme's file loads after it. The
+   fallback covers tokens a stale generated file lacks. A missing generated file
+   is not covered: swaync then drops this whole stylesheet (checked on 0.9.0), so
+   invictus-theme apply must have run (autostart.lua does).
+   The entrance accent is in accent.css (Dusk's sunrise bar). motion.css is
+   empty in Showcase; the motion switcher copies motion/calm.css or
+   motion/off.css over ~/.config/swaync/motion.css to turn the accent off.
    ============================================================ */
 @import url("colors-fallback.css");
 @import url("../invictus/current/swaync-colors.css");
 @import url("accent.css");
-@import url("../invictus/motion.d/swaync.css");
+@import url("motion.css");
 
 * {
     font-family: "IBM Plex Sans", "Symbols Nerd Font Mono", sans-serif;
@@ -34,6 +37,8 @@
 .notification-content {
     background: transparent;
     padding: 0;
+    border: none;
+    box-shadow: none;
 }
 
 .notification .image,
@@ -72,6 +77,9 @@
 .notification-default-action {
     background: transparent;
     color: @parchment;
+    border: none;
+    box-shadow: none;
+    outline: none;
     border-radius: 8px;
     padding: 6px 10px;
 }
@@ -85,6 +93,8 @@
 .close-button {
     background: transparent;
     color: @ash;
+    border: none;
+    box-shadow: none;
     border-radius: 8px;
     min-width: 20px;
     min-height: 20px;
@@ -141,14 +151,16 @@
     margin: 4px 8px;
 }
 
-.widget-buttons-grid > flowbox > flowboxchild > button {
+.widget-buttons-grid button {
     background: transparent;
     color: @ash;
+    border: none;
+    box-shadow: none;
     border-radius: 8px;
     padding: 6px 10px;
 }
 
-.widget-buttons-grid > flowbox > flowboxchild > button:hover {
+.widget-buttons-grid button:hover {
     background: @stone;
     color: @marble;
 }
