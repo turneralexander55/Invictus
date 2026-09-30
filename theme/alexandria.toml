@@ -1,0 +1,67 @@
+# Invictus theme: Alexandria. Token names are roles and are the same in every theme.
+# Edit colours here only; scripts/invictus-theme generates every app file from this.
+
+[meta]
+id = "alexandria"
+name = "Alexandria"
+source = "Egyptian and Greek: the lapis-blue tomb ceilings of Egypt, papyrus, and the gold of the Pharos light"
+concept = "Lapis night, papyrus-white text, lamp gold for focus."
+wallpaper = "pharos"   # assets/wallpapers/pharos.svg (+ PNG exports)
+lock = "standard"   # same composition as Dusk: blurred wallpaper, mark in sol, clock, field
+gnome-accent = "yellow"   # nearest named accent for org.gnome.desktop.interface accent-color
+papirus-folders = "grey"
+default = false
+
+[dark]
+night = "#0F111B"
+basalt = "#151826"
+stone = "#1E2233"
+line = "#2E3449"
+marble = "#EDE6D4"
+parchment = "#C0B79F"
+ash = "#9A9482"
+sol = "#E6B652"
+sol-bright = "#F4CD7E"
+pompeii = "#E57C64"
+laurel = "#A0BC84"
+lapis = "#5FC6C0"
+verdigris = "#5FC6C0"
+tyrian = "#BB93C9"
+
+[light]   # apps and the Desk only; the shell stays dark
+dawn = "#F3EEE2"
+dawn-surface = "#FAF8F1"
+dawn-raised = "#E8E1D0"
+dawn-line = "#D3C9B3"
+ink = "#1B1C26"
+ink-2 = "#434453"
+ink-muted = "#626170"
+bronze = "#7E5A0E"
+pompeii-dark = "#A8432C"
+laurel-dark = "#4E6B35"
+lapis-dark = "#1E6E6A"
+
+[terminal]
+background = "#0F111B"
+foreground = "#EDE6D4"
+selection-background = "#2E3449"
+selection-foreground = "#EDE6D4"
+cursor = "#EDE6D4"
+cursor-text = "#0F111B"
+url = "#5FC6C0"
+color0 = "#1E2233"   # black
+color1 = "#E57C64"   # red
+color2 = "#A0BC84"   # green
+color3 = "#E6B652"   # yellow
+color4 = "#7FA1E0"   # blue
+color5 = "#BB93C9"   # magenta
+color6 = "#5FC6C0"   # cyan
+color7 = "#C0B79F"   # white
+color8 = "#7F7C84"   # bright black
+color9 = "#EE9B87"   # bright red
+color10 = "#B9D0A0"   # bright green
+color11 = "#F4CD7E"   # bright yellow
+color12 = "#A0BBEB"   # bright blue
+color13 = "#D1B0DB"   # bright magenta
+color14 = "#86D8D3"   # bright cyan
+color15 = "#EDE6D4"   # bright white

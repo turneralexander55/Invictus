@@ -1,0 +1,67 @@
+# Invictus theme: Porphyry. Token names are roles and are the same in every theme.
+# Edit colours here only; scripts/invictus-theme generates every app file from this.
+
+[meta]
+id = "porphyry"
+name = "Porphyry"
+source = "Roman: imperial porphyry and Tyrian purple, the stone and dye kept for emperors"
+concept = "Dark porphyry, travertine-white text, Tyrian purple for focus."
+wallpaper = "arcade"   # assets/wallpapers/arcade.svg (+ PNG exports)
+lock = "standard"   # same composition as Dusk: blurred wallpaper, mark in sol, clock, field
+gnome-accent = "purple"   # nearest named accent for org.gnome.desktop.interface accent-color
+papirus-folders = "grey"
+default = false
+
+[dark]
+night = "#151012"
+basalt = "#1D1618"
+stone = "#291F22"
+line = "#3F3034"
+marble = "#EEE4DF"
+parchment = "#C6B4AF"
+ash = "#A08D89"
+sol = "#CE93C8"
+sol-bright = "#E0B0DB"
+pompeii = "#E57A5E"
+laurel = "#9DB380"
+lapis = "#7FB8B0"
+verdigris = "#76AFA5"
+tyrian = "#CE93C8"
+
+[light]   # apps and the Desk only; the shell stays dark
+dawn = "#F5EEEC"
+dawn-surface = "#FBF7F6"
+dawn-raised = "#EBE1DE"
+dawn-line = "#D8C9C5"
+ink = "#241A1C"
+ink-2 = "#4D3D40"
+ink-muted = "#6E5B5E"
+bronze = "#86407F"
+pompeii-dark = "#A9412B"
+laurel-dark = "#4E6B35"
+lapis-dark = "#2B6A62"
+
+[terminal]
+background = "#151012"
+foreground = "#EEE4DF"
+selection-background = "#3F3034"
+selection-foreground = "#EEE4DF"
+cursor = "#EEE4DF"
+cursor-text = "#151012"
+url = "#7FB8B0"
+color0 = "#291F22"   # black
+color1 = "#E57A5E"   # red
+color2 = "#9DB380"   # green
+color3 = "#DDAE5A"   # yellow
+color4 = "#88A7DB"   # blue
+color5 = "#CE93C8"   # magenta
+color6 = "#76AFA5"   # cyan
+color7 = "#C6B4AF"   # white
+color8 = "#8C7B78"   # bright black
+color9 = "#EF9A82"   # bright red
+color10 = "#B6C99A"   # bright green
+color11 = "#EBC47E"   # bright yellow
+color12 = "#A6BEE6"   # bright blue
+color13 = "#E0B0DB"   # bright magenta
+color14 = "#96C8BF"   # bright cyan
+color15 = "#EEE4DF"   # bright white
