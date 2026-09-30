@@ -34,8 +34,11 @@ jobs:
           rm shellcheck
           shellcheck --version | grep -qx "version: ${SHELLCHECK_VERSION}"
       - name: shellcheck scripts
+        # Helper scripts copied from the AUR (pkgs/aur/*/*.sh) stay as their
+        # maintainers wrote them, so a bump is a plain diff; our own
+        # upstream-check.sh files are checked.
         run: |
-          mapfile -t files < <(git ls-files '*.sh')
+          mapfile -t files < <(git ls-files '*.sh' ':!pkgs/aur/*/*.sh'; git ls-files 'pkgs/aur/*/upstream-check.sh')
           shellcheck --version
           shellcheck -x "${files[@]}"
       - name: shellcheck PKGBUILDs

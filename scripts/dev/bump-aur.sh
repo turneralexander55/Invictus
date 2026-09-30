@@ -18,11 +18,13 @@
 #          that each x86_64 checksum the AUR names came out the same here
 #          (two independent downloads agree), and runs makepkg
 #          --verifysource so signatures are checked against keys/pgp/;
-#       4. moves the "aur-commit:" and "Reviewed" header lines.
+#       4. runs the pin's upstream-check.sh if it has one (VS Code: the
+#          sha256 must be in Microsoft's signed apt index);
+#       5. moves the "aur-commit:" and "Reviewed" header lines.
 #       It never commits. Then: read `git diff`, run tests/pkgs/run.sh, and
 #       commit as "NAME: AUR <commit> (<version>)".
 #   scripts/dev/bump-aur.sh NAME --reviewer WHO --sums-only [--commit SHA]
-#       Steps 3 and 4 only, after a hand merge.
+#       Steps 3 to 5 only, after a hand merge.
 #
 # Who and when: docs/packages.md, "AUR pins" (weekly for zen-browser-bin
 # and claude-code, on each GE release for proton-ge-custom-bin; the
@@ -123,7 +125,9 @@ if [[ "$MODE" == bump ]]; then
     echo
 
     # Only the version and checksums changed?
-    others="$(git -C "$AUR" diff --name-only "$OLD" "$NEW" -- . ':!.SRCINFO' ':!PKGBUILD')"
+    # .SRCINFO mirrors the PKGBUILD; .nvchecker.toml and .gitignore are the
+    # maintainer's tooling, not build inputs.
+    others="$(git -C "$AUR" diff --name-only "$OLD" "$NEW" -- . ':!.SRCINFO' ':!PKGBUILD' ':!.nvchecker.toml' ':!.gitignore')"
     odd="$(git -C "$AUR" diff -U0 "$OLD" "$NEW" -- PKGBUILD | grep -E '^[+-]' | grep -vE '^(\+\+\+|---) ' \
         | grep -vE "^[+-][[:space:]]*(_?pkgver|pkgrel|_extver|epoch)=[^;&|\`\$()]*$" \
         | grep -vE "^[+-][[:space:]]*((sha(1|224|256|384|512)|b2|md5|ck)sums(_[a-z0-9_]+)?=\\()?[[:space:]]*'([0-9a-f]{32,128}|SKIP)'[[:space:]]*\\)?[[:space:]]*$" \
@@ -206,6 +210,12 @@ while read -r sum; do
     grep -qF "'$sum'" "$PB" || { echo "The AUR's checksum $sum is not what we downloaded (see $PB)." >&2; missing=1; }
 done < <(aur_sums "$AUR/PKGBUILD")
 [[ $missing == 0 ]] || { echo "Checksums disagree with the AUR: stop and find out why before committing." >&2; exit 4; }
+
+# A pin whose upstream signs something makepkg cannot check itself (VS
+# Code: Microsoft's apt index) carries upstream-check.sh; it must pass.
+if [[ -x "$DIR/upstream-check.sh" ]]; then
+    "$DIR/upstream-check.sh" "$PB" || { echo "upstream-check.sh failed: stop and find out why before committing." >&2; exit 5; }
+fi
 
 # ---- header lines --------------------------------------------------------------------
 epoch="$(unquote "$(raw_var "$PB" epoch)")"

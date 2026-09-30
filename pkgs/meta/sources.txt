@@ -21,7 +21,6 @@ capitaine-cursors extra
 cava extra
 claude-code aur
 cliphist extra
-code extra
 crun extra
 cups extra
 diffutils core
@@ -171,6 +170,7 @@ upower extra
 usbutils core
 util-linux core
 uv extra
+visual-studio-code-bin aur
 vulkan-radeon extra
 vulkan-tools extra
 waybar extra

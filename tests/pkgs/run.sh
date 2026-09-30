@@ -64,14 +64,14 @@ echo "== meta packages"
 m_fail=0
 all_deps="$TMP/deps"
 for pb in "$REPO"/pkgs/meta/*/PKGBUILD; do field "$pb" depends; done > "$all_deps"
-grep -qx vscode "$all_deps" && { bad "vscode is not an Arch package (use code)"; m_fail=1; }
+grep -qx vscode "$all_deps" && { bad "vscode is not a package (Microsoft's build is visual-studio-code-bin)"; m_fail=1; }
 grep -qx mako "$all_deps"   && { bad "mako is listed; swaync is the notification daemon"; m_fail=1; }
-for p in code xwaylandvideobridge discord steam brightnessctl playerctl jq invictus-keyring; do
+for p in visual-studio-code-bin xwaylandvideobridge discord steam brightnessctl playerctl jq invictus-keyring; do
     grep -qx "$p" "$all_deps" || { bad "$p missing from the metas"; m_fail=1; }
 done
 dupes="$(for pb in "$REPO"/pkgs/meta/*/PKGBUILD; do field "$pb" depends | sort | uniq -d; done)"
 [[ -z "$dupes" ]] || { bad "listed twice in one meta: $dupes"; m_fail=1; }
-[[ $m_fail == 0 ]] && ok "code not vscode, no mako, the missing deps added, no duplicates"
+[[ $m_fail == 0 ]] && ok "visual-studio-code-bin not vscode, no mako, the missing deps added, no duplicates"
 echo
 
 # ---- 2b. package sets (docs/packages.md) -------------------------------------

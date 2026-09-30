@@ -11,7 +11,7 @@
 
 pkgname=invictus-dev
 pkgver=0.3.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Invictus development tools'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
@@ -20,8 +20,9 @@ depends=(
   # building packages (the AUR too), version control
   'base-devel' 'git' 'github-cli'
 
-  # editors: Zed (the Super+T bind) and Code - OSS (Open VSX extensions)
-  'zed' 'code'
+  # editors: Zed (the Super+T bind) and Microsoft's VS Code (marketplace
+  # extensions, Remote; Alex, 2026-09-30), built from our pin in pkgs/aur
+  'zed' 'visual-studio-code-bin'
 
   # languages
   'nodejs' 'npm' 'python'
