@@ -496,18 +496,29 @@ test("gesture and per-device settings match input-rules.conf", function(check)
         "device: " .. show(state.devices[1]))
 end)
 
-test("environment variables match environment.conf", function(check)
+-- Old environment.conf values changed on purpose (docs/look.md, GTK, Qt, icons, cursor):
+-- false = dropped (the theme tool sets the GTK look), a string = the new value.
+local CHANGED_ENV = {
+    GTK_THEME = false,
+    XCURSOR_THEME = "capitaine-cursors",
+    QT_QPA_PLATFORMTHEME = "qt6ct",
+}
+
+test("environment variables match environment.conf (except the look.md changes)", function(check)
     local n = 0
     for _, kw in ipairs(old.env.keywords) do
         if kw.kind == "env" then
-            n = n + 1
             local name, value = kw.value:match("^([^,]+),(.*)$")
-            check(state.env[trim(name)] == trim(value), "env " .. name .. ": got " .. tostring(state.env[trim(name)]))
+            name, value = trim(name), trim(value)
+            local want = CHANGED_ENV[name]
+            if want == nil then want = value end
+            if want ~= false then n = n + 1 end
+            check(state.env[name] == (want or nil), "env " .. name .. ": got " .. tostring(state.env[name]))
         end
     end
     local m = 0
     for _ in pairs(state.env) do m = m + 1 end
-    check(n == m, "env count " .. m .. " vs old " .. n)
+    check(n == m, "env count " .. m .. " vs expected " .. n)
 end)
 
 -- Old autostart commands deliberately dropped (design 1.2).
@@ -698,8 +709,8 @@ local COMMAND_PACKAGES = {
     ["/usr/lib/xdg-desktop-portal"] = "xdg-desktop-portal",
     swaync = "swaync", hyprpaper = "hyprpaper", hypridle = "hypridle", waybar = "waybar",
     hyprctl = "hyprland",
-    ["invictus-theme"] = false, -- installed to /usr/bin by the invictus tools package (Vulcan, pkgs/)
-    hyprshutdown = false,  -- optional: the bind checks `command -v` first
+    ["invictus-theme"] = "invictus-tools",
+    hyprshutdown = "hyprshutdown", -- optional at runtime: the bind checks `command -v` first
     ["/usr/lib/invictus/show-keybindings"] = "invictus-tools",
     ["/usr/lib/invictus/confirm"] = "invictus-tools",
 }

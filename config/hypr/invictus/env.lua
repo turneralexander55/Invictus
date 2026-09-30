@@ -17,10 +17,9 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 -- GTK / Qt theming (Wayland)
 -- ─────────────────────────────────────────────────────────────────────────────
-hl.env("GTK_THEME", "Nordic-Darker")
-hl.env("XCURSOR_THEME", "Adwaita")
+hl.env("XCURSOR_THEME", "capitaine-cursors")
 hl.env("XCURSOR_SIZE", "24")
-hl.env("QT_QPA_PLATFORMTHEME", "gtk3")
+hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
