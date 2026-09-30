@@ -23,7 +23,7 @@ Mockups (`docs/mockups/`, 1920 x 1080, self-contained HTML, same fonts and scale
 | `simple-install-4-done.html` | Installer 4 of 4: Done, restart |
 | `simple-firstboot-1-wifi.html` | First start 1 of 4: Wi-Fi (skipped when already online) |
 | `simple-firstboot-2-screens.html` | First start 2 of 4: Which screen is in front of you? (only with more than one screen) |
-| `simple-firstboot-3-help-no-ai-picked.html` | First start 3 of 4: How should Help work? (An AI assistant or No AI), No AI picked (`no-ai.md`) |
+| `simple-firstboot-3-help-*.html` | First start 3 of 4: How should Help work? (three states; listed and described in `no-ai.md` 2) |
 | `simple-firstboot-4-ready.html` | First start 4 of 4: Three things to know |
 
 ---
@@ -216,12 +216,12 @@ Screens, same card style as the installer:
 
 1. **Wi-Fi.** Skipped if already online (a cable, or Wi-Fi set in the installer). `Connect to the internet` with the same Wi-Fi list as Quick settings. `Skip for now` text button: everything works offline except Help and updates (with No AI: except updates and Ask Alex; the guides are on the computer).
 2. **Which screen is in front of you?** Only when more than one screen is plugged in. Every screen shows the same card with its own big number and a `This one` button; the person clicks it on the screen they are looking at. No mapping numbers to a diagram, no dragging. That screen becomes the main one (taskbar with the clock, new windows, messages). If nobody answers in 60 s (a TV that happens to be on), the laptop screen or the largest screen wins and the wizard moves on.
-3. **How should Help work?** (Alex, 2026-09-30: "there should be a 3rd option... Not everyone is thrilled with AI"; full design in `no-ai.md` 2.) Line: `Help is the button at the bottom right of the screen. You can change this later in Settings.` Two cards of equal size, each with a small picture of what Help will look like: **An AI assistant** (`Moneta answers questions, by voice or typing, and fixes things after asking you. Uses Claude, with your own account.`, with a collapsed `Use a different AI` for a home AI system or another AI service, Alex's D13) and **No AI** (`Short how-to guides you can search, and Alex when you need a person. Nothing on this computer uses AI.`). Nothing is preselected: this is about what the person wants on their computer, and a preselected card would be a nudge either way. The gold button stays disabled until a card is picked, then reads `Sign in to Claude` or `Continue`. `Sign in to Claude` first asks for the person's password: adding Moneta is an admin action here as in Settings (Minerva N1, `design-no-ai.md`). `Set up later` is gone: No AI is the honest "not now". Picking AI installs Moneta then (in the background, or at the first connection if offline); picking No AI installs nothing. Nobody sees a terminal. What sign-in costs the friend and who pays is **[M5]** and a concern for Moneta.
+3. **How should Help work?** An AI assistant or No AI. The screen, its words, what happens after each choice (the password for AI, the sign-in, the Not signed in state) and the click counts are in `no-ai.md` 2, the single source; this doc does not repeat them. What sign-in costs the friend and who pays is **[M5]** and a concern for Moneta.
 4. **Three things to know.** Three cards, left to right, each with a small picture of the real control: `Start opens your apps`, `× closes a window`, `Help is always here` (its line: `Ask a question by talking or typing.` with AI, `Guides for everyday things, and a way to ask Alex.` with No AI). Button: `Start using Invictus`.
 
 There is no question about Atrium or Tessera. New users created through the installer get **Atrium**; Tessera is one switch in Settings (section 6), and the person who wants it knows to look. Considered: one screen asking "How do you like your windows?" with two pictures. It is a decision a non-technical person cannot make well, it costs everyone a screen, and it is reversible in 3 clicks.
 
-Before (Minerva's first-boot wizard): 7 screens, about 12 decisions, including a monitor layout to drag, provider names and a terminal login. After: 2 screens on a laptop that is online, at most 4, and at most 2 decisions (which screen, only with several; AI or No AI, not preselected), no terminal.
+Before (Minerva's first-boot wizard): 7 screens, about 12 decisions, including a monitor layout to drag, provider names and a terminal login. After: 2 screens on a laptop that is online, at most 4, and at most 2 decisions (which screen, only with several; AI or No AI, `no-ai.md` 2), no terminal.
 
 ---
 
@@ -279,6 +279,8 @@ The polkit password prompt matters most, because it is the "run as admin" Alex's
 5. **Type**: the field, 52 px, placeholder `Type your question`, Enter sends.
 6. **Ask Alex**: a full-width secondary button under the field, `Ask Alex`. It opens a short preview: `I'll send Alex this: [a summary of the problem and what was tried]` with `Send` and `Cancel`. After sending: `Alex has your request. He usually answers within a day.` It is a request, not a live call; the word "call" would promise a ringing phone. This is Minerva's helper request (`design-simple-mode.md` 4.4): the same queue her `helper_ask` tool and every "helper" verb write to, one concept with one name. If Alex then asks to connect, the remote-help message in 4.2 appears **[M3]**. Who the button names comes from the machine's config (`helper_person`), set when Alex installs it, so another helper's friends see their own name **[M3]**.
 7. **Recent**: a collapsed row at the bottom, `Recent messages (3)`, listing the last messages from section 4.
+
+With AI on but no working sign-in, the panel is the No AI panel (5.3) with a sign-in card on top: the Not signed in state, `no-ai.md` 2.3.
 
 ### 5.2 When Moneta wants to change something
 

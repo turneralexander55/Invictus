@@ -152,7 +152,7 @@ Venus's NA1 to NA5 adopted and extended; NA6 to NA9 new. Vera runs NA1, NA3, NA4
 
 Revised existing MUSTs (`design-simple-mode.md`):
 
-- **SM10** test: "the first-boot wizard shows An AI assistant (Claude, with Use a different AI offering a home AI system) and No AI; `generic-cli` is offered nowhere on a Custodia machine".
+- **SM10** test: "the first-boot wizard shows the screen in `no-ai.md` 2; `generic-cli` is offered nowhere on a Custodia machine" (pointer since 2026-09-30, so the screen is described in one place).
 - **SM13**: the unlock covers `org.invictus.sys.*` except `guardrails-libertas`, `assistant-full-access` and `ai-on`.
 - **SM21**: on a No AI machine the assistant steps are not applicable (NA5).
 - **S2** list adds `/etc/invictus/ai` and `/etc/firefox/policies/policies.json`, root 0644.
@@ -173,6 +173,8 @@ Revised existing MUSTs (`design-simple-mode.md`):
 1. **Two equal cards, nothing preselected.** D13 says "Claude is the default, but the choice of provider must include home AI systems as a first-class option in the first-boot wizard, not a hidden add-on." Venus keeps Claude preselected inside the AI card (holds) and leaves AI-or-not unselected, which Alex's own words support ("not everyone is thrilled") and which costs one click. Security: no view. But she folds the home AI system under a collapsed `Use a different AI` row, which reads as the hidden add-on D13 ruled out. Moneta should check that with Alex or ask Venus for a form that keeps it visible (the AI card's line could name it: "Uses Claude with your account, or an AI at home").
 2. **`Set up later` removed.** Fine for security: `off` is the state of a machine that never finishes the screen. One case Venus should name: a person who wants AI but has no Claude account yet. Either they pick No AI now and turn it on later (5 clicks, password, sign-in), or they pick AI and stop at the sign-in, which leaves `ai = on`, packages installed and no credentials: the Help panel then needs a "Sign in to Claude to start" state that no doc describes.
 3. **Mine, N1 at first start:** picking An AI assistant now costs a password prompt. It is the right prompt (the first plain-words consent the person sees) but it is a change to Venus's screen, and the PO should own it.
+
+Resolved (Moneta, 2026-09-30): 1, the home AI system is now a visible choice inside the AI card; 2, the state is named Not signed in; 3, accepted. All three in `no-ai.md` 2.
 
 Owner decisions: none new. Moneta's claim to Alex stands as given.
 

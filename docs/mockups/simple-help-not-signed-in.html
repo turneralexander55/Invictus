@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Help: not signed in</title><meta name="description" content="Invictus Atrium, AI picked but the Claude sign-in never finished: the Help panel offers Sign in to Claude above the guides, Ask Alex and Let Alex see my screen."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cormorant+SC:wght@500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"><style>
+:root{
+ --night:#14120F;--basalt:#1C1A16;--stone:#27241F;--line:#3A352D;
+ --marble:#ECE6DA;--parchment:#BDB4A3;--ash:#968E7F;
+ --sol:#E0A64B;--sol-bright:#F0C274;--pompeii:#D9725A;--laurel:#94AD7B;--lapis:#7C9FD4;
+ --dawn:#F4EFE6;--dawn-surface:#FBF8F2;--dawn-raised:#EAE3D6;--dawn-line:#D6CCBB;
+ --ink:#221E18;--ink-2:#4A4338;--ink-muted:#6B6254;--bronze:#8A5A12;--lapis-dark:#355F9E;
+ --sans:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;
+ --sc:"Cormorant SC",serif;--serif:"Cormorant Garamond",serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#0b0a08;overflow:hidden;height:100%}
+body{font-family:var(--sans);color:var(--marble);-webkit-font-smoothing:antialiased}
+.stage{width:1920px;height:1080px;position:relative;overflow:hidden;transform-origin:0 0;background:var(--night)}
+svg{display:block}
+.wall{position:absolute;inset:0;
+ background:
+  radial-gradient(circle at 70% 79%, #F0C274 0 58px, rgba(240,194,116,0) 60px),
+  radial-gradient(ellipse 900px 520px at 70% 80%, rgba(224,166,75,.55), rgba(160,104,44,.28) 30%, rgba(90,63,30,.18) 55%, rgba(20,18,15,0) 80%),
+  linear-gradient(180deg,#14120F 0%,#17140F 45%,#2A2016 74%,#3A2A18 84%);}
+.wall::after{content:"";position:absolute;left:0;right:0;top:84%;bottom:0;background:linear-gradient(180deg,#1A1712 0%,#14120F 100%);border-top:1px solid rgba(224,166,75,.25)}
+.wall.faint{opacity:.6}
+.card-dark{background:rgba(28,26,22,.96);backdrop-filter:blur(18px);border:1px solid var(--line)}
+
+/* taskbar */
+.tb{position:absolute;left:0;right:0;bottom:0;height:56px;background:rgba(20,18,15,.9);backdrop-filter:blur(18px);border-top:1px solid var(--line);
+ display:flex;align-items:center;padding:0 8px;gap:6px;z-index:30}
+.start{height:44px;display:flex;align-items:center;gap:10px;padding:0 18px 0 14px;border-radius:10px;background:var(--stone);font-size:15px;font-weight:600;color:var(--marble)}
+.start.open{background:var(--line)}
+.apps{display:flex;gap:4px;margin-left:8px;flex:1}
+.app{height:44px;display:flex;align-items:center;gap:10px;padding:0 14px 0 10px;border-radius:10px;font-size:14px;color:var(--parchment);max-width:200px}
+.app.on{background:var(--stone);color:var(--marble);box-shadow:inset 0 -3px var(--sol)}
+.ai{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:none}
+.ai svg{width:18px;height:18px}
+.right{display:flex;align-items:center;gap:6px}
+.help{height:44px;display:flex;align-items:center;gap:9px;padding:0 18px 0 14px;border-radius:10px;background:var(--stone);font-size:15px;font-weight:600;color:var(--marble)}
+.help.open{background:var(--line)}
+.qs{height:44px;display:flex;align-items:center;gap:14px;padding:0 14px;border-radius:10px;color:var(--marble);font-size:14px;font-variant-numeric:tabular-nums}
+.qs.open{background:var(--line)}
+.qs svg{width:22px;height:22px}
+.clock{display:flex;flex-direction:column;align-items:flex-end;padding:0 12px 0 8px;line-height:1.2}
+.clock b{font-size:16px;font-weight:600;color:var(--marble);font-variant-numeric:tabular-nums}
+.clock span{font-size:12px;color:var(--parchment)}
+
+/* window with hyprbars */
+.win{position:absolute;left:0;top:0;right:0;bottom:56px;display:flex;flex-direction:column;background:var(--dawn)}
+.hb{height:36px;flex:none;background:var(--basalt);display:flex;align-items:center;padding:0 10px 0 14px;border-bottom:1px solid var(--line)}
+.hb .t{flex:1;font-size:14px;font-weight:500;color:var(--marble)}
+.hb .bt{display:flex;gap:8px}
+.hb .bt span{width:28px;height:28px;border-radius:50%;background:var(--stone);display:flex;align-items:center;justify-content:center;color:var(--marble)}
+.hb .bt svg{width:14px;height:14px}
+
+/* light app content */
+.lt{color:var(--ink);font-family:var(--sans)}
+.tool{height:52px;display:flex;align-items:center;gap:10px;padding:0 16px;background:var(--dawn-surface);border-bottom:1px solid var(--dawn-line)}
+.tbtn{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--ink-2)}
+.tbtn svg{width:20px;height:20px}
+.path{flex:1;height:36px;border-radius:8px;background:var(--dawn-raised);display:flex;align-items:center;padding:0 14px;font-size:15px;color:var(--ink-2);gap:8px}
+.path b{color:var(--ink);font-weight:500}
+
+/* dark panels */
+.panel{position:absolute;background:rgba(28,26,22,.97);backdrop-filter:blur(24px);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.55);z-index:40}
+.field{height:48px;background:var(--stone);border-radius:10px;display:flex;align-items:center;gap:12px;padding:0 16px;font-size:16px;color:var(--ash)}
+.field.focus{border:1px solid var(--sol);color:var(--marble)}
+.caret{width:1.5px;height:22px;background:var(--sol);margin-left:-10px}
+.btn{height:44px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 20px;font-size:15px;font-weight:500;background:var(--stone);color:var(--marble);border:1px solid var(--line)}
+.btn.gold{background:var(--sol);color:var(--night);border-color:var(--sol);font-weight:600}
+.btn.text{background:none;border:none;color:var(--parchment)}
+.muted{color:var(--ash)}
+.sw{width:44px;height:26px;border-radius:13px;background:var(--line);position:relative;flex:none}
+.sw::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:var(--parchment)}
+.sw.on{background:var(--sol)} .sw.on::after{left:21px;background:var(--night)}
+
+/* messages (swaync, Atrium config) */
+.msg{width:420px;border-radius:14px;background:rgba(28,26,22,.97);border:1px solid var(--line);padding:16px 18px 16px 22px;position:relative;box-shadow:0 16px 48px rgba(0,0,0,.45);overflow:hidden}
+.msg::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--lapis)}
+.msg.ok::before{background:var(--laurel)} .msg.bad::before{background:var(--pompeii)}
+.msg .h{display:flex;align-items:center;gap:12px}
+.msg .h .ic{width:32px;height:32px;border-radius:8px;background:var(--stone);display:flex;align-items:center;justify-content:center;flex:none}
+.msg .h .ic svg{width:18px;height:18px}
+.msg .ti{font-size:16px;font-weight:600;color:var(--marble);flex:1}
+.msg .x{color:var(--ash)} .msg .x svg{width:14px;height:14px}
+.msg p{font-size:15px;line-height:1.5;color:var(--parchment);margin:8px 0 0 44px}
+.msg .acts{display:flex;gap:8px;margin:14px 0 0 44px}
+.msg .acts .btn{height:40px;font-size:14px;padding:0 16px}
+.msg .det{margin:12px 0 0 44px;font-size:13px;color:var(--ash);display:flex;align-items:center;gap:6px}
+
+/* setup screens */
+.setup{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.scard{width:640px;border-radius:20px;background:rgba(28,26,22,.97);border:1px solid var(--line);padding:40px 48px 32px;box-shadow:0 30px 90px rgba(0,0,0,.55);position:relative}
+.scard.wide{width:880px}
+.scard .mk{color:var(--marble);width:44px;height:44px}
+.step{font-size:13px;color:var(--ash);margin-top:22px;letter-spacing:.02em}
+.scard h1{font-size:28px;font-weight:500;line-height:1.25;margin-top:6px;color:var(--marble)}
+.scard .body{font-size:17px;line-height:1.55;color:var(--parchment);margin-top:12px}
+.scard .foot{display:flex;align-items:center;justify-content:space-between;margin-top:32px}
+.scard .foot .btn{height:52px;font-size:16px;padding:0 28px}
+.row{height:56px;border-radius:12px;background:var(--stone);display:flex;align-items:center;gap:14px;padding:0 18px;font-size:16px;color:var(--marble)}
+.row .v{margin-left:auto;color:var(--parchment);display:flex;align-items:center;gap:8px}
+.opts{margin-top:14px;height:44px;display:flex;align-items:center;gap:8px;font-size:15px;color:var(--parchment)}
+.opts svg{width:14px;height:14px}
+.dots{position:absolute;bottom:-40px;left:0;right:0;display:flex;justify-content:center;gap:8px}
+.dots i{width:8px;height:8px;border-radius:50%;background:var(--line)} .dots i.on{background:var(--parchment)}
+.brand{position:absolute;left:40px;top:34px;display:flex;align-items:center;gap:12px;color:var(--marble);font-family:var(--sc);font-weight:500;font-size:20px;letter-spacing:.18em}
+.brand svg{width:26px;height:26px}
+.lbl{font-size:14px;color:var(--parchment);margin:18px 0 8px}
+.inp{height:52px;border-radius:10px;background:var(--stone);border:1px solid var(--line);display:flex;align-items:center;padding:0 16px;font-size:17px;color:var(--marble)}
+.inp.focus{border-color:var(--sol)}
+.inp .eye{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--parchment);font-size:14px}
+.inp .eye svg{width:18px;height:18px}
+.hintl{font-size:14px;color:var(--ash);margin-top:8px;line-height:1.45}
+.check{display:flex;align-items:flex-start;gap:14px;margin-top:22px;font-size:17px;color:var(--marble);line-height:1.4}
+.box{width:26px;height:26px;border-radius:6px;border:2px solid var(--parchment);flex:none;margin-top:1px}
+.box.on{background:var(--sol);border-color:var(--sol);display:flex;align-items:center;justify-content:center;color:var(--night)}
+.bar{height:10px;border-radius:5px;background:var(--stone);overflow:hidden;margin-top:28px}
+.bar i{display:block;height:100%;background:var(--sol-bright);border-radius:5px}
+</style></head><body><div class="stage"><div class="win lt"><div style="height:44px;background:var(--dawn-raised);display:flex;align-items:flex-end;padding:0 10px;gap:4px"><div style="height:36px;padding:0 16px;border-radius:8px 8px 0 0;background:var(--dawn-surface);display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink);min-width:260px"><span style="width:16px;height:16px;border-radius:4px;background:#C98A3C"></span>Lemon and olive oil cake<span style="margin-left:auto;width:12px;height:12px;color:var(--ink-muted)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=width:12px;height:12px><path d="M6 6l12 12M18 6 6 18"/></svg></span></div><div style="height:36px;padding:0 16px;display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink-muted);min-width:220px"><span style="width:16px;height:16px;border-radius:4px;background:#5E9A8F"></span>Weather: Thessaloniki</div><div style="flex:1"></div><div style="display:flex;gap:6px;align-self:center;padding-bottom:0"><span style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--ink-2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style=width:15px;height:15px><path d="M5 12h14"/></svg></span><span style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--ink-2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style=width:15px;height:15px><rect x="5.5" y="5.5" width="13" height="13" rx="1.5"/></svg></span><span style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--ink-2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style=width:15px;height:15px><path d="M6 6l12 12M18 6 6 18"/></svg></span></div></div><div class="tool"><div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ><path d="M15 5l-7 7 7 7"/></svg></div><div class="tbtn" style="opacity:.4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ><path d="M9 5l7 7-7 7"/></svg></div><div class="tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4"/></svg></div><div class="path" style="border-radius:20px"><span style="width:14px;height:14px;color:var(--ink-muted)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style=width:14px;height:14px><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg></span>kitchen-notes.example/lemon-olive-oil-cake</div></div><div style="flex:1;overflow:hidden;background:#FFFDF8;display:flex;justify-content:center"><div style="width:980px;padding:34px 0"><div style="font-size:12px;letter-spacing:.14em;color:#8A5A12;font-weight:600">BAKING · 45 MIN</div><div style="font-family:var(--serif);font-size:44px;line-height:1.1;color:#221E18;margin-top:8px">Lemon and olive oil cake</div><div style="font-size:13px;color:#6B6254;margin-top:10px">Serves 8. A soft, not-too-sweet cake that keeps for three days.</div><div style="height:260px;border-radius:10px;margin-top:22px;background:linear-gradient(160deg,#F7E7B4,#E9C56A 45%,#B98A3E 80%,#7A5A2A)"></div><div style="display:flex;gap:40px;margin-top:22px"><div style="width:280px"><div style="font-weight:600;font-size:13px;color:#221E18">Ingredients</div><div style="font-size:12px;line-height:1.9;color:#4A4338;margin-top:6px">3 eggs<br>200 g sugar<br>zest of 2 lemons<br>150 ml olive oil<br>200 g flour<br>2 tsp baking powder</div></div><div style="flex:1"><div style="font-weight:600;font-size:13px;color:#221E18">Method</div><div style="font-size:12px;line-height:1.8;color:#4A4338;margin-top:6px">1. Heat the oven to 180 °C and line a 23 cm tin.<br>2. Whisk the eggs and sugar until pale and thick, about 5 minutes.<br>3. Add the zest, then pour in the oil slowly while whisking.<br>4. Fold in the flour and baking powder.<br>5. Bake for 40 to 45 minutes, until a skewer comes out clean.</div></div></div></div></div></div><div class="panel" style="right:8px;top:8px;bottom:64px;width:480px;display:flex;flex-direction:column"><div style="height:64px;display:flex;align-items:center;gap:12px;padding:0 16px 0 20px;border-bottom:1px solid var(--line);flex:none"><span style="width:28px;height:28px;color:var(--lapis)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style=width:28px;height:28px><circle cx="12" cy="12" r="9"/><path d="M9.3 9.3a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4"/><path d="M12 17.3h.01" stroke-width="2.4"/></svg></span><span style="font-size:18px;font-weight:600">Help</span><span style="margin-left:auto;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--parchment)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style=width:18px;height:18px><path d="M6 6l12 12M18 6 6 18"/></svg></span></div><div style="flex:1;padding:18px 20px;overflow:hidden"><div style="border:1px solid var(--line);border-left:4px solid var(--lapis);border-radius:14px;padding:18px 20px;background:var(--stone)"><div style="font-size:18px;font-weight:600;color:var(--marble)">Sign in to start Moneta</div><div style="font-size:15px;line-height:1.5;color:var(--parchment);margin-top:6px">Moneta is on this computer but isn't signed in yet. Until then, Help has guides and Alex.</div><div style="display:flex;align-items:center;gap:16px;margin-top:14px"><span class="btn" style="height:46px;font-size:16px">Sign in to Claude</span><span style="font-size:15px;color:var(--lapis);font-weight:500">Other choices</span></div></div><div class="inp" style="border-color:var(--line);font-size:16px;gap:10px;margin-top:18px"><span style="width:18px;height:18px;color:var(--ash)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style=width:18px;height:18px><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></span><span style="color:var(--ash)">What do you need help with?</span></div><div style="font-size:14px;font-weight:600;color:var(--parchment);margin:18px 0 6px">Common questions</div><div style="display:flex;align-items:center;gap:14px;height:48px;border-top:1px solid var(--line);font-size:16px;color:var(--marble)"><span style="width:20px;height:20px;color:var(--parchment)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M7 9V4h10v5"/><rect x="3.5" y="9" width="17" height="7.5" rx="2"/><path d="M7 14h10v6H7z"/></svg></span>Print something</div><div style="display:flex;align-items:center;gap:14px;height:48px;border-top:1px solid var(--line);font-size:16px;color:var(--marble)"><span style="width:20px;height:20px;color:var(--parchment)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.3a9.5 9.5 0 0 1 13 0M8.6 15.5a5 5 0 0 1 6.8 0"/><path d="M12 18.8h.01" stroke-width="2.6"/></svg></span>Connect to Wi-Fi</div><div style="display:flex;align-items:center;gap:14px;height:48px;border-top:1px solid var(--line);font-size:16px;color:var(--marble)"><span style="width:20px;height:20px;color:var(--parchment)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3L4.5 9"/><path d="M4.5 4.5V9H9M12 8v4.3l3 1.7"/></svg></span>Get a deleted file back</div><div style="display:flex;align-items:center;gap:14px;height:48px;border-top:1px solid var(--line);font-size:16px;color:var(--marble)"><span style="width:20px;height:20px;color:var(--parchment)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></span>There's no sound</div><div style="display:flex;align-items:center;gap:14px;height:48px;border-top:1px solid var(--line);font-size:16px;color:var(--marble)"><span style="width:20px;height:20px;color:var(--parchment)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="3" y="4.5" width="18" height="12" rx="1.8"/><path d="M9 20h6M12 16.5V20"/></svg></span>Make text bigger</div></div><div style="padding:14px 20px 16px;border-top:1px solid var(--line);flex:none"><div style="display:flex;flex-direction:column;gap:10px"><div class="btn" style="height:52px;font-size:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style=width:20px;height:20px><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>Ask Alex</div><div class="btn" style="height:52px;font-size:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="3" y="4.5" width="18" height="12" rx="1.8"/><path d="M9 20h6M12 16.5V20"/></svg>Let Alex see my screen</div></div></div></div><div class="tb"><div class="start"><span style="width:22px;height:22px;display:block"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-linecap="round"><g stroke-width="3.5"><line x1="48.74" y1="40.95" x2="57.61" y2="42.51"/><line x1="48.42" y1="33.60" x2="57.11" y2="31.27"/><line x1="45.02" y1="27.07" x2="51.92" y2="21.29"/><line x1="39.18" y1="22.59" x2="42.99" y2="14.44"/><line x1="32.00" y1="21.00" x2="32.00" y2="12.00"/><line x1="24.82" y1="22.59" x2="21.01" y2="14.44"/><line x1="18.98" y1="27.07" x2="12.08" y2="21.29"/><line x1="15.58" y1="33.60" x2="6.89" y2="31.27"/><line x1="15.26" y1="40.95" x2="6.39" y2="42.51"/></g><circle cx="32" cy="38" r="12" fill="currentColor" stroke="none"/><line x1="6" y1="56" x2="58" y2="56" stroke-width="3.5"/></svg></span>Start</div><div class="apps"><div class="app on"><div class="ai" style="width:28px;height:28px;background:#4F7FC4;color:#fff;border-radius:7px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style=width:18px;height:18px><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5s1.2-6.1 3.8-8.5z"/></svg></div>Internet</div><div class="app"><div class="ai" style="width:28px;height:28px;background:#8C7A5B;color:#fff;border-radius:7px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style=width:18px;height:18px><path d="M3 7.5a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>Files</div><div class="app"><div class="ai" style="width:28px;height:28px;background:#5E9A8F;color:#fff;border-radius:7px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style=width:18px;height:18px><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-4.5 3.5 3 3-2.5 4.5 4"/></svg></div>Photos</div></div><div class="right"><div class="help open"><span style="color:var(--lapis);width:22px;height:22px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style=width:22px;height:22px><circle cx="12" cy="12" r="9"/><path d="M9.3 9.3a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4"/><path d="M12 17.3h.01" stroke-width="2.4"/></svg></span>Help</div><div class="qs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.3a9.5 9.5 0 0 1 13 0M8.6 15.5a5 5 0 0 1 6.8 0"/><path d="M12 18.8h.01" stroke-width="2.6"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg><span style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ><rect x="2.5" y="7.5" width="17" height="9" rx="2"/><path d="M21.5 10.5v3"/><rect x="4.5" y="9.5" width="11" height="5" rx="1" fill="currentColor" stroke="none"/></svg>82%</span></div><div class="clock"><b>14:32</b><span>Wed 30 Sep</span></div></div></div></div><script>(function(){var s=document.querySelector('.stage');function f(){var k=Math.min(1,innerWidth/1920);s.style.transform='scale('+k+')';document.body.style.height=(1080*k)+'px'}addEventListener('resize',f);f()})();</script></body></html>
