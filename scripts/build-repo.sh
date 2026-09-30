@@ -14,6 +14,10 @@
 # key (PKGBUILD code runs there) and sign in a job that runs no package
 # code. See .github/workflows/packages.yml.
 #
+# The build step also writes invictus-manifest.txt (the package files the
+# PKGBUILDs produce). The repo step reads it when present instead of
+# sourcing PKGBUILDs, so no package code runs while the key is loaded.
+#
 # Reuse: packages already in the output folder at the version a PKGBUILD
 # would produce are kept, not rebuilt. CI downloads the published set first,
 # so an unchanged package keeps its bytes and signature (a rebuild under the
@@ -150,6 +154,7 @@ if $DO_BUILD; then
         done
         built=$((built + 1))
     done
+    expected_files > "$OUT/invictus-manifest.txt"
     echo "==> Build: $built built, $reused reused, $skipped skipped"
 fi
 
@@ -159,9 +164,19 @@ if $DO_REPO; then
     cd "$OUT"
 
     # Keep only what the current PKGBUILDs produce; drop older versions.
-    list="$(expected_files)" || exit 1
+    if [[ -f invictus-manifest.txt ]]; then
+        list="$(cat invictus-manifest.txt)"
+        rm -f invictus-manifest.txt
+    else
+        list="$(expected_files)" || exit 1
+    fi
     mapfile -t current <<< "$list"
     [[ -n "$list" && ${#current[@]} -gt 0 ]] || { echo "No packages to index." >&2; exit 1; }
+    # The manifest came from the build step, where package code ran: accept
+    # plain package file names only (no paths, no leading dash).
+    for c in "${current[@]}"; do
+        [[ "$c" =~ ^[A-Za-z0-9@_+][A-Za-z0-9@._+:-]*\.pkg\.tar\.zst$ ]] || { echo "Bad package name in manifest: $c" >&2; exit 1; }
+    done
     for f in *.pkg.tar.zst; do
         [[ -e "$f" ]] || continue
         keep=false

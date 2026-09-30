@@ -14,7 +14,8 @@
 #      trusted file alone makes the key trusted;
 #   3. a tampered package is refused;
 #   4. a second run reuses unchanged packages byte for byte, and a
-#      pkgrel bump rebuilds that package and drops the old file.
+#      pkgrel bump rebuilds that package and drops the old file;
+#   5. the sign step rejects a manifest entry that is a path.
 # Never run it on a real machine: it edits /etc/pacman.conf.
 # ------------------------------------------------------------
 set -euo pipefail
@@ -114,6 +115,18 @@ if grep -q "1 built, 4 reused" "$WORK/rebuild.log" && [[ -f "$OUT/invictus-dev-0
     ok "unchanged packages reused byte for byte; a pkgrel bump rebuilds, signs and drops the old file"
 else
     bad "rebuild: $(grep -E 'built|Dropping' "$WORK/rebuild.log")"
+fi
+
+# 5. the sign step refuses a manifest with a path in it
+cp -r "$OUT" "$WORK/evil"
+find "$WORK/evil" -maxdepth 1 -name "*.pkg.tar.zst" -printf "%f\n" > "$WORK/evil/invictus-manifest.txt"
+echo "../../etc/x.pkg.tar.zst" >> "$WORK/evil/invictus-manifest.txt"
+if bash "$WORK/src/scripts/build-repo.sh" --no-container --repo-only --out "$WORK/evil" > "$WORK/evil.log" 2>&1; then
+    bad "a manifest entry with a path was accepted"
+elif grep -q "Bad package name in manifest" "$WORK/evil.log"; then
+    ok "the sign step refuses manifest entries that are not plain package names"
+else
+    bad "evil manifest failed for another reason: $(tail -2 "$WORK/evil.log")"
 fi
 
 [[ $fail == 0 ]] && echo "ALL PASSED" || echo "SOME TESTS FAILED"
