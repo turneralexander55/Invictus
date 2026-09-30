@@ -1,0 +1,76 @@
+# Checks on every push and pull request: shell and Lua lint, the config and
+# package tests, an end-to-end signed-repo test in Arch, and a secrets scan
+# over the full git history.
+name: checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: shellcheck scripts
+        run: |
+          mapfile -t files < <(git ls-files '*.sh')
+          shellcheck --version
+          shellcheck -x "${files[@]}"
+      - name: shellcheck PKGBUILDs
+        # makepkg supplies srcdir/pkgdir and reads the metadata variables.
+        run: |
+          mapfile -t files < <(git ls-files '*/PKGBUILD' '*.install')
+          shellcheck -s bash -e SC2034,SC2154,SC2164 "${files[@]}"
+
+  luacheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install luacheck
+        run: sudo apt-get update -q && sudo apt-get install -yq lua-check
+      - run: luacheck .
+
+  tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Lua 5.4 and xkbcommon headers
+        run: sudo apt-get update -q && sudo apt-get install -yq lua5.4 libxkbcommon-dev
+      - name: Hyprland Lua config tests
+        run: LUA=lua5.4 tests/hyprland-lua/run.sh
+      - name: Package tests
+        run: tests/pkgs/run.sh
+      - name: Theme tests
+        run: tests/theme/run.sh
+
+  repo-e2e:
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build, sign with a throwaway key, install from the repo
+        run: bash tests/pkgs/e2e-arch.sh "$GITHUB_WORKSPACE"
+
+  gitleaks:
+    runs-on: ubuntu-24.04
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # every commit on every branch, not just the tip
+      - name: Install gitleaks (checksum pinned)
+        run: |
+          curl -sSfL -o gitleaks.tgz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum -c -
+          tar -xzf gitleaks.tgz gitleaks
+          rm gitleaks.tgz
+      - name: Scan the full history
+        run: ./gitleaks git --redact --verbose --exit-code 1 .

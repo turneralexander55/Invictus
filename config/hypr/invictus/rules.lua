@@ -13,9 +13,9 @@
 --   • Layer rules (launchers, overlays, etc.)
 --
 -- Workspace assignment logic belongs in:
---   → lua/workspaces.lua
+--   → invictus/workspaces.lua
 -- Game rules (VRR, tearing, Steam games, gamescope) are in:
---   → lua/gaming.lua
+--   → invictus/gaming.lua
 --
 -- Rules run top to bottom, named rules before anonymous ones. Match values are
 -- RE2 regexes; in Lua strings a regex backslash is written "\\".

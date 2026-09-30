@@ -222,7 +222,7 @@ function M.new(opts)
         return { is_active = function() return true end, remove = function() end }
     end
 
-    function hl.exec_cmd(cmd, rules)
+    function hl.exec_cmd(cmd, _rules)
         if type(cmd) ~= "string" or cmd == "" then return err("hl.exec_cmd: command must be a non-empty string") end
         table.insert(state.execs, cmd)
     end

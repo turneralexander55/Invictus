@@ -30,12 +30,12 @@ if [[ "$FORCE" != true ]]; then
   echo "You must run it with --force to proceed."
   echo
   echo "Example:"
-  echo "  ./scripts/deploy-shell.sh --force"
+  echo "  ./legacy/deploy-shell.sh --force"
   exit 1
 fi
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-DOTFILES_DIR="$SCRIPT_DIR/../shell"
+DOTFILES_DIR="$SCRIPT_DIR/../config/shell"
 HOME_DIR="$HOME"
 
 echo "==> deploy-shell.sh running in FORCE mode"

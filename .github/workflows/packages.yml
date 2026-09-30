@@ -1,0 +1,110 @@
+# Build pkgs/ into the [invictus-testing] pacman repo and publish it as the
+# assets of the GitHub release tagged invictus-testing. pacman then uses:
+#
+#   [invictus-testing]
+#   Server = https://github.com/turneralexander55/invictus/releases/download/invictus-testing
+#
+# Two jobs, so the signing key never shares a job with package build code:
+#   build    runs the PKGBUILDs in an Arch container. No secrets.
+#   publish  signs, indexes with repo-add, uploads. Runs no PKGBUILD code.
+# Signing uses the REPO_SIGNING_KEY and REPO_SIGNING_PASSPHRASE secrets
+# (docs/checklists/signing-key.md). Without them the repo is published
+# unsigned, with a warning on the run.
+name: packages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pkgs/**'
+      - 'scripts/build-repo.sh'
+      - '.github/workflows/packages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packages
+  cancel-in-progress: false
+
+env:
+  TAG: invictus-testing
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Fetch the published packages (reused when unchanged)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p out/repo
+          # A failed download must fail the job: rebuilding a published
+          # version gives new bytes under the same file name, which breaks
+          # machines that have the old file in their pacman cache.
+          n=0
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            n=$(gh release view "$TAG" --json assets --jq '[.assets[].name | select(test("\\.pkg\\.tar\\.zst"))] | length')
+          fi
+          if [ "$n" -gt 0 ]; then
+            gh release download "$TAG" --dir out/repo --pattern '*.pkg.tar.zst*'
+          else
+            echo "No published packages yet: building everything."
+          fi
+          ls -l out/repo
+      - name: Build in archlinux:base-devel
+        run: scripts/build-repo.sh --in-container --build-only --out out/repo
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: repo
+          path: out/repo
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: repo
+          path: out/repo
+      - name: Sign and index
+        env:
+          INVICTUS_SIGNING_KEY: ${{ secrets.REPO_SIGNING_KEY }}
+          INVICTUS_SIGNING_PASSPHRASE: ${{ secrets.REPO_SIGNING_PASSPHRASE }}
+        run: |
+          if [ -z "$INVICTUS_SIGNING_KEY" ]; then
+            echo "::warning title=Unsigned repo::REPO_SIGNING_KEY is not set, so packages and the database are published UNSIGNED. pacman refuses them with its default SigLevel. Steps: docs/checklists/signing-key.md"
+          fi
+          scripts/build-repo.sh --in-container --repo-only --out out/repo
+      - name: Publish to the invictus-testing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd out/repo
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --prerelease --target "$GITHUB_SHA" \
+              --title "[invictus-testing] package repo" \
+              --notes "pacman repo for Alex's machine. Server = https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+          fi
+          # Packages first, databases last, so a client never sees a database
+          # that names a package not uploaded yet.
+          shopt -s nullglob
+          pkgs=(*.pkg.tar.zst *.pkg.tar.zst.sig)
+          dbs=(invictus-testing.db* invictus-testing.files*)
+          gh release upload "$TAG" --clobber "${pkgs[@]}"
+          gh release upload "$TAG" --clobber "${dbs[@]}"
+          # Remove assets that are no longer part of the repo.
+          gh release view "$TAG" --json assets --jq '.assets[].name' | while read -r asset; do
+            if [ ! -e "$asset" ]; then
+              echo "Removing stale asset $asset"
+              gh release delete-asset "$TAG" "$asset" --yes
+            fi
+          done
+          echo "Published: $(find . -maxdepth 1 -type f | wc -l) files"

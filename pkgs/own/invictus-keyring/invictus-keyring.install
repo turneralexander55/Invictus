@@ -1,0 +1,12 @@
+# Load the key into pacman's keyring, the way archlinux-keyring does.
+# Skipped when pacman-key has not been initialised yet (pacstrap runs
+# --populate itself afterwards).
+post_upgrade() {
+  if usr/bin/pacman-key -l >/dev/null 2>&1; then
+    usr/bin/pacman-key --populate invictus
+  fi
+}
+
+post_install() {
+  post_upgrade
+}

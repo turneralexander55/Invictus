@@ -4,7 +4,7 @@
 --                                                                            --
 --------------------------------------------------------------------------------
 -- Invictus gaming baseline (new in the Lua port; not in the old hyprland.conf).
--- Comment out require("lua.gaming") in hyprland.lua to turn all of it off.
+-- Loaded by invictus/core.lua. Override any value here in ~/.config/hypr/user.lua.
 --
 -- How it fits together: the rules below mark game windows with the "game"
 -- content type. Three settings key off that type, so they only kick in for

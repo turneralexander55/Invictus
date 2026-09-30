@@ -1,0 +1,48 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# Meta package: depends only, no files. The list came from the old
+# legacy/packages/*.txt with the fixes in docs/design.md 1.2. AUR packages
+# named here must be built into [invictus] (pkgs/aur/) before this installs.
+# tests/hyprland-lua checks that every command the Hyprland config runs is
+# provided by one of the metas.
+
+# NOT for an existing install until Phase 3: it pulls the limine boot hooks
+# and snap-pac, which change how the machine boots and updates. The ISO and
+# installer use it.
+
+pkgname=invictus-base
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Invictus base system: kernel, AMD graphics, btrfs snapshots, boot, network, audio'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=(
+  # keyring first: trusts our repo
+  'invictus-keyring'
+
+  # kernel and firmware (AMD only)
+  'linux' 'linux-firmware' 'amd-ucode'
+  'mesa' 'vulkan-radeon'
+
+  # btrfs and snapshots (design 1.5)
+  'btrfs-progs' 'snapper' 'snap-pac'
+
+  # boot: limine with bootable snapshots (AUR hooks, built in pkgs/aur/)
+  'limine' 'limine-mkinitcpio-hook' 'limine-snapper-sync'
+
+  # network, bluetooth, audio
+  'networkmanager'
+  'bluez' 'bluez-utils'
+  'pipewire' 'pipewire-alsa' 'pipewire-pulse' 'wireplumber'
+
+  # containers (Windows VM, dev)
+  'podman'
+
+  # everyday command line
+  'sudo' 'zsh' 'nano' 'less' 'tree' 'jq'
+)
+
+package() {
+  :
+}

@@ -38,7 +38,7 @@ echo "==> Installing blackglass theme"
 
 # The repo may be cloned anywhere (~/invictus, or ~/hyprdots on older machines).
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-THEME_SRC="$SCRIPT_DIR/../assets/SDDM/blackglass"
+THEME_SRC="$SCRIPT_DIR/assets/SDDM/blackglass"
 THEME_DST="/usr/share/sddm/themes/blackglass"
 
 if [[ ! -d "$THEME_SRC" ]]; then

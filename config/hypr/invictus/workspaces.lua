@@ -16,7 +16,7 @@
 --   • Floating, opacity, or class/title-based logic
 --
 -- Application and window behavior belongs in:
---   → lua/rules.lua
+--   → invictus/rules.lua
 --
 -- Keeping workspace assignment logic separate ensures:
 --   • Predictable monitor layouts

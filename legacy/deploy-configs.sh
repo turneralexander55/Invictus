@@ -24,7 +24,7 @@ if [[ "$FORCE" != true ]]; then
   echo "You must run it with --force to proceed."
   echo
   echo "Example:"
-  echo "  ./scripts/deploy-configs.sh --force"
+  echo "  ./legacy/deploy-configs.sh --force"
   exit 1
 fi
 

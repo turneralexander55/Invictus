@@ -1,4 +1,6 @@
--- Tests for the Lua Hyprland config (config/hypr/hyprland.lua + lua/*.lua).
+-- Tests for the Lua Hyprland config: the loader (config/hypr/hyprland.lua),
+-- the shipped modules (config/hypr/invictus/*.lua) and the user templates
+-- (config/hypr/monitors.lua, user.lua).
 --
 -- Loads the real config against a mock `hl` that checks every call against
 -- the Hyprland 0.56.2 API, then compares what it set with the old hyprlang
@@ -12,7 +14,13 @@ if keysymsPath == "" then keysymsPath = nil end
 
 local here = repo .. "/tests/hyprland-lua"
 local hyprDir = repo .. "/config/hypr"
-package.path = here .. "/?.lua;" .. hyprDir .. "/?.lua;" .. package.path
+-- The loader adds SHARED (where invictus-desktop installs the modules) in
+-- front of package.path unless it is already there. Listing it after the
+-- repo keeps the loader from moving it, so the repo's modules are tested
+-- even on a machine that has the package installed.
+local SHARED = "/usr/share/invictus/hypr/?.lua"
+local basePath = package.path
+package.path = here .. "/?.lua;" .. hyprDir .. "/?.lua;" .. SHARED .. ";" .. basePath
 
 local api      = require("api")
 local mock     = require("mock_hl")
@@ -67,25 +75,52 @@ end
 local hl, state = mock.new({ stubs = stubsPath, keysyms = keysymsPath })
 _G.hl = hl
 
--- Hyprland's require(): each config module runs in its own protected scope,
--- errors are reported and the module returns an empty table.
+-- Hyprland's require() (src/config/lua/ConfigManager.cpp, 0.56.2):
+--   * a name starting with "/", "./", "../" or "~/" is a file path, tried as
+--     given, with ".lua" added, then as <path>/init.lua;
+--   * a module that is not found raises an error the caller can pcall;
+--   * any other error in a module is reported and require returns {}.
 local realRequire = require
-local requiredModules = {}
-local moduleErrors = {}
-_G.require = function(name)
-    if name:match("^lua[%./]") then
-        name = name:gsub("/", ".")
-        requiredModules[name] = true
-        local ok, res = pcall(realRequire, name)
+local function explicitPath(name)
+    if name:match("^/") or name:match("^%.%.?/") or name:match("^~/") then
+        local base = name:gsub("^~/", (os.getenv("HOME") or "") .. "/")
+        for _, c in ipairs({ base, base .. ".lua", base .. "/init.lua" }) do
+            local f = io.open(c)
+            if f then f:close(); return c end
+        end
+    end
+end
+local function makeRequire(onRequire, onError)
+    return function(name)
+        if package.loaded[name] ~= nil then return package.loaded[name] end
+        local file = explicitPath(name)
+        local ok, res
+        if file then
+            onRequire(name)
+            local chunk, e = loadfile(file)
+            if chunk then ok, res = pcall(chunk, name, file) else ok, res = false, e end
+        elseif package.preload[name] or package.searchpath(name, package.path) then
+            onRequire(name)
+            ok, res = pcall(realRequire, name)
+            if ok then return res end
+        else
+            error("module '" .. name .. "' not found", 2)
+        end
         if not ok then
-            table.insert(moduleErrors, "require(\"" .. name .. "\"): " .. tostring(res))
+            onError("require(\"" .. name .. "\"): " .. tostring(res))
             package.loaded[name] = {}
             return {}
         end
+        if res == nil then res = true end
+        package.loaded[name] = res
         return res
     end
-    return realRequire(name)
 end
+
+local requiredModules = {}
+local moduleErrors = {}
+_G.require = makeRequire(function(name) requiredModules[name] = true end,
+                         function(e) table.insert(moduleErrors, e) end)
 
 local mainChunk, loadErr = loadfile(hyprDir .. "/hyprland.lua")
 local mainOk, mainErr = false, loadErr
@@ -167,13 +202,88 @@ test("no API warnings", function(check)
     for _, w in ipairs(state.warnings) do check(false, w) end
 end)
 
-test("every module in lua/ is required by hyprland.lua", function(check)
-    local p = io.popen('ls "' .. hyprDir .. '/lua"')
+test("every module in invictus/ is loaded (core.lua requires the rest)", function(check)
+    local p = io.popen('ls "' .. hyprDir .. '/invictus"')
     for file in p:lines() do
         local mod = file:match("^(.*)%.lua$")
-        if mod then check(requiredModules["lua." .. mod], "lua/" .. file .. " is never required") end
+        if mod then check(requiredModules["invictus." .. mod], "invictus/" .. file .. " is never required") end
     end
     p:close()
+    check(requiredModules[hyprDir .. "/monitors.lua"], "monitors.lua next to hyprland.lua was not loaded")
+    check(requiredModules[hyprDir .. "/user.lua"], "user.lua next to hyprland.lua was not loaded")
+end)
+
+-- The loader, run on its own in a scratch config dir with a stand-in core.
+local function runLoader(dir, files)
+    os.execute('rm -rf "' .. dir .. '" && mkdir -p "' .. dir .. '"')
+    local src = assert(io.open(hyprDir .. "/hyprland.lua")):read("a")
+    assert(io.open(dir .. "/hyprland.lua", "w")):write(src):close()
+    for name, body in pairs(files) do assert(io.open(dir .. "/" .. name, "w")):write(body):close() end
+    _G.LOADER_LOG = {}
+    local errors = {}
+    local savedPath, savedRequire = package.path, _G.require
+    package.path = basePath
+    _G.require = makeRequire(function() end, function(e) table.insert(errors, e) end)
+    package.preload["invictus.core"] = function() table.insert(LOADER_LOG, "core"); return true end
+    local results = {}
+    for run = 1, 2 do -- a config reload runs the file again in the same Lua state
+        for name in pairs(package.loaded) do
+            if name == "invictus.core" or name:sub(1, #dir) == dir then package.loaded[name] = nil end
+        end
+        local ok, e = pcall(assert(loadfile(dir .. "/hyprland.lua")))
+        results[run] = { ok = ok, err = e, path = package.path, log = LOADER_LOG }
+        _G.LOADER_LOG = {}
+    end
+    package.preload["invictus.core"] = nil
+    package.loaded["invictus.core"] = nil
+    package.path, _G.require = savedPath, savedRequire
+    os.execute('rm -rf "' .. dir .. '"')
+    return results, errors
+end
+
+local scratch = os.tmpname()
+os.remove(scratch)
+
+test("loader: shared module path goes first, once, even after reloads", function(check)
+    local r = runLoader(scratch, {})
+    for run = 1, 2 do
+        check(r[run].ok, "run " .. run .. " raised: " .. tostring(r[run].err))
+        check(r[run].path:sub(1, #SHARED + 1) == SHARED .. ";", "run " .. run .. ": package.path starts " .. r[run].path:sub(1, 40))
+        local _, n = r[run].path:gsub(SHARED:gsub("%p", "%%%0"), "")
+        check(n == 1, "run " .. run .. ": shared path listed " .. n .. " times")
+    end
+end)
+
+test("loader: loads core, then monitors.lua, then user.lua (user wins)", function(check)
+    local r, errs = runLoader(scratch, {
+        ["monitors.lua"] = 'table.insert(LOADER_LOG, "monitors")',
+        ["user.lua"]     = 'table.insert(LOADER_LOG, "user")',
+    })
+    for run = 1, 2 do
+        check(r[run].ok, "run " .. run .. " raised: " .. tostring(r[run].err))
+        check(deepEqual(r[run].log, { "core", "monitors", "user" }), "run " .. run .. " order " .. show(r[run].log))
+    end
+    for _, e in ipairs(errs) do check(false, e) end
+end)
+
+test("loader: runs with no monitors.lua or user.lua", function(check)
+    local r, errs = runLoader(scratch, {})
+    check(r[1].ok, "raised: " .. tostring(r[1].err))
+    check(deepEqual(r[1].log, { "core" }), "order " .. show(r[1].log))
+    for _, e in ipairs(errs) do check(false, e) end
+end)
+
+test("loader: an error in user.lua is reported and does not stop the config", function(check)
+    local r, errs = runLoader(scratch, { ["user.lua"] = 'error("boom")' })
+    check(r[1].ok, "raised: " .. tostring(r[1].err))
+    check(deepEqual(r[1].log, { "core" }), "order " .. show(r[1].log))
+    check(#errs >= 1 and errs[1]:match("boom"), "error not reported: " .. show(errs))
+end)
+
+test("loader: five lines, as the design says", function(check)
+    local n = 0
+    for _ in io.lines(hyprDir .. "/hyprland.lua") do n = n + 1 end
+    check(n == 5, "hyprland.lua has " .. n .. " lines")
 end)
 
 test("keysym names checked against xkbcommon (skipped names count as fail)", function(check)
@@ -298,7 +408,7 @@ end)
 -- Config keys whose old value intentionally differs or is gone.
 local KEY_CHANGES = {
     ["dwindle.pseudotile"]    = "removed", -- removed in 0.55
-    ["general.allow_tearing"] = true,      -- gaming addition (lua/gaming.lua)
+    ["general.allow_tearing"] = true,      -- gaming addition (invictus/gaming.lua)
 }
 
 local function compareSections(check, parsed, label)
@@ -378,10 +488,19 @@ test("environment variables match environment.conf", function(check)
     check(n == m, "env count " .. m .. " vs old " .. n)
 end)
 
+-- Old autostart commands deliberately dropped (design 1.2).
+local REMOVED_EXECS = {
+    mako = true, -- second notification daemon; swaync stays
+}
+
 test("autostart runs the same commands as autostart.conf, once at start", function(check)
     local want = {}
     for _, kw in ipairs(old.auto.keywords) do
-        if kw.kind == "exec-once" then table.insert(want, trim((kw.value:gsub("%s*&%s*$", "")))) end
+        local cmd = trim((kw.value:gsub("%s*&%s*$", "")))
+        if kw.kind == "exec-once" and not REMOVED_EXECS[cmd] then table.insert(want, cmd) end
+    end
+    for cmd in pairs(REMOVED_EXECS) do
+        for _, got in ipairs(state.execs) do check(got ~= cmd, cmd .. " is still autostarted") end
     end
     check(deepEqual(want, state.execs), "want " .. show(want) .. ", got " .. show(state.execs))
     local handlers = 0
@@ -410,7 +529,7 @@ local function oldRuleToSpec(block)
     return spec
 end
 
-local function compareRules(check, oldBlocks, newRules, kind, effects)
+local function compareRules(check, oldBlocks, newRules, kind)
     local byName = {}
     for _, r in ipairs(newRules) do if r.name then byName[r.name] = r end end
     for _, block in ipairs(oldBlocks) do
@@ -493,6 +612,75 @@ test("gaming: Steam games and gamescope are marked as games and may tear", funct
     local byContent
     for _, r in ipairs(state.windowRules) do if r.match.content == "game" then byContent = r end end
     check(byContent and byContent.immediate == true, "no rule for self-declared game content")
+end)
+
+-- ─── every command the config runs is installed by a meta package ──────────
+
+-- Executable -> package that provides it. false = not packaged yet, with why.
+local COMMAND_PACKAGES = {
+    kitty = "kitty", yazi = "yazi", rofi = "rofi", ["zen-browser"] = "zen-browser-bin",
+    hyprlock = "hyprlock", zeditor = "zed", thunar = "thunar", discord = "discord",
+    steam = "steam", hyprshot = "hyprshot", wpctl = "wireplumber",
+    brightnessctl = "brightnessctl", playerctl = "playerctl",
+    xwaylandvideobridge = "xwaylandvideobridge", systemctl = "systemd",
+    hyprpolkitagent = "hyprpolkitagent", ["wl-paste"] = "wl-clipboard", cliphist = "cliphist",
+    ["/usr/lib/xdg-desktop-portal-hyprland"] = "xdg-desktop-portal-hyprland",
+    ["/usr/lib/xdg-desktop-portal"] = "xdg-desktop-portal",
+    swaync = "swaync", hyprpaper = "hyprpaper", hypridle = "hypridle", waybar = "waybar",
+    hyprctl = "hyprland",
+    hyprshutdown = false,  -- optional: the bind checks `command -v` first
+    ["$HOME/invictus/scripts/show-keybindings.sh"] = false, -- repo script; invictus-tools in Phase 1
+    ["$HOME/invictus/scripts/confirm-poweroff.sh"] = false, -- same
+    ["~/.local/bin/dashboard-tmux"] = false, -- Alex's own script, not in the repo
+}
+-- Pulled in by every Arch install, so no meta lists them.
+local BASE_SYSTEM = { systemd = true }
+
+local function executables(cmd)
+    local out = {}
+    cmd = cmd:gsub("%d*>&%d+", ""):gsub("%d*>%s*%S+", "") -- drop redirections (2>&1, >/dev/null)
+    for seg in (cmd .. ";"):gmatch("(.-)%s*[;|&]+%s*") do
+        local words = {}
+        for w in seg:gmatch("%S+") do table.insert(words, w) end
+        if words[1] == "command" and words[2] == "-v" then
+            table.insert(out, words[3])
+        elseif words[1] then
+            table.insert(out, words[1])
+            for i, w in ipairs(words) do
+                if w == "-e" and words[i + 1] then table.insert(out, words[i + 1]) end
+                if w == "start" and words[1] == "systemctl" and words[i + 1] then table.insert(out, words[i + 1]) end
+            end
+        end
+    end
+    return out
+end
+
+test("every command the config runs comes from a meta package in pkgs/meta", function(check)
+    local provided = {}
+    local p = io.popen('for f in "' .. repo .. '"/pkgs/meta/*/PKGBUILD; do '
+        .. 'bash -c \'source "$1"; printf "%s\\n" "${depends[@]}"\' _ "$f"; done')
+    for dep in p:lines() do provided[dep] = true end
+    p:close()
+    check(next(provided) ~= nil, "no depends read from pkgs/meta/*/PKGBUILD")
+    local cmds = {}
+    for _, c in ipairs(state.execs) do table.insert(cmds, c) end
+    for _, b in ipairs(state.binds) do
+        local d = b.dispatcher
+        if type(d) == "table" and d.__dispatcher == "exec_cmd" then table.insert(cmds, d.args[1]) end
+    end
+    local seen = 0
+    for _, c in ipairs(cmds) do
+        for _, exe in ipairs(executables(c)) do
+            seen = seen + 1
+            local pkg = COMMAND_PACKAGES[exe]
+            if pkg == nil then
+                check(false, "'" .. exe .. "' (from: " .. c .. ") has no entry in COMMAND_PACKAGES")
+            elseif pkg and not provided[pkg] and not BASE_SYSTEM[pkg] then
+                check(false, "'" .. exe .. "' needs package " .. pkg .. ", which no meta depends on")
+            end
+        end
+    end
+    check(seen > 30, "only " .. seen .. " commands found; parsing broke?")
 end)
 
 -- ─── fake `hyprctl binds` output for the show-keybindings test ──────────────

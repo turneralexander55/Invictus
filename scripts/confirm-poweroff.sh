@@ -6,7 +6,7 @@
 # "Yes". "No" is the default (first row, preselected). Escape,
 # closing the menu or any other answer does nothing.
 #
-# Bound to SUPER + ALT + CTRL + Escape in lua/binds.lua.
+# Bound to SUPER + ALT + CTRL + Escape in config/hypr/invictus/binds.lua.
 #
 # ROFI and POWEROFF_CMD can point at other commands (used by the
 # tests).

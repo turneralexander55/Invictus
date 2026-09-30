@@ -1,153 +1,82 @@
 # Invictus
 
-A reproducible, Arch Linux–based Hyprland desktop environment with a clean separation between
-system provisioning, configuration deployment, and user customization.
+A personal Linux distribution based on Arch Linux, built around Hyprland,
+for AMD machines. For gaming, development and a Windows-for-work VM. Friends
+and family only.
 
-This repository is designed to be:
-- Safe to run on fresh installs
-- Explicit about destructive actions
-- Re-runnable without breaking the system
-- Easy to reason about and extend
+The design is in [docs/design.md](docs/design.md). This repo is the build
+source: machines get Invictus through packages from the `[invictus]` pacman
+repo, not by cloning this repo.
 
----
+## Status
 
-## Philosophy
+Phase 0 (foundation). The repo layout, the package repo with its signing
+key, and CI are in place. Nothing installs the desktop from packages yet.
 
-This repo intentionally separates concerns:
+## If you run the old install on your machine
 
-- **System provisioning** (packages, dependencies)
-- **Configuration deployment** (copy-once defaults)
-- **Advanced workflows** (optional symlink mode)
+The old `hyprdots` scripts moved to [legacy/](legacy/README.md) and still
+work from there (`./legacy/install.sh`, `./legacy/deploy-configs.sh --force`,
+`./legacy/update.sh`). `scripts/update.sh` forwards to the legacy updater,
+because the waybar update button calls that path. They stay until Phase 1's
+`scripts/dev/adopt.sh` moves an existing install onto the packages.
 
-Nothing happens implicitly.  
-Anything destructive is guarded and opt-in.
+## Layout
 
-This structure reflects real-world infrastructure and DevOps best practices.
+```
+config/          desktop defaults, installed under /usr/share/invictus
+  hypr/
+    hyprland.lua     five-line loader (copied to ~/.config/hypr once)
+    invictus/*.lua   the shipped Hyprland config; updates replace it
+    monitors.lua     template for your monitor layout
+    user.lua         template for your own changes (loaded last, wins)
+    hyprpaper.conf
+  waybar/ kitty/ rofi/ swaync/ fastfetch/ btop/ cava/ zed/ shell/
+pkgs/            one PKGBUILD per folder: own/, meta/ (aur/, pinned/ from Phase 1)
+scripts/         build-repo.sh, plus the desktop scripts binds and waybar call
+theme/           invictus-theme and the theme files
+tests/           hyprland-lua/, pkgs/, theme/
+docs/            design.md, look.md, reuse-catalog.md, checklists/
+legacy/          the old install scripts, frozen
+.github/         CI: checks.yml, packages.yml
+```
 
----
-### Install Process
+On an installed machine, change Hyprland in `~/.config/hypr/user.lua` and
+monitors in `~/.config/hypr/monitors.lua`. Updates never touch those two
+files.
 
-This repository is intended to be installed on a fresh minimimal profile archinstall
-While an attempt has been made for nvidea compatibility, this system is designed for AMD
-Installing this system on nvidea hardware may produce bugs and unforeseen issues
-Only install on nvidea systems if you are comfortable with troubleshooting
+## Build the package repo
 
-Install with:
+```
+scripts/build-repo.sh
+```
 
-git clone https://github.com/turneralexander55/invictus.git ~/invictus
-cd ~/invictus
-chmod +x scripts/*.sh
-chmod +x scripts/waybar/*.sh
-./scripts/install.sh
+Runs natively on Arch, or in an `archlinux:base-devel` container through
+podman or docker elsewhere. Output goes to `out/repo`. Signing:
+[docs/checklists/signing-key.md](docs/checklists/signing-key.md).
 
+CI builds and publishes `[invictus-testing]` from `main` to the
+`invictus-testing` release. pacman line:
 
-#### Repository Structure
-invictus
-├── assets
-│   ├── SDDM
-│   │   ├── blackglass
-│   │   │   ├── assets
-│   │   │   │   ├── boycott.ttf
-│   │   │   │   ├── buttondown.svg
-│   │   │   │   ├── buttonhover.svg
-│   │   │   │   ├── buttonup.svg
-│   │   │   │   ├── cboxhover.svg
-│   │   │   │   ├── cbox.svg
-│   │   │   │   ├── comboarrow.svg
-│   │   │   │   ├── DigitalSegmented.pcf.gz
-│   │   │   │   ├── HelmetNeue-Regular.otf
-│   │   │   │   ├── inputhi.svg
-│   │   │   │   ├── input.svg
-│   │   │   │   ├── logscreen.svg
-│   │   │   │   ├── powerdown.svg
-│   │   │   │   ├── powerhover.svg
-│   │   │   │   ├── powerup.svg
-│   │   │   │   ├── rebootdown.svg
-│   │   │   │   ├── reboothover.svg
-│   │   │   │   └── rebootup.svg
-│   │   │   ├── ComboBox.qml
-│   │   │   ├── LICENSE
-│   │   │   ├── logscreen.svg
-│   │   │   ├── Main.qml
-│   │   │   ├── metadata.desktop
-│   │   │   ├── preview.png
-│   │   │   ├── README.md
-│   │   │   ├── theme.conf
-│   │   │   └── theme.conf.user
-│   │   └── hyprland.desktop
-│   └── wallpapers
-│       ├── Berserk.jpg
-│       ├── blossom.png
-│       └── girl.png
-├── config
-│   ├── btop
-│   │   ├── btop.conf
-│   │   └── themes
-│   ├── cava
-│   │   ├── config
-│   │   ├── shaders
-│   │   │   ├── bar_spectrum.frag
-│   │   │   ├── eye_of_phi.frag
-│   │   │   ├── northern_lights.frag
-│   │   │   ├── pass_through.vert
-│   │   │   ├── spectrogram.frag
-│   │   │   └── winamp_line_style_spectrum.frag
-│   │   └── themes
-│   │       ├── solarized_dark
-│   │       └── tricolor
-│   ├── fastfetch
-│   │   └── config.jsonc
-│   ├── hypr
-│   │   ├── .luarc.json
-│   │   ├── hyprland.lua
-│   │   ├── hyprpaper.conf
-│   │   └── lua
-│   │       ├── autostart.lua
-│   │       ├── binds.lua
-│   │       ├── env.lua
-│   │       ├── gaming.lua
-│   │       ├── input.lua
-│   │       ├── look.lua
-│   │       ├── monitors.lua
-│   │       ├── permissions.lua
-│   │       ├── rules.lua
-│   │       ├── variables.lua
-│   │       └── workspaces.lua
-│   ├── kitty
-│   │   └── kitty.conf
-│   ├── rofi
-│   │   ├── config.rasi
-│   │   └── themes
-│   │       └── theme.rasi
-│   ├── swaync
-│   │   └── config.json
-│   ├── waybar
-│   │   ├── config.json
-│   │   └── style.css
-│   └── zed
-│       ├── settings.json
-│       └── themes
-├── packages
-│   ├── aur.txt
-│   └── pacman.txt
-├── README.md
-├── scripts
-│   ├── deploy-configs.sh
-│   ├── deploy-shell.sh
-│   ├── init-user.sh
-│   ├── install-packages.sh
-│   ├── install-sddm.sh
-│   ├── install.sh
-│   ├── nvidea.sh
-│   ├── show-keybindings.sh
-│   ├── symlink-configs.sh
-│   ├── update.sh
-│   └── waybar
-│       ├── cpu.sh
-│       ├── gpu.sh
-│       ├── memory.sh
-│       └── updates.sh
-├── shell
-│   └── zshrc
-└── tests
-    └── hyprland-lua          # run.sh: checks the Lua config without Hyprland
+```
+[invictus-testing]
+Server = https://github.com/turneralexander55/invictus/releases/download/invictus-testing
+```
+
+## Tests
+
+```
+tests/hyprland-lua/run.sh   Hyprland config against the 0.56.2 Lua API (needs lua 5.4+, libxkbcommon headers)
+tests/pkgs/run.sh           PKGBUILDs and the keyring guards (needs gpg)
+tests/theme/run.sh          the theme tool (needs python 3.11+)
+luacheck .
+```
+
+`tests/pkgs/e2e-arch.sh` builds, signs and installs the repo inside a
+throwaway Arch container; CI runs it on every push.
+
+Shared pieces to reuse before building anything: [docs/reuse-catalog.md](docs/reuse-catalog.md).
+
+## Licence
+
+GPL-3.0. Based on Arch Linux; not affiliated with or endorsed by Arch Linux.

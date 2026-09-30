@@ -3,7 +3,9 @@
 --                                MONITORS                                    --
 --                                                                            --
 --------------------------------------------------------------------------------
--- This file defines the physical monitor layout and properties.
+-- ~/.config/hypr/monitors.lua: your monitor layout. Yours, not the package's:
+-- updates never touch it. The first-boot wizard writes it; hyprland.lua loads
+-- it after invictus/core.lua and before user.lua.
 --
 -- Use this file to configure:
 --   • Resolution and refresh rate per display

@@ -11,7 +11,7 @@
 --   • Notification systems and background utilities
 --
 -- Avoid placing application-specific launch rules here.
--- Those belong in lua/rules.lua or lua/workspaces.lua.
+-- Those belong in invictus/rules.lua or invictus/workspaces.lua.
 --
 -- exec-once became a handler on the "hyprland.start" event. It runs once per
 -- session, not on config reload. hl.exec_cmd() already runs each command in
@@ -39,5 +39,4 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("hyprpaper")
     hl.exec_cmd("hypridle")
     hl.exec_cmd("waybar")
-    hl.exec_cmd("mako")
 end)
