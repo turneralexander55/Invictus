@@ -13,6 +13,7 @@ Mockups (`docs/mockups/`, 1920 x 1080, self-contained HTML, same fonts and scale
 | `simple-start-open.html` | Start open over the desktop |
 | `simple-quick-settings-open.html` | Wi-Fi, sound and battery panel open from the taskbar |
 | `simple-help-open.html` | The Help panel, mid-conversation, with a "May I?" card and Ask Alex |
+| `simple-help-no-ai-guide.html` | The Help panel with No AI: a guide open, Ask Alex and Let Alex see my screen (5.3) |
 | `simple-update-notice.html` | "Restart when you're ready" notice over an open app |
 | `simple-messages.html` | Every message pattern in section 4 on one sheet, for Clio |
 | `simple-install-1-welcome.html` | Installer 1 of 4: Welcome |
@@ -22,7 +23,7 @@ Mockups (`docs/mockups/`, 1920 x 1080, self-contained HTML, same fonts and scale
 | `simple-install-4-done.html` | Installer 4 of 4: Done, restart |
 | `simple-firstboot-1-wifi.html` | First start 1 of 4: Wi-Fi (skipped when already online) |
 | `simple-firstboot-2-screens.html` | First start 2 of 4: Which screen is in front of you? (only with more than one screen) |
-| `simple-firstboot-3-helper.html` | First start 3 of 4: Set up Help |
+| `simple-firstboot-3-help-no-ai-picked.html` | First start 3 of 4: How should Help work? (An AI assistant or No AI), No AI picked (`no-ai.md`) |
 | `simple-firstboot-4-ready.html` | First start 4 of 4: Three things to know |
 
 ---
@@ -36,7 +37,7 @@ Mockups (`docs/mockups/`, 1920 x 1080, self-contained HTML, same fonts and scale
 - **No keyboard shortcut is needed for anything.** Familiar Windows keys work (the Windows key opens Start, Alt+Tab, Alt+F4). Every Tessera key that could surprise someone is off.
 - **Install: 4 screens. First start: 2 to 4 screens** (2 on a laptop that is already online; Wi-Fi and "which screen is in front of you?" appear only when needed).
 - **Messages** always say what happened, what it means for you, and what to do, with one button named for what it does. No codes, no jargon, no blame.
-- **Help** is one labelled button: talk or type to Moneta, and **Ask Alex** when Moneta can't fix it.
+- **Help** is one labelled button: talk or type to Moneta, and **Ask Alex** when Moneta can't fix it. With **No AI** (Alex, 2026-09-30; `no-ai.md`) the same button opens searchable how-to guides, Ask Alex and Let Alex see my screen, and nothing on the computer uses AI.
 - **Motion defaults to Calm.** Themes, wallpapers and the "gold means you are here" rule carry over unchanged.
 
 ---
@@ -171,7 +172,7 @@ For a person who has never used Hyprland. "Keys to know" counts things someone m
 | Join a Wi-Fi network | Click the icon, then a technical dialog (`nm-connection-editor`): about 7 steps and 3 jargon words | Click the icons, click the network, type the password, Connect: 3 clicks + typing |
 | Change the volume | Scroll on a small number, or open `pavucontrol` | Click the icons, drag the slider: 1 click + drag (or the volume keys) |
 | Turn off | Know `Super + Alt + Ctrl + Escape`, choose Yes (1 key) | Start, Power, Turn off: 3 clicks |
-| Ask Moneta | Know `Super + A` (1 key) | Click Help: 1 click |
+| Ask Moneta, or find a guide (No AI) | Know `Super + A` (1 key) | Click Help: 1 click |
 | **Keys to know** | **6 or more** | **0** |
 
 ---
@@ -205,22 +206,22 @@ Replaces Minerva's seven-step first-boot wizard for a Atrium user (design.md 2.3
 |---|---|
 | Monitors | Automatic (2.8), plus one question when there is more than one screen (screen 2 below) |
 | Look | Dusk, Calm motion, light apps. Changeable in Settings > Look |
-| Assistant provider | Becomes screen 3, "Set up Help" |
-| Collegium | Not shown. Local-only, created silently so Help has a memory. Alex can connect one later remotely |
+| Assistant provider | Becomes screen 3, "How should Help work?": an AI assistant or No AI |
+| Collegium | Not shown. Local-only, created silently so Help has a memory (AI only; not created with No AI). Alex can connect one later remotely |
 | Windows VM | Not shown |
-| Voice (pen button, model) | Not shown. Help uses the built-in microphone; the speech model downloads in the background on first use of the mic |
+| Voice (pen button, model) | Not shown. With AI, Help uses the built-in microphone; the speech model downloads in the background on first use of the mic. With No AI there is no voice and no model |
 | Snapshot and tour | Snapshot happens silently; the tour becomes screen 4 |
 
 Screens, same card style as the installer:
 
-1. **Wi-Fi.** Skipped if already online (a cable, or Wi-Fi set in the installer). `Connect to the internet` with the same Wi-Fi list as Quick settings. `Skip for now` text button: everything works offline except Help and updates.
+1. **Wi-Fi.** Skipped if already online (a cable, or Wi-Fi set in the installer). `Connect to the internet` with the same Wi-Fi list as Quick settings. `Skip for now` text button: everything works offline except Help and updates (with No AI: except updates and Ask Alex; the guides are on the computer).
 2. **Which screen is in front of you?** Only when more than one screen is plugged in. Every screen shows the same card with its own big number and a `This one` button; the person clicks it on the screen they are looking at. No mapping numbers to a diagram, no dragging. That screen becomes the main one (taskbar with the clock, new windows, messages). If nobody answers in 60 s (a TV that happens to be on), the laptop screen or the largest screen wins and the wizard moves on.
-3. **Set up Help.** `Help answers questions and can fix things for you, when you say yes.` Two cards, the first preselected (2 px `parchment` border and a check; gold stays on the one button): `Use Claude` (sign in with a Claude account in the browser; the window comes back when done) and `Use a home AI system` (a local model or one on the home network, Alex's D13). A `Set up later` text button. Nobody sees a terminal. What sign-in costs the friend and who pays is **[M5]** and a concern for Moneta.
-4. **Three things to know.** Three cards, left to right, each with a small picture of the real control: `Start opens your apps`, `× closes a window`, `Help is always here`. Button: `Start using Invictus`.
+3. **How should Help work?** (Alex, 2026-09-30: "there should be a 3rd option... Not everyone is thrilled with AI"; full design in `no-ai.md` 2.) Line: `Help is the button at the bottom right of the screen. You can change this later in Settings.` Two cards of equal size, each with a small picture of what Help will look like: **An AI assistant** (`Moneta answers questions, by voice or typing, and fixes things after asking you. Uses Claude, with your own account.`, with a collapsed `Use a different AI` for a home AI system or another AI service, Alex's D13) and **No AI** (`Short how-to guides you can search, and Alex when you need a person. Nothing on this computer uses AI.`). Nothing is preselected: this is about what the person wants on their computer, and a preselected card would be a nudge either way. The gold button stays disabled until a card is picked, then reads `Sign in to Claude` or `Continue`. `Set up later` is gone: No AI is the honest "not now". Picking AI installs Moneta then (in the background, or at the first connection if offline); picking No AI installs nothing. Nobody sees a terminal. What sign-in costs the friend and who pays is **[M5]** and a concern for Moneta.
+4. **Three things to know.** Three cards, left to right, each with a small picture of the real control: `Start opens your apps`, `× closes a window`, `Help is always here` (its line: `Ask a question by talking or typing.` with AI, `Guides for everyday things, and a way to ask Alex.` with No AI). Button: `Start using Invictus`.
 
 There is no question about Atrium or Tessera. New users created through the installer get **Atrium**; Tessera is one switch in Settings (section 6), and the person who wants it knows to look. Considered: one screen asking "How do you like your windows?" with two pictures. It is a decision a non-technical person cannot make well, it costs everyone a screen, and it is reversible in 3 clicks.
 
-Before (Minerva's first-boot wizard): 7 screens, about 12 decisions, including a monitor layout to drag, provider names and a terminal login. After: 2 screens on a laptop that is online, at most 4, and at most 2 decisions (which screen, only with several; how to set up Help, preselected), no terminal.
+Before (Minerva's first-boot wizard): 7 screens, about 12 decisions, including a monitor layout to drag, provider names and a terminal login. After: 2 screens on a laptop that is online, at most 4, and at most 2 decisions (which screen, only with several; AI or No AI, not preselected), no terminal.
 
 ---
 
@@ -236,7 +237,7 @@ Clio polishes the words; these are the patterns. Every message is a card (swaync
 4. **No codes, numbers only when they help.** `3 GB left` helps; `exit 1` does not. Technical detail goes behind a collapsed `Details for Alex` line, which Help can read and send **[M8]**.
 5. **No blame, no alarm.** `That password didn't work`, not `Invalid password`. No exclamation marks, no capitals for emphasis.
 6. **Say who is doing what.** `We` never appears. The computer did something: `Your computer put things back the way they were.` Moneta speaks as itself in the Help panel only.
-7. **Offer Help on anything that went wrong.** Every error card has `Ask Help` as its quiet button, which opens Help with the problem already written in, so the person does not have to describe it.
+7. **Offer Help on anything that went wrong.** Every error card has `Ask Help` as its quiet button, which opens Help with the problem already written in, so the person does not have to describe it. With No AI the button reads `Help with this` and opens the guide for that message (each message names one), or Ask Alex with the message's title filled in when there is none.
 8. **Colour follows the look's status colours**, as a 4 px bar on the card's left edge: `laurel` done, `lapis` information or a choice, `pompeii` something needs you now. Never gold (gold is focus).
 9. **How long it stays.** Done and information: 8 s, then kept in Help's "Recent" list. Needs you: stays until acted on or closed.
 
@@ -252,7 +253,7 @@ Clio polishes the words; these are the patterns. Every message is a card (swaync
 | Disk nearly full | `Your computer is almost full` | `3 GB left. When it's full, apps and updates stop working.` | `Free up space` (opens Help with "Help me free up space") · `Later` | pompeii |
 | Battery low | `Battery low: 10%` | `Plug in the charger soon.` | none | pompeii |
 | Battery very low | `Battery at 5%` | `The computer will go to sleep in about 5 minutes. Plug in the charger.` | none, stays | pompeii |
-| No internet | `No internet` | `Help and updates need the internet.` | `Connect to Wi-Fi` | lapis |
+| No internet | `No internet` | `Help and updates need the internet.` (No AI: `Updates need the internet.`) | `Connect to Wi-Fi` | lapis |
 | Asked for your password **[M1]** (both guard-rails settings since DS1; under Custodia the prompt also carries the scam line, `design-simple-mode.md` G1, G3) | `Type your password to install Spotify` | `This changes the computer for everyone who uses it.` | `Install` · `Cancel` | lapis |
 | Help can't do it alone **[M6]** (in the Help panel, so Moneta speaks as itself) | `This needs Alex` | `I can't change this myself. Want me to ask Alex? I'll tell him what's happening.` | `Ask Alex` · `Not now` | lapis |
 | Alex wants to see the screen **[M3]** | `Alex wants to see your screen` | `He'll be able to see and use your computer until you press Stop.` | `Let Alex in` · `Not now` | lapis |
@@ -282,6 +283,24 @@ The polkit password prompt matters most, because it is the "run as admin" Alex's
 ### 5.2 When Moneta wants to change something
 
 Uses the Moneta approval card from look.md (1 px `sol` border, two equal buttons so a habit click doesn't approve), in plain words: heading `May I turn on larger text?`, one line on what will change (`Text in every app gets 25% bigger. You can undo it in Settings.`), buttons `Yes, do it` and `No`. The command itself is behind `Details for Alex`. What Moneta may do without asking, with asking, or never, and which of these require the password, is Minerva's **[M6]**. The card design does not change with her answer; only which actions produce one.
+
+### 5.3 Help with No AI
+
+(`simple-help-no-ai-guide.html`; the rule and what else changes are in `no-ai.md`.)
+
+Same button, same place, same name, same panel size and style. What the person sees has no trace of the missing assistant: no microphone, no status word (`Ready`, `Thinking` belong to Moneta), no conversation, no "turn on AI" line anywhere.
+
+1. **Header**: `Help` and a close ×.
+2. **Search**: a 52 px field at the top, focused on open (the one gold), placeholder `What do you need help with?`. Typing filters the guides as you type, by title, by the everyday words each guide lists (`printer`, `print`, `printing` all find the same one) and by its text. The matcher and the synonym approach are Settings' search (`settings.md` 2.4); Clio writes both lists. Enter opens the first result. Nothing found: `No guide for that yet.` and Ask Alex with what was typed filled in.
+3. **Empty field**: `Common questions`, six guides as 48 px rows (icon and title): `Connect to Wi-Fi`, `Make text bigger`, `Print something`, `Get a deleted file back`, `Install an app`, `Free up space`. Under them `All guides (28)`, an alphabetical list. The six can follow the situation: while the computer is offline, `Connect to Wi-Fi` is first.
+4. **A guide** (the panel's middle, scrolls if long): a Back row (`Results for "print"` or `All guides`), the title (22 px), one line on when it applies, then at most seven numbered steps. Steps name what is on screen (`Click Start, then Settings`), never keys, and each guide is checked against the flavor and guard rails it is shown in (a Tessera guide says Super+Space; an Atrium one never does). At most one **`Open <place>`** button, which goes straight there (`invictus-settings open wifi`, or an app such as Printers), so the person follows the steps in the right place. At the end: `Didn't work? Ask Alex about this`, which opens Ask Alex with the guide's name filled in.
+5. **Bottom, always visible**: two full-width buttons of equal weight, `Ask Alex` and `Let Alex see my screen`, then `Recent messages (3)` as now. Let Alex see my screen is Minerva's Get help (5.2 of `design-simple-mode.md`), unchanged.
+
+**Ask Alex without Moneta.** The same helper request and queue (5.1). Moneta wrote the summary before; now the person does, in a few words: the panel shows `What's wrong?` (a text field, filled in when it came from a guide or a message), and under it `Alex also gets this computer's details. No files or passwords.` with `See what's sent` (the About page's `Copy details for Alex` block, `settings.md` 3.11). `Send` and `Cancel`. After: `Alex has your request.` The M8 caveat on `He usually answers within a day` stands.
+
+**The guides.** A small shipped set in the `invictus-help` package, one Markdown file per guide under `/usr/share/invictus/help/<lang>/`, with a short header: title, the everyday words for search, which flavors and guard rails it applies to, the message ids it answers, and the `Open` target. About 28 at launch, written by Clio, checked on a real machine by Vera, updated with system updates. No network, no model, no tracking. They install on every machine (they are small and useful to Moneta too, who can point to one), and on an AI machine the panel stays as 5.1 describes. Starting list: Connect to Wi-Fi · Connect headphones or a speaker · Make text bigger · Change the wallpaper · Light or dark apps · Print something · Scan a document · Use a USB stick · Take a screenshot · Open a PDF or document · Send an email · Video calls: camera and microphone · Install an app · Remove an app · Free up space · Get a deleted file back · Go back to before an update · Restart when an update is ready · The internet isn't working · There's no sound · The computer is slow · Use two screens · Change your password · Games with Steam · What guard rails are · Switch desktop style · Ask Alex and let Alex see your screen · Turn AI on or off (found by search only, never in Common questions).
+
+Taps: find how to print: Help, type `print`, the guide: 2 clicks and a word. Ask Alex: Help, Ask Alex, a few words, Send: 3 clicks and typing (with Moneta: 3 clicks, no typing). Both before and after, 0 keys to know.
 
 ---
 
@@ -330,7 +349,7 @@ Uses the Moneta approval card from look.md (1 px `sol` border, two equal buttons
 | M2 | Automatic updates: when they run, whether restarts ever happen on their own, how a failed update rolls back and what the person is told | Update messages (4.2); Start > Power |
 | M3 | Remote help from Alex: consent, what he can see and do, how it ends; the `helper_person` config | Ask Alex (5.1), the two remote-help messages (4.2), installer screen 3 |
 | M4 | How apps get installed (our repo, Flatpak, a store app), and what `Get apps` opens | Start tile `Get apps`, the Email tile |
-| M5 | Help's provider for a friend: whose account, what it costs, the home-model option | First start screen 3 |
+| M5 | Help's provider for a friend: whose account, what it costs, the home-model option. No AI's own questions are N1 to N8 in `no-ai.md` 7 | First start screen 3 |
 | M6 | What Help may do alone, with a "May I?" card, or never | 5.2, the "This needs Alex" message |
 | M7 | Loading a compositor plugin (hyprbars) on friends' machines; `ecosystem.enforce_permissions` | 2.2 |
 | M8 | What goes in a report to Alex, with what preview, and when "Alex has been told" is true | 4.1 rule 4, installer failure, update failure |
