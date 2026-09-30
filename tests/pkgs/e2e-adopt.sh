@@ -191,6 +191,16 @@ if grep -q 'hl.bind("SUPER + SHIFT + B", hl.dsp.exec_cmd("firefox --private-wind
 else
     bad "user.lua / monitors.lua not ported"
 fi
+# Alex's Discord and Zen monitor pins are no longer shipped; the porter carries them into user.lua,
+# and Hyprland (verify-config above) accepts the result.
+if [[ "$(grep -c '^hl.window_rule' "$H/user.lua")" == 2 ]] \
+   && grep -q 'name    = "discord-assign"' "$H/user.lua" && grep -q 'monitor = "HDMI-A-2"' "$H/user.lua" \
+   && grep -q 'name    = "zen-assign"' "$H/user.lua" && grep -q 'monitor = "DP-2"' "$H/user.lua" \
+   && ! grep -q 'discord-assign\|zen-assign' /usr/share/invictus/hypr/invictus/rules.lua; then
+    ok "user.lua carries his Discord and Zen monitor pins; the shipped rules.lua has none"
+else
+    bad "monitor pins not ported: $(grep -c '^hl.window_rule' "$H/user.lua") rules in user.lua"
+fi
 B="$(readlink -f /home/alex/.local/state/invictus/adopt/latest)"
 if cmp -s "$B/config/waybar/config.json" "$SRC/tests/pkgs/fixtures/legacy-home/waybar/config.json" \
    && cmp -s /home/alex/.config/waybar/config.json /usr/share/invictus/config/waybar/config.json \
