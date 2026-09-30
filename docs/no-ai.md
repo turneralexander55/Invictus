@@ -140,31 +140,21 @@ Full design in `simple-mode.md` 5.3. In short: the same button and panel, with a
 |---|---|
 | Super+A (Moneta panel) | Not bound, not listed. The key does nothing, like any free key |
 | The pen button (`invictus-ptt`) | Not installed; the button sends whatever key it sends by itself |
-| Super+D (Desk, per look.md; clashes with Discord in binds.lua, open since the look job) | Unchanged |
+| Tap Super (Desk, `desk.md` 1.1; replaces look.md's Super+D, which clashed with Discord) | Unchanged |
 
 **Bar** (`config/waybar/config.json`, look.md "Bar"):
 
 | Module | No AI |
 |---|---|
 | Moneta button | Removed from `modules-right` |
-| Now (`custom/now`, reads `~/.local/state/invictus/now`) | **Kept.** It already reads a plain file. Set by hand from the Desk's Now card; click opens the Desk instead of the Moneta panel; hidden when nothing is set, as now |
+| Now (`custom/now`, reads `~/.local/state/invictus/now`) | **Kept.** It already reads a plain file. Set by hand from the Desk's Now card; click opens the Desk (as with AI, `desk.md` 1.2); hidden when nothing is set, as now |
 | Everything else | Unchanged |
 
 The config is chosen at load: the waybar config and the Hyprland binds read `/etc/invictus/ai` (a second waybar config, or a generated `modules-right`, Vulcan's call). The `moneta-panel` layer and motion rules can stay; they match nothing.
 
-**The Desk** (`look.md`, "The Desk"). One job still: what matters now. Without AI it shows facts, never summaries:
+**The Desk.** Designed in `desk.md` 7, mockup `desk-no-ai.html`. One job still: what matters now, facts only, never summaries: the greeting and date; the Now card set by hand (`Nothing set. What are you working on?`) with `Done`, `Switch` and the timer, which now runs on the Now card; **Today** (today's notes, newest first, `Add a note` at the bottom); **Waiting on you** from the system only (`Restart when you're ready`, a safety net that is off or failing, a reply from Support; left out when empty, Today takes the width); the system row without the team sync state; the Stoic line.
 
-| Section | AI on | No AI |
-|---|---|---|
-| Greeting and date | As now | As now |
-| Now card | Set by Moneta or by hand | Set by hand: `Nothing set. What are you working on?` with an input; `Done` and `Switch` as now |
-| Left column | Open threads (Moneta) | **Today**: today's notes (`~/Invictus/notes/<date>.md`, newest first) and a running timer, if any |
-| Right column | Waiting on you (team repo) | Waiting on you from the system only: `Restart when you're ready`, a safety net that is off or failing, a reply from Support. Hidden when empty; Today takes the width |
-| System row | As now (it is already plain data) | Same, minus the team repo sync state |
-| Bottom input | `Ask Moneta` | `Add a note` (writes to today's notes) |
-| Stoic line | As now | As now |
-
-No empty box where the threads were, no "Moneta is off" line. The Desk looks finished, not reduced.
+No empty box where the team's sections were, no "Moneta is off" line. The Desk looks finished, not reduced.
 
 ---
 
