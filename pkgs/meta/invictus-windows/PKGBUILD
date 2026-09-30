@@ -1,0 +1,29 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# Meta package: depends only, no files. What each set is for and why each
+# package is in it: docs/packages.md.
+#
+# PLACEHOLDER until Phase 4 builds invictus-win: the pieces design 3 names
+# that exist today. Windows in a local VM (rootless podman running
+# dockur/windows, KVM) and over RDP (FreeRDP 3), passwords from the
+# keyring through secret-tool (libsecret, in invictus-desktop). WinApps
+# is not in the AUR (checked 2026-09-30); it gets its own package with
+# invictus-win.
+# The podman trio is also in invictus-dev on purpose: each set works alone.
+
+pkgname=invictus-windows
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Invictus Windows: local VM and RDP client (placeholder)'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=(
+  'invictus-desktop'
+  'freerdp'
+  'podman' 'podman-compose' 'crun'
+)
+
+package() {
+  :
+}

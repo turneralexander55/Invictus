@@ -1,12 +1,18 @@
 # Maintainer: Alex Turner (turneralexander55)
 #
-# Meta package: depends only, no files. The list came from the old
-# legacy/packages/*.txt with the fixes in docs/design.md 1.2. AUR packages
-# named here must be built into [invictus] (pkgs/aur/) before this installs.
-# tests/hyprland-lua checks that every command the Hyprland config runs is
-# provided by one of the metas.
-
-# The Hyprland desktop, and (since Phase 1) its config:
+# Meta package plus the desktop config. What each set is for and why each
+# package is in it: docs/packages.md. tests/pkgs checks every name against
+# pkgs/meta/sources.txt (verified in an Arch container by
+# tests/pkgs/live-arch.sh), that no package sits in two sets, and that
+# every command the shipped config runs comes from this set or a flavour.
+#
+# The graphical session both flavours share (Tessera: tiling; Atrium:
+# windows and a taskbar): Hyprland, login, portals, audio, bluetooth,
+# power, keyring, files, viewers, fonts, the shell the shipped ~/.zshrc
+# needs. It must work without invictus-base (adopt.sh installs it on
+# machines that never get invictus-base), so it names what it runs itself.
+#
+# Files it installs:
 #   /usr/share/invictus/hypr/invictus/*.lua   the shipped Hyprland modules,
 #                                             loaded by ~/.config/hypr/hyprland.lua
 #   /usr/share/invictus/config/               defaults copied once into a home
@@ -23,16 +29,11 @@
 # The hypr* set itself comes from pkgs/pinned/ (exact Arch files, served
 # from [invictus] ahead of [extra]); the names below stay plain so any
 # repo can satisfy them.
-#
-# Fixes from design 1.2: mako dropped (swaync is the notification daemon);
-# added what binds, autostart and the waybar scripts call but the old list
-# missed: xwaylandvideobridge, discord, brightnessctl, playerctl, jq, plus
-# pacman-contrib (checkupdates), lm_sensors (sensors) and libnotify.
 
 pkgname=invictus-desktop
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
-pkgdesc='Invictus Hyprland desktop'
+pkgdesc='Invictus desktop session shared by Tessera and Atrium, and its config'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
 license=('GPL-3.0-or-later')
@@ -40,40 +41,65 @@ depends=(
   # our commands and branding
   'invictus-tools' 'invictus-branding'
 
-  # Hyprland and its tools (pinned set in [invictus] from Phase 1)
-  'hyprland' 'hyprpaper' 'hypridle' 'hyprlock' 'hyprpolkitagent'
+  # AMD graphics: OpenGL, Vulkan, VA-API video decode (radeonsi, in mesa)
+  'mesa' 'vulkan-radeon'
+
+  # Hyprland and its tools (pinned set in [invictus]); hyprshutdown closes
+  # apps cleanly on log out
+  'hyprland' 'hyprpaper' 'hypridle' 'hyprlock' 'hyprpolkitagent' 'hyprshutdown'
   'xdg-desktop-portal' 'xdg-desktop-portal-hyprland' 'xdg-desktop-portal-gtk'
-  'xorg-xwayland' 'xwaylandvideobridge' 'qt6-wayland' 'dbus'
+  'qt6-wayland' 'qt6-svg'
 
-  # bar, launcher, terminal, notifications, login
-  'waybar' 'rofi' 'kitty' 'swaync' 'sddm'
-  'qt6-svg' 'qt6-declarative' 'qt6-5compat'
+  # login
+  'sddm'
 
-  # clipboard, screenshots, media and hardware keys
-  'wl-clipboard' 'cliphist' 'hyprshot'
-  'wireplumber' 'brightnessctl' 'playerctl'
-  'pavucontrol' 'nm-connection-editor'
+  # session services: sound (JACK clients too), bluetooth, power profiles
+  # and battery, the secret store (FreeRDP and first boot keep passwords
+  # there), home folders, opening files and links
+  'pipewire' 'pipewire-alsa' 'pipewire-pulse' 'pipewire-jack' 'wireplumber'
+  'bluez' 'bluez-utils' 'blueman'
+  'power-profiles-daemon' 'upower'
+  'gnome-keyring' 'libsecret'
+  'xdg-user-dirs' 'xdg-utils'
 
-  # waybar scripts and the keybinding cheatsheet
-  'pacman-contrib' 'lm_sensors' 'sysstat' 'libnotify' 'jq'
+  # notifications, terminal
+  'swaync' 'kitty'
 
-  # files
-  'thunar' 'thunar-volman' 'tumbler' 'gvfs' 'gvfs-mtp' 'gvfs-smb' 'yazi'
+  # clipboard, screenshots, media and brightness keys
+  'wl-clipboard' 'hyprshot' 'brightnessctl' 'playerctl'
 
-  # apps the binds open
-  'zen-browser-bin' 'zed' 'discord'
+  # files: Thunar with removable drives, phones, network shares, archives
+  # and thumbnails
+  'thunar' 'thunar-volman' 'thunar-archive-plugin' 'tumbler' 'ffmpegthumbnailer'
+  'gvfs' 'gvfs-mtp' 'gvfs-smb' 'file-roller'
 
-  # look
-  'nwg-look' 'papirus-icon-theme' 'adwaita-cursors' 'nordic-darker-theme'
-  'ttf-dejavu' 'noto-fonts' 'noto-fonts-cjk' 'noto-fonts-emoji'
-  'ttf-jetbrains-mono' 'ttf-nerd-fonts-symbols'
+  # open what people download: photos, video and music, PDFs; the codecs
+  # behind them (GStreamer, with VA-API decode)
+  'loupe' 'showtime' 'papers'
+  'gst-plugins-good' 'gst-plugins-bad' 'gst-plugins-ugly' 'gst-libav' 'gst-plugin-va'
 
-  # shell and terminal tools
-  'zsh' 'zsh-syntax-highlighting' 'zsh-autosuggestions'
-  'fastfetch' 'btop' 'cava'
+  # browser (AUR until pkgs/aur carries it)
+  'zen-browser-bin'
+
+  # look: icons, cursor, the GTK theme invictus-theme recolours
+  'papirus-icon-theme' 'adwaita-cursors' 'adw-gtk-theme'
+
+  # fonts: the UI and mono face, bar and terminal glyphs, every script
+  # (Noto, CJK, emoji), metric-compatible Arial/Times/Courier; fontconfig
+  # for fc-cache at first login
+  'fontconfig' 'ttf-ibm-plex' 'ttf-nerd-fonts-symbols-mono'
+  'noto-fonts' 'noto-fonts-cjk' 'noto-fonts-emoji' 'ttf-liberation'
+
+  # the shipped ~/.zshrc: zsh, its two plugins, the spaceship prompt
+  # (pkgs/aur/), fastfetch on every new shell
+  'zsh' 'zsh-syntax-highlighting' 'zsh-autosuggestions' 'spaceship-prompt'
+  'fastfetch'
 )
 optdepends=(
-  'invictus-gaming: Steam for the Super+G bind'
+  'invictus-tessera: the tiling flavour (bar, launcher, binds)'
+  'invictus-atrium: the windows-and-taskbar flavour and everyday apps'
+  'libva-utils: vainfo, to check video decode on the GPU'
+  'seahorse: see and edit what the keyring holds'
 )
 
 package() {

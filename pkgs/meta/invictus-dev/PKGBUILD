@@ -1,27 +1,46 @@
 # Maintainer: Alex Turner (turneralexander55)
 #
-# Meta package: depends only, no files. The list came from the old
-# legacy/packages/*.txt with the fixes in docs/design.md 1.2. AUR packages
-# named here must be built into [invictus] (pkgs/aur/) before this installs.
-# tests/hyprland-lua checks that every command the Hyprland config runs is
-# provided by one of the metas.
-
-# Fix from design 1.2: 'vscode' is not an Arch package; the open-source
-# build is 'code'.
+# Meta package: depends only, no files. What each set is for and why each
+# package is in it: docs/packages.md.
+#
+# Development: build tools, git, the two editors, JavaScript and Python,
+# rootless containers, Claude Code, and the search tools agents and people
+# both use. Works on a machine without a desktop too (the editors then
+# just go unused).
 
 pkgname=invictus-dev
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc='Invictus development tools'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
 license=('GPL-3.0-or-later')
 depends=(
+  # building packages (the AUR too), version control
   'base-devel' 'git' 'github-cli'
+
+  # editors: Zed (the Super+T bind) and Code - OSS (Open VSX extensions)
   'zed' 'code'
+
+  # languages
   'nodejs' 'npm' 'python'
-  'podman' 'podman-compose'
+
+  # rootless containers; crun is the runtime (podman needs one and would
+  # otherwise ask)
+  'podman' 'podman-compose' 'crun'
+
+  # command line tools for code: search, find, JSON
+  'ripgrep' 'fd' 'jq'
+
+  # Claude Code (AUR until pkgs/aur carries it)
   'claude-code'
+)
+optdepends=(
+  'uv: Python projects and tools'
+  'rustup: Rust toolchains'
+  'go: Go toolchain'
+  'shellcheck: lint shell scripts (this repo checks with it)'
+  'distrobox: other distributions in containers'
 )
 
 package() {

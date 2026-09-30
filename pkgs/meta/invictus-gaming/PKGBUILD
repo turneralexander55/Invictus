@@ -1,28 +1,38 @@
 # Maintainer: Alex Turner (turneralexander55)
 #
-# Meta package: depends only, no files. The list came from the old
-# legacy/packages/*.txt with the fixes in docs/design.md 1.2. AUR packages
-# named here must be built into [invictus] (pkgs/aur/) before this installs.
-# tests/hyprland-lua checks that every command the Hyprland config runs is
-# provided by one of the metas.
-
-# Needs [multilib] enabled for steam and the lib32 drivers.
+# Meta package: depends only, no files. What each set is for and why each
+# package is in it: docs/packages.md.
+#
+# Steam and non-Steam games on AMD. Needs [multilib] enabled (steam, the
+# lib32 drivers, umu-launcher). The 64-bit driver (vulkan-radeon) comes
+# with invictus-desktop.
 
 pkgname=invictus-gaming
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
-pkgdesc='Invictus gaming: Steam, Proton GE, gamescope, MangoHud, Lutris'
+pkgdesc='Invictus gaming: Steam, Proton GE, gamescope, MangoHud, GameMode, Lutris'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
 license=('GPL-3.0-or-later')
 depends=(
+  'invictus-desktop'
+
   'steam'
-  # name the 32-bit Vulkan driver so Steam does not pull a different one
+  # name the 32-bit drivers so Steam does not pull a different one
   'lib32-mesa' 'lib32-vulkan-radeon'
-  'gamescope' 'mangohud' 'lib32-mangohud'
-  'gamemode' 'lib32-gamemode'
-  'umu-launcher' 'lutris'
+
+  # session compositor, overlay, CPU/GPU tuning while a game runs
+  'gamescope' 'mangohud' 'lib32-mangohud' 'gamemode' 'lib32-gamemode'
+
+  # games outside Steam: Lutris runs them through umu with Proton
+  'lutris' 'umu-launcher'
+
+  # Proton GE for Steam and umu (AUR until pkgs/aur carries it)
   'proton-ge-custom-bin'
+)
+optdepends=(
+  'vulkan-tools: vulkaninfo, to check the Vulkan driver'
+  'lact: AMD GPU clocks, fan curves and power limits'
 )
 
 package() {
