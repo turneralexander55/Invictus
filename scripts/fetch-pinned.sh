@@ -60,7 +60,7 @@ verify_sig() {
 
 download() {
     local url="$1" dest="$2"
-    curl -fsSL --retry 3 -o "$dest" "$url" || return 1
+    curl -fsSL --retry 3 --retry-all-errors --retry-delay 5 -o "$dest" "$url" || return 1
 }
 
 # ---- --list ----------------------------------------------------------------
