@@ -19,6 +19,8 @@ Mockups (`docs/mockups/`, each 1920 x 1080, self-contained HTML, fonts from Goog
 
 Sample content in the mockups (thread names, commit messages, and the Lua in the editor, which is not the real Hyprland API) is made up.
 
+The Classic desktop (for friends who don't use keyboard shortcuts) has its own design and mockups: `docs/simple-mode.md` and `docs/mockups/simple-*.html`. It uses the tokens, themes and rules below unchanged.
+
 ## Concept
 
 **Dusk in the stoa.** Warm dark stone, marble-white text, and one gold: the sun. Gold means one thing on this desktop: *you are here*. It marks the focused window, the active workspace, the selected launcher row and the field you are typing in. On a screen with a single job (the ISO's Install card) it also marks the one next step. Nothing else is gold, so the eye always finds its place in one glance.
@@ -177,7 +179,7 @@ Layer rules (blur the panels that sit on the wallpaper): `blur` and `ignore_alph
 
 **Animations.** See **Motion** below. It replaces the single snappy table that was here: everyday changes keep that speed, and a few moments get more.
 
-**Game mode.** A keybind (key to be picked; `Super + G` is Steam in `binds.lua`, see the Desk record) and an automatic rule when a Steam/gamescope window goes fullscreen: turn off every animation (motion level Off, see Motion), blur, shadows and dim, set gaps to 0 and border to 0, and turn DND on in swaync. The same key restores. The bar hides on fullscreen as normal. For frame stats in game use MangoHud with its own config coloured `marble` text on `night` at 70%, top-left, not the bar.
+**Game mode.** A keybind (key to be picked; `Super + G` is Steam in `binds.lua`, see the record on Alex's Desk) and an automatic rule when a Steam/gamescope window goes fullscreen: turn off every animation (motion level Off, see Motion), blur, shadows and dim, set gaps to 0 and border to 0, and turn DND on in swaync. The same key restores. The bar hides on fullscreen as normal. For frame stats in game use MangoHud with its own config coloured `marble` text on `night` at 70%, top-left, not the bar.
 
 ### Waybar (the bar)
 
@@ -452,7 +454,7 @@ Radiate and Night are drawn from tokens (`line` rays on `night`; flat `night` wi
 
 ### The switcher
 
-**Key: `Super + Shift + T`** (T for theme). Checked against `config/hypr/lua/binds.lua` on 2026-09-30: `Super + T` is Zed, nothing is bound to `Super + Shift + T`. Description for the keybinding help: `"Look: change theme"`. The picker is also in the launcher as **Change theme** (`invictus-theme.desktop`), so it can be found without remembering the key.
+**Key: `Super + Shift + T`** (T for theme). Checked against `config/hypr/invictus/binds.lua` on 2026-09-30: `Super + T` is Zed, nothing is bound to `Super + Shift + T`. Description for the keybinding help: `"Look: change theme"`. The picker is also in the launcher as **Change theme** (`invictus-theme.desktop`), so it can be found without remembering the key.
 
 Keys considered and not used: `Super + C` (the usual copy key on other desktops, likely to be claimed), `Super + K` (no link to the word), `Super + Ctrl + Shift + Space` (what Omarchy uses; three modifiers is a reach).
 
@@ -496,7 +498,7 @@ theme/                            # repo; installed to /usr/share/invictus/theme
 
 | App | Line in its static config |
 |---|---|
-| Hyprland | `look.lua` does `local c = dofile(HOME .. "/.config/invictus/current/hyprland-colors.lua")` and uses `c.sol`, `c.stone`... (falls back to built-in Dusk values if the file is missing) |
+| Hyprland | `invictus/colors.lua` loads `~/.config/invictus/current/hyprland-colors.lua` with `require` and exposes `c.sol`, `c.stone`... (falls back to its built-in Dusk values for any token the file does not supply) |
 | waybar | `@import url("../invictus/current/waybar-colors.css");` at the top of `style.css` |
 | rofi | `@import "~/.config/invictus/current/rofi-colors.rasi"` in the launcher and picker themes |
 | kitty | `include ~/.config/invictus/current/kitty-colors.conf` |

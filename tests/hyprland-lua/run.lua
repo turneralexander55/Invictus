@@ -327,17 +327,17 @@ local FLAGS = { bind = {}, bindl = { locked = true }, bindel = { locked = true, 
 -- Deliberate changes, each listed in the hand-back report.
 local EXCEPTIONS = {
     -- hyprctl dispatch takes Lua now
-    ["64+delete"] = function(exp)
-        exp[2] = exp[2]:gsub("hyprctl dispatch exit", "hyprctl dispatch 'hl.dsp.exit()'")
-        return exp
+    -- log out now asks first: confirm.sh (rofi yes/no, default No) wraps the hyprshutdown-or-exit command
+    ["64+delete"] = function()
+        return { "exec_cmd", "/usr/lib/invictus/confirm \"Log out?\" -- sh -c \"command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch 'hl.dsp.exit()'\"" }
     end,
     -- hyprctl keyword is gone; the layout toggle is a Lua function
     ["72+space"] = function() return { "<lua function>" } end,
     -- the cheatsheet is installed by invictus-tools now, not run from the clone
     ["64+slash"] = function() return { "exec_cmd", "/usr/lib/invictus/show-keybindings" } end,
     ["64+f1"] = function() return { "exec_cmd", "/usr/lib/invictus/show-keybindings" } end,
-    -- power off now asks first: the bind runs scripts/confirm-poweroff.sh (rofi yes/no, default No)
-    ["76+escape"] = function() return { "exec_cmd", "/usr/lib/invictus/confirm-poweroff" } end,
+    -- power off now asks first: the bind runs confirm.sh (installed as /usr/lib/invictus/confirm)
+    ["76+escape"] = function() return { "exec_cmd", "/usr/lib/invictus/confirm \"Power off?\" -- systemctl poweroff" } end,
 }
 -- Binds added since the hyprlang config, each with the dispatcher it must run.
 -- Keyed like EXCEPTIONS: modmask + key (SUPER+SHIFT = 65).
@@ -691,7 +691,7 @@ local COMMAND_PACKAGES = {
     hyprshutdown = false,  -- optional: the bind checks `command -v` first
     ["~/.local/bin/dashboard-tmux"] = false, -- Alex's own script, not in the repo
     ["/usr/lib/invictus/show-keybindings"] = "invictus-tools",
-    ["/usr/lib/invictus/confirm-poweroff"] = "invictus-tools",
+    ["/usr/lib/invictus/confirm"] = "invictus-tools",
 }
 -- Pulled in by every Arch install, so no meta lists them.
 local BASE_SYSTEM = { systemd = true }

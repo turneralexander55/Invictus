@@ -6,7 +6,7 @@
 # when any of them changes, or the published package is reused.
 #
 #   /usr/bin/invictus-theme, invictus-motion, invictus-update, invictus-doctor
-#   /usr/lib/invictus/show-keybindings, confirm-poweroff   (Hyprland binds)
+#   /usr/lib/invictus/show-keybindings, confirm            (Hyprland binds)
 #   /usr/lib/invictus/waybar/{alert,updates}               (waybar modules)
 #   /usr/lib/invictus/lib/defaults.sh                      (shared shell code)
 #   /usr/lib/invictus/doctor/                              (the stub config check:
@@ -43,7 +43,7 @@ package() {
   install -Dm755 "$root/scripts/invictus-motion.sh" "$pkgdir/usr/bin/invictus-motion"
 
   install -Dm755 "$root/scripts/show-keybindings.sh" "$lib/show-keybindings"
-  install -Dm755 "$root/scripts/confirm-poweroff.sh" "$lib/confirm-poweroff"
+  install -Dm755 "$root/scripts/confirm.sh" "$lib/confirm"
   # cpu, gpu and memory.sh stay in the repo only for machines on the old
   # config (it calls them from the clone); the new bar uses alert instead.
   local f
