@@ -50,7 +50,8 @@
 # Undo reverses whichever of these steps ran: config folders back exactly
 # as they were, the packages adopt installed removed (pacman -Rn), the key
 # deleted, the pacman.conf block removed. Packages that -Syu upgraded stay
-# upgraded.
+# upgraded, and the GTK settings the theme set (gsettings accent-color,
+# gtk-theme) stay; reset them with gsettings reset if you want.
 # ------------------------------------------------------------
 set -euo pipefail
 
@@ -64,7 +65,13 @@ SERVER="https://github.com/turneralexander55/invictus/releases/download/invictus
 KEY_FILE="$ROOT/pkgs/own/invictus-keyring/invictus.gpg"
 PACMAN_CONF="/etc/pacman.conf"
 SUDO="${ADOPT_SUDO:-sudo}"
-DIRS=(hypr waybar rofi kitty swaync)   # must match default_adopt_replaces
+# Backed up before, put back by undo: every ~/.config folder the shipped
+# defaults touch (first-login --adopt replaces hypr, waybar, rofi, kitty and
+# swaync, and adds any default that is missing), plus invictus/ (theme and
+# motion level). ~/.zshrc is handled the same way below.
+DIRS=(hypr waybar rofi kitty swaync btop cava fastfetch zed invictus)
+# The same for ~/.local/state/invictus (first-login and theme state).
+STATE_ITEMS=(first-login.done defaults.sha256 theme swatches backup)
 BEGIN_MARK="# BEGIN invictus (added by scripts/dev/adopt.sh; remove with adopt.sh --undo)"
 END_MARK="# END invictus"
 
@@ -103,10 +110,13 @@ restore_config() {
             cmd rm -rf "${CFG:?}/$d"
         fi
     done
-    for f in first-login.done defaults.sha256; do
-        if [[ -f "$b/state/$f" ]]; then cmd cp -a "$b/state/$f" "$STATE/$f"
-        else cmd rm -f "$STATE/$f"; fi
+    if [[ -f "$b/zshrc" ]]; then cmd cp -a "$b/zshrc" "$HOME/.zshrc"
+    elif [[ -f "$b/absent-zshrc" ]]; then cmd rm -f "$HOME/.zshrc"; fi
+    for f in "${STATE_ITEMS[@]}"; do
+        cmd rm -rf "${STATE:?}/$f"
+        if [[ -e "$b/state/$f" ]]; then cmd cp -a "$b/state/$f" "$STATE/$f"; fi
     done
+    return 0
 }
 
 n=0
@@ -139,6 +149,16 @@ if $UNDO; then
     [[ ! -f "$B/undone" ]] || die "$UNDO_STAMP was already undone on $(cat "$B/undone")"
     done_step() { grep -qx "$1" "$B/steps" 2>/dev/null; }
     echo "==> Undoing adopt run $UNDO_STAMP (steps done: $(tr '\n' ' ' < "$B/steps" 2>/dev/null))"
+
+    # Cached copies of what came from our repo carry our signature; with the
+    # key gone pacman would refuse them on a later reinstall. The list comes
+    # from pacman's copy of our database, so read it now, while the repo and
+    # its key are still there.
+    cached=()
+    if done_step pacman-conf; then
+        mapfile -t cached < <(pacman -Sl "$REPO_NAME" 2>/dev/null | awk '{ print $2 "-" $3 }' | tr ':' '.' \
+            | while read -r nv; do compgen -G "/var/cache/pacman/pkg/$nv-*.pkg.tar.zst*" || true; done)
+    fi
 
     if done_step config; then
         step "Put the config folders back exactly as they were"
@@ -174,10 +194,21 @@ if $UNDO; then
     if done_step pacman-conf; then
         step "Remove the [$REPO_NAME] block from $PACMAN_CONF"
         tmp="$(mktemp)"
-        awk -v b="$BEGIN_MARK" -v e="$END_MARK" '$0 == b { skip = 1; next } skip && $0 == e { skip = 0; next } !skip' "$PACMAN_CONF" > "$tmp"
+        # the block and the blank line adopt put after it
+        awk -v b="$BEGIN_MARK" -v e="$END_MARK" '
+            $0 == b { skip = 1; next }
+            skip && $0 == e { skip = 0; after = 1; next }
+            after && $0 == "" { after = 0; next }
+            { after = 0 }
+            !skip' "$PACMAN_CONF" > "$tmp"
         diff -u --label "$PACMAN_CONF" --label "$PACMAN_CONF (after)" "$PACMAN_CONF" "$tmp" | sed 's/^/    /' || true
         cmd "$SUDO" install -m644 "$tmp" "$PACMAN_CONF"
         rm -f "$tmp"
+        # pacman's copy of our database (and its signature) would otherwise
+        # stay behind and confuse a later adopt.
+        if [[ ${#cached[@]} -gt 0 ]]; then cmd "$SUDO" rm -f -- "${cached[@]}"; fi
+        cmd "$SUDO" rm -f "/var/lib/pacman/sync/$REPO_NAME.db" "/var/lib/pacman/sync/$REPO_NAME.db.sig" \
+            "/var/lib/pacman/sync/$REPO_NAME.files" "/var/lib/pacman/sync/$REPO_NAME.files.sig"
     fi
 
     if $APPLY; then
@@ -296,9 +327,10 @@ preview() {
     install -dm755 "$TMP" "$db" "$db/sync"
     chmod 755 "$TMP"
     ln -sfn /var/lib/pacman/local "$db/local"
-    # Display only: our block is read unsigned here because the key is not
-    # imported yet. The real install below checks signatures.
-    sed "/^\[$REPO_NAME\]/,/^Server/ s/^SigLevel = .*/SigLevel = Optional TrustAll/" "$TMP/pacman.conf" > "$conf"
+    # Display only: our database is read without checking its signature
+    # here (the key is not imported yet, and pacman's keyring is root's).
+    # The real install below checks signatures.
+    sed "/^\[$REPO_NAME\]/,/^Server/ s/^SigLevel = .*/SigLevel = Never/" "$TMP/pacman.conf" > "$conf"
     command -v fakeroot >/dev/null || { info "preview skipped: fakeroot is not installed"; return 0; }
     if ! fakeroot -- pacman --config "$conf" --dbpath "$db" --logfile /dev/null -Sy >"$TMP/sync.log" 2>&1; then
         info "preview skipped: could not read the repos ($(tail -1 "$TMP/sync.log"))"; return 0
@@ -324,6 +356,10 @@ if [[ ${#problems[@]} -gt 0 ]]; then
     exit 1
 fi
 
+if $APPLY; then
+    trap 'echo; echo "==> adopt.sh stopped at step $n. What ran so far is recorded in $B;"; echo "    to put it all back: $0 --undo --apply"' ERR
+fi
+
 # ---- 2. backup ------------------------------------------------------------------
 step "Back up into $B"
 cmd mkdir -p "$B/config" "$B/state"
@@ -331,8 +367,10 @@ for d in "${DIRS[@]}"; do
     if [[ -e "$CFG/$d" ]]; then cmd cp -a "$CFG/$d" "$B/config/$d"
     else info "$CFG/$d does not exist (undo will remove it)"; $APPLY && echo "$d" >> "$B/absent-config.txt"; fi
 done
-for f in first-login.done defaults.sha256; do
-    [[ -f "$STATE/$f" ]] && cmd cp -a "$STATE/$f" "$B/state/$f"
+if [[ -f "$HOME/.zshrc" ]]; then cmd cp -a "$HOME/.zshrc" "$B/zshrc"
+elif $APPLY; then touch "$B/absent-zshrc"; fi
+for f in "${STATE_ITEMS[@]}"; do
+    if [[ -e "$STATE/$f" ]]; then cmd cp -a "$STATE/$f" "$B/state/$f"; fi
 done
 cmd cp -a "$PACMAN_CONF" "$B/pacman.conf"
 info "\$ pacman -Qq > $B/packages-before.txt"
@@ -422,6 +460,10 @@ if $APPLY; then
         echo
         echo "==> The new config did not load. Putting the config folders back now."
         restore_config "$B"
+        if [[ -f "$B/created-files.txt" ]]; then
+            while IFS= read -r f; do [[ -n "$f" ]] && cmd rm -f "$f"; done < "$B/created-files.txt"
+            : > "$B/created-files.txt"
+        fi
         sed -i '/^config$/d' "$B/steps"
         echo "==> Your old config is back. The packages and repo are still installed:"
         echo "    to remove them too: $0 --undo --apply"

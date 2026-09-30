@@ -15,9 +15,15 @@ name: packages
 on:
   push:
     branches: [main]
+    # Own packages install files from these folders (see each PKGBUILD).
     paths:
       - 'pkgs/**'
-      - 'scripts/build-repo.sh'
+      - 'scripts/**'
+      - 'config/**'
+      - 'theme/**'
+      - 'assets/wallpapers/**'
+      - 'docs/brand/**'
+      - 'tests/hyprland-lua/*.lua'
       - '.github/workflows/packages.yml'
   workflow_dispatch:
 
@@ -100,6 +106,15 @@ jobs:
           dbs=(invictus-testing.db* invictus-testing.files*)
           gh release upload "$TAG" --clobber "${pkgs[@]}"
           gh release upload "$TAG" --clobber "${dbs[@]}"
+          # pacman downloads the exact file names in the database. GitHub
+          # renames assets with unusual characters, so check every name
+          # arrived unchanged (build-repo.sh keeps names to [A-Za-z0-9._-]).
+          gh release view "$TAG" --json assets --jq '.assets[].name' | sort > /tmp/assets.txt
+          missing=0
+          for f in "${pkgs[@]}" "${dbs[@]}"; do
+            grep -qxF "$f" /tmp/assets.txt || { echo "::error::asset $f is not on the release under that name"; missing=1; }
+          done
+          [ "$missing" = 0 ]
           # Remove assets that are no longer part of the repo.
           gh release view "$TAG" --json assets --jq '.assets[].name' | while read -r asset; do
             if [ ! -e "$asset" ]; then

@@ -114,7 +114,8 @@ local function addBind(kind, value, why, label, file)
     local cmd = trim(resolve(arg))
     if seenCmd[kind .. mods .. key .. cmd] then return end
     seenCmd[kind .. mods .. key .. cmd] = true
-    if shipped:find(cmd, 1, true) then
+    -- the same exec_cmd("...") call, not just the same words somewhere
+    if shipped:find("exec_cmd(" .. q(cmd) .. ")", 1, true) then
         table.insert(skipped, cmd)
         return
     end

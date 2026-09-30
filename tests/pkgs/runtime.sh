@@ -289,6 +289,10 @@ else
     . "$HERE/lib/legacy-home.sh"
     H="$TMP/h-legacy"
     make_legacy_home "$REPO" "$H"
+    # Regression (e2e, 2026-09-30): "true" occurs in binds.lua (locked = true),
+    # and a substring match took this bind for a shipped one.
+    # shellcheck disable=SC2016 # a literal hyprlang variable
+    echo 'bind = $mainMod SHIFT, T, exec, true' >> "$H/.config/hypr/config/keybindings.conf"
     # A shipped binds.lua without Alex's dashboard bind (it is his, not everyone's).
     grep -v 'dashboard-tmux' "$REPO/config/hypr/invictus/binds.lua" > "$TMP/binds-generic.lua"
     "$LUA" "$REPO/scripts/dev/port-hyprlang.lua" "$H/.config/hypr" "$H/hyprdots/config/hypr" "$TMP/binds-generic.lua" \
@@ -296,8 +300,9 @@ else
     if grep -q 'hl.bind("SUPER + SHIFT + B", hl.dsp.exec_cmd("firefox --private-window")' "$TMP/user.lua" \
        && grep -q 'hl.bind("SUPER + minus", hl.dsp.exec_cmd("kitty --title dashboard -e ~/.local/bin/dashboard-tmux"), { description = "Personal: Toggle dashboard terminal (tmux)" })' "$TMP/user.lua" \
        && grep -q '^-- (config/aesthetics.conf) vfr = false' "$TMP/user.lua" \
-       && [[ "$(grep -c '^hl.bind' "$TMP/user.lua")" == 2 ]]; then
-        ok "porter: your added bind and dashboard-tmux ported, other added lines kept as comments"
+       && grep -q 'hl.bind("SUPER + SHIFT + T", hl.dsp.exec_cmd("true")' "$TMP/user.lua" \
+       && [[ "$(grep -c '^hl.bind' "$TMP/user.lua")" == 3 ]]; then
+        ok "porter: your added binds (even one running 'true') and dashboard-tmux ported, other added lines kept as comments"
     else
         bad "porter user.lua: $(cat "$TMP/port.log"); $(sed -n '/Ported/,$p' "$TMP/user.lua")"
     fi
