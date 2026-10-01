@@ -306,6 +306,47 @@ expect "M1: a theme id that climbs out (or is absolute, or has a space) writes n
 expect "M1: such a theme is skipped by list, and apply refuses a path as an id" \
     bash -c "! '$TOOL' list 2>/dev/null | grep -qi -e Pictures -e 'Dusk Two' && [[ $rc_apply != 0 && $rc_abs != 0 ]] && [[ \"\$(cat '$HOME/Pictures/holiday.svg')\" == 'family photo' ]] && [[ ! -e '$HOME/.local/state/invictus/theme/../../../../Pictures' || -z \"\$(ls -A '$HOME/Pictures' | grep -v holiday.svg)\" ]]"
 unset n
+# Janus N1: every field of a theme file is checked when it loads (a schema),
+# so no meta string reaches a generated file as code. Each planted theme is
+# Dusk with one field changed; each must be skipped.
+new_env t5n
+mkdir -p "$HOME/.config/invictus/themes"
+plant() {  # plant N SED-EXPRESSION [EXTRA-LINES]
+    sed "s#^id = \"dusk\"#id = \"evil$1\"#; s#^default = true#default = false#; $2" "$REPO/theme/dusk.toml" > "$HOME/.config/invictus/themes/evil$1.toml"
+    [[ -n "${3:-}" ]] && printf '%s\n' "$3" >> "$HOME/.config/invictus/themes/evil$1.toml"
+    return 0
+}
+plant 1 's#^name = "Dusk"#name = "Dusk Two\\nJANUS_MARKER = 1 --"#'
+plant 2 's#^name = "Dusk"#name = "Dusk */ evil { }"#'
+plant 3 's#^name = "Dusk"#name = "Dusk \\" x"#'
+plant 4 's#^name = "Dusk"#name = "Dusk -- comment"#'
+plant 5 's#^wallpaper = "sol".*#wallpaper = "../../x"#'
+plant 6 's#^gnome-accent = "yellow".*#gnome-accent = "yellow; rm"#'
+plant 7 's#^concept = .*#concept = "a\\u0007b"#'
+plant 8 '' '[evil]
+x = "#000000"'
+plant 9 's#^name = "Dusk"#name = 7#'
+plant 10 's#^sol = "\#E0A64B"#sol = "\#E0A64B; x"#'
+plant 11 's#^papirus-folders = "grey"#papirus-folders = "grey\\nx"#'
+plant 12 's#^source = .*#source = "Rome <!-- x"#'
+plant 13 's#^sol = "\#E0A64B"#sol = "\#E0A64B\\n"#'
+"$TOOL" list > "$TMP/t5n/list" 2> "$TMP/t5n/err"
+expect "N1: thirteen themes with a bad field (newline, */, quote, --, path wallpaper, accent, control byte, unknown section, number name, bad colour, newline, <!--, a colour ending in a newline) are all skipped" \
+    bash -c "! grep -q evil '$TMP/t5n/list' && [[ \$(grep -c 'skipping' '$TMP/t5n/err') == 13 ]]"
+expect_not "N1: apply refuses a skipped theme" "$TOOL" apply evil1
+expect "N1: the shipped themes still load" bash -c "[[ \$('$TOOL' list 2>/dev/null | wc -l) == 4 ]]"
+# escaping on output too: a meta string that slips past the schema (here
+# written straight into a Theme) is cleaned before it reaches a file
+expect "N1: render cleans a meta string on output (no newline, no */, no \", no --)" python3 -c "
+import importlib.machinery, importlib.util, sys
+loader = importlib.machinery.SourceFileLoader('invictus_theme', sys.argv[1])
+spec = importlib.util.spec_from_loader('invictus_theme', loader)
+m = importlib.util.module_from_spec(spec); loader.exec_module(m)
+from pathlib import Path
+t = m.Theme({'meta': {'id': 'x', 'name': 'A\nB */ \" -- \\\\ {}'}}, Path('x.toml'))
+out = m.render('-- {{meta.name}} end', t, '', 'test')
+assert '\n' not in out and '*/' not in out and '\"' not in out and out.count('--') == 1 and '\\\\' not in out, repr(out)
+" "$TOOL"
 # swatches: the picker's icons, for first start's Look step too
 new_env t5c
 "$TOOL" swatches > "$TMP/t5c/sw" 2>/dev/null
