@@ -17,6 +17,19 @@ Card {
     // logical size: rotated screens swap sides; the scale shrinks them
     function lw(m) { return Math.round((m.transform % 2 ? m.height : m.width) / (m.scale || 1)) }
     function lh(m) { return Math.round((m.transform % 2 ? m.width : m.height) / (m.scale || 1)) }
+    // offsets that centre the starting layout in the desk (they depend on
+    // the screens, not on where they are dragged, so nothing jumps)
+    // the starting layout's bounding box, from where Hyprland put the screens
+    readonly property var box0: {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+        for (const m of mons) {
+            x0 = Math.min(x0, m.x); y0 = Math.min(y0, m.y)
+            x1 = Math.max(x1, m.x + lw(m)); y1 = Math.max(y1, m.y + lh(m))
+        }
+        return mons.length ? [x0, y0, x1 - x0, y1 - y0] : [0, 0, 0, 0]
+    }
+    readonly property real ox: Math.max(24, (desk.width - box0[2] * k) / 2) - box0[0] * k
+    readonly property real oy: Math.max(24, (desk.height - box0[3] * k) / 2) - box0[1] * k
     readonly property real k: {
         let w = 0, h = 0
         for (const m of mons) { w += lw(m); h = Math.max(h, lh(m)) }
@@ -72,12 +85,14 @@ Card {
                 readonly property bool isMain: modelData.name === step.main
                 width: step.lw(modelData) * step.k
                 height: step.lh(modelData) * step.k
-                x: 40 + (step.pos[modelData.name] ? step.pos[modelData.name][0] : 0) * step.k
-                y: 30 + (step.pos[modelData.name] ? step.pos[modelData.name][1] : 0) * step.k
+                x: step.ox + (step.pos[modelData.name] ? step.pos[modelData.name][0] : 0) * step.k
+                y: step.oy + (step.pos[modelData.name] ? step.pos[modelData.name][1] : 0) * step.k
                 radius: 6
                 color: step.theme.stone
+                // the main screen is a choice, not "you are here": parchment,
+                // like a picked setup card, so Continue stays the one gold
                 border.width: isMain ? 2 : 1
-                border.color: isMain ? step.theme.sol : step.theme.line
+                border.color: isMain ? step.theme.parchment : step.theme.line
                 Column {
                     anchors.centerIn: parent
                     spacing: 2
@@ -104,7 +119,7 @@ Card {
                     onClicked: step.main = box.modelData.name
                     onReleased: {
                         const p = Object.assign({}, step.pos)
-                        p[box.modelData.name] = [Math.round((box.x - 40) / step.k), Math.round((box.y - 30) / step.k)]
+                        p[box.modelData.name] = [Math.round((box.x - step.ox) / step.k), Math.round((box.y - step.oy) / step.k)]
                         step.pos = p
                     }
                 }

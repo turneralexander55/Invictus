@@ -46,16 +46,25 @@ Card {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 Layout.fillHeight: true
-                implicitHeight: 228
+                Layout.alignment: Qt.AlignTop
+                // as tall as its words: a two-line title must not push the
+                // line out of the card (the row takes the tallest of three)
+                implicitHeight: pic.height + words.implicitHeight + 34
                 radius: 14
                 color: step.theme.stone
-                border.color: step.theme.line
-                clip: true
                 Rectangle {
                     id: pic
                     width: parent.width
                     height: 120
+                    topLeftRadius: thing.radius
+                    topRightRadius: thing.radius
                     color: step.theme.night
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: 1
+                        color: step.theme.line
+                    }
                     // Atrium: the real control, drawn small. Tessera: the keys.
                     Rectangle {
                         anchors.centerIn: parent
@@ -75,24 +84,16 @@ Card {
                                 color: step.theme.marble
                                 anchors.verticalCenter: parent.verticalCenter
                             }
-                            Rectangle {
-                                // the Help button's icon: a lapis ring with a ?
+                            Icon {
+                                // the Help button's icon, in lapis
                                 visible: thing.modelData[0] === "help"
-                                width: 22
-                                height: 22
-                                radius: 11
-                                color: "transparent"
-                                border.width: 2
-                                border.color: step.theme.lapis
+                                width: 26
+                                height: 26
+                                color: step.theme.lapis
+                                paths: ["M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0",
+                                        "M9.3 9.3a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4",
+                                        ["M12 17.3h.01", 2.4]]
                                 anchors.verticalCenter: parent.verticalCenter
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "?"
-                                    font.family: step.theme.sans
-                                    font.pixelSize: 14
-                                    font.weight: Font.Bold
-                                    color: step.theme.lapis
-                                }
                             }
                             Text {
                                 text: thing.modelData[0] === "start" ? "Start"
@@ -105,10 +106,12 @@ Card {
                             }
                         }
                     }
+                    // a window's title bar, drawn small (the mockup's bar)
                     Rectangle {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width
-                        height: 44
+                        anchors.centerIn: parent
+                        width: 232
+                        height: 50
+                        radius: 10
                         visible: thing.modelData[0] === "close"
                         color: step.theme.basalt
                         border.color: step.theme.line
@@ -123,25 +126,33 @@ Card {
                         }
                         Row {
                             anchors.right: parent.right
-                            anchors.rightMargin: 10
+                            anchors.rightMargin: 9
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 8
+                            spacing: 6
                             Repeater {
-                                model: ["–", "□", "×"]
+                                // minimise, maximise, close (ringed: the one this card is about)
+                                model: [
+                                    [["M5 12h14"], 2],
+                                    [["M7 5.5h10a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 1-1.5 1.5H7a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 7 5.5z"], 1.8],
+                                    [["M6 6l12 12", "M18 6 6 18"], 2]
+                                ]
                                 Rectangle {
-                                    required property string modelData
+                                    id: wb
+                                    required property var modelData
                                     required property int index
-                                    width: 36
-                                    height: 36
-                                    radius: 18
+                                    width: 32
+                                    height: 32
+                                    radius: 16
                                     color: step.theme.stone
                                     border.width: index === 2 ? 2 : 0
-                                    border.color: step.theme.marble
-                                    Text {
+                                    border.color: step.theme.parchment
+                                    Icon {
                                         anchors.centerIn: parent
-                                        text: parent.modelData
-                                        font.pixelSize: 16
+                                        width: 18
+                                        height: 18
                                         color: step.theme.marble
+                                        paths: wb.modelData[0]
+                                        stroke: wb.modelData[1]
                                     }
                                 }
                             }
@@ -149,14 +160,15 @@ Card {
                     }
                 }
                 Column {
-                    anchors { top: pic.bottom; left: parent.left; right: parent.right; margins: 18 }
+                    id: words
+                    anchors { top: pic.bottom; left: parent.left; right: parent.right; margins: 18; topMargin: 16 }
                     spacing: 6
                     Text {
                         width: parent.width
                         text: thing.modelData[1]
                         font.family: step.theme.sans
                         font.pixelSize: 18
-                        font.weight: Font.DemiBold
+                        font.weight: Font.Medium
                         color: step.theme.marble
                         wrapMode: Text.WordWrap
                     }
@@ -165,9 +177,17 @@ Card {
                         text: thing.modelData[2]
                         font.family: step.theme.sans
                         font.pixelSize: 15
+                        lineHeight: 1.2
                         color: step.theme.parchment
                         wrapMode: Text.WordWrap
                     }
+                }
+                // the border, over the picture
+                Rectangle {
+                    anchors.fill: parent
+                    radius: thing.radius
+                    color: "transparent"
+                    border.color: step.theme.line
                 }
             }
         }
