@@ -34,9 +34,11 @@
 #    server, the A6 guard, the managed profiles (A7, A8), A9 and A12.
 # 18. First start (invictus-first-boot): run once per person, monitors.lua,
 #    look, the assistant step's calls and its key handling, the snapshot.
+# 19. First start with the real provider layer: the wizard's assistant step
+#    drives the real invictus-provider (only root and the keyring faked).
 #
 # Needs lua 5.4+ for groups 7 and 10 (LUA=...), node and python3 (3.11+)
-# for 14-17.
+# for 14-19.
 # ------------------------------------------------------------
 set -euo pipefail
 
@@ -436,6 +438,8 @@ echo
 . "$HERE/moneta.sh"
 # shellcheck source=tests/pkgs/firstboot.sh
 . "$HERE/firstboot.sh"
+# shellcheck source=tests/pkgs/firstboot-panel.sh
+. "$HERE/firstboot-panel.sh"
 
 if [[ $fail == 0 ]]; then echo "ALL PASSED"; else echo "SOME TESTS FAILED"; fi
 exit $fail
