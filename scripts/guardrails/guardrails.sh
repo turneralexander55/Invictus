@@ -176,8 +176,20 @@ apply_files() {
         fi
     fi
 
+    # A person running `guardrails check` (the doctor) cannot look inside
+    # /etc/sudoers.d or /etc/polkit-1/rules.d (both 0750 root): those two
+    # are checked only as root, and the check says so.
+    local hidden=()
+    if [[ "$check" == 1 && $EUID -ne 0 ]]; then
+        [[ -x "$(dirname "$SUDOERS_DROPIN")" ]] || hidden+=("$SUDOERS_DROPIN")
+        [[ -x "$(dirname "$CUSTODIA_RULES")" ]] || hidden+=("$CUSTODIA_RULES")
+        ((${#hidden[@]} == 0)) || echo "not checked as $(id -un): ${hidden[*]} (sudo invictus-sys guardrails check)"
+    fi
+    seen() { [[ " ${hidden[*]} " != *" $1 "* ]]; }
+
     # 1. sudoers drop-in
-    if [[ "$rails" == custodia ]]; then
+    if ! seen "$SUDOERS_DROPIN"; then :
+    elif [[ "$rails" == custodia ]]; then
         want="$(want_sudoers)"; cur="$(cat "$SUDOERS_DROPIN" 2>/dev/null || true)"
         if [[ "$want" != "$cur" || "$(stat -c %a "$SUDOERS_DROPIN" 2>/dev/null)" != 440 ]]; then
             note "write $SUDOERS_DROPIN (sudo lecture)"
@@ -215,7 +227,8 @@ apply_files() {
     fi
 
     # 4. tier 1 polkit rule; polkitd re-reads rules.d on any change
-    if [[ "$rails" == custodia ]]; then
+    if ! seen "$CUSTODIA_RULES"; then :
+    elif [[ "$rails" == custodia ]]; then
         if ! cmp -s "$SHARE/40-invictus-custodia.rules" "$CUSTODIA_RULES"; then
             note "write $CUSTODIA_RULES (tier 1)"
             [[ "$check" == 1 ]] || write_atomic "$CUSTODIA_RULES" 644 < "$SHARE/40-invictus-custodia.rules"

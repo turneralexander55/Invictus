@@ -391,6 +391,16 @@ rm -rf "$TMP/etc-once"
 rm -f "$D"; grd apply --check
 [[ $rc == 1 ]] && grep -q "would change: write $D" "$TMP/grd.out" && ok "SM24: a removed derived file shows up in apply --check (exit 1)" || gbad "check after tamper: rc $rc"
 grd apply
+# The doctor runs `guardrails check` as the person, who cannot look into
+# /etc/sudoers.d or /etc/polkit-1/rules.d (0750 root). Here as a non-root
+# user (CI's runner) with the folder closed; as root, e2e-sys.sh checks it.
+if [[ $EUID -ne 0 ]]; then
+    chmod 000 "$R/etc/sudoers.d"; grd apply --check; chmod 755 "$R/etc/sudoers.d"
+    [[ $rc == 0 ]] && grep -q "not checked as $(id -un): $D" "$TMP/grd.out" \
+        && ok "check as the person: a folder they cannot open is named as not checked, the rest is checked" || gbad "check with a closed folder: rc $rc $(cat "$TMP/grd.out")"
+else
+    echo "note  running as root: the closed-folder check runs in CI (non-root) and in e2e-sys.sh"
+fi
 # The real visudo (as any user: with -f it checks syntax, not ownership).
 if command -v visudo >/dev/null; then
     visudo -cqf "$D" >/dev/null 2>&1 && ok "the sudoers drop-in passes the real visudo" || gbad "real visudo rejects the drop-in"

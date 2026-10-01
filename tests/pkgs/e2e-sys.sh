@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2024 # root runs this; the redirects are root's on purpose
 # ------------------------------------------------------------
 # invictus-sys and invictus-guardrails, built and installed for real in a
 # throwaway Arch container, with a real polkitd, pkexec, pacman, sudo's
@@ -58,6 +59,14 @@ if [[ "$(cat /etc/invictus/guardrails)" == custodia && -f /etc/sudoers.d/40-invi
     ok "post_install ran guardrails apply: Custodia files in place, apply --check consistent"
 else
     bad "after install: $(/usr/lib/invictus/guardrails apply --check 2>&1 | head -5)"
+fi
+# The doctor runs `guardrails check` as the person, who cannot look into
+# /etc/sudoers.d or /etc/polkit-1/rules.d: the rest still reads consistent.
+if sudo -u tester /usr/lib/invictus/guardrails apply --check > "$WORK/check.out" 2>&1 \
+   && grep -q 'not checked as tester: /etc/sudoers.d/40-invictus-guardrails /etc/polkit-1/rules.d/40-invictus-custodia.rules' "$WORK/check.out"; then
+    ok "guardrails check as an ordinary user: consistent, and names the two root-only files it could not see"
+else
+    bad "guardrails check as tester: $(sudo -u tester /usr/lib/invictus/guardrails apply --check 2>&1 | head -3)"
 fi
 # 2. pacman and sudo read what apply wrote.
 if pacman-conf HoldPkg | grep -x invictus-desktop >/dev/null && visudo -cq; then
