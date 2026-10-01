@@ -100,8 +100,13 @@ def clean(text, keep_newlines=True):
     escape sequences or other control bytes (a reply could otherwise set the
     window title, write the clipboard or talk to the terminal)."""
     allowed = "\n\t" if keep_newlines else "\t"
-    return "".join(c if (c >= " " and c != "\x7f" and not 0x80 <= ord(c) < 0xa0) or c in allowed else "?"
-                   for c in text)
+    return "".join(c if (c >= " " and c != "\x7f" and not 0x80 <= ord(c) < 0xa0 and c not in BIDI) or c in allowed
+                   else "?" for c in text)
+
+
+# Direction overrides and isolates: they can make a line read differently
+# from what it holds (a button that shows one command and runs another).
+BIDI = set("\u061c\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069")
 
 
 # ---- root-owned state -------------------------------------------------------------
@@ -535,7 +540,8 @@ def valid_proposal(argv):
     if not argv or argv[0] not in PROPOSABLE or len(argv) > 65:
         return False
     for a in argv:
-        if not a or len(a) > 200 or a.startswith("-") or clean(a, keep_newlines=False) != a or "\t" in a:
+        # ASCII only: what the button shows is exactly what runs.
+        if not a or len(a) > 200 or a.startswith("-") or not a.isascii() or not a.isprintable():
             return False
     if argv[0] == "set-config" and (len(argv) != 3 or not SETTABLE.match(argv[1]) or argv[2] not in ("on", "off")):
         return False
@@ -601,7 +607,9 @@ def chat_cli(argv):
         print(f"Moneta will not use this endpoint: {e}")
         return EXIT_REFUSED
     key = key_lookup(p["name"], p["endpoint"])
-    thread = os.environ.get("INVICTUS_THREAD") or new_thread_id()
+    thread = os.environ.get("INVICTUS_THREAD", "")
+    if not re.match(r"^[A-Za-z0-9._:-]{1,64}$", thread):
+        thread = new_thread_id()
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     buttons = []
     print(f"Moneta, through {clean(p['label'], False)} ({clean(p.get('model', ''), False)}). Chat only: it can propose, you decide.")

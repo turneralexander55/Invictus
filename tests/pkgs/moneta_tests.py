@@ -446,7 +446,8 @@ with open(KEYFILE, "w") as f:
     f.write("sk-home-key\n")
 REPLY["text"] = ("Sure.\x1b]52;c;ZXZpbA==\x07\x1b[2J Here:\n```invictus-sys\ninstall firefox\n"
                  "guardrails set libertas\nset-config assistant.full-access on\ninstall foo; rm -rf ~\n"
-                 "ai on\ninstall --request=x foo\n```\n")
+                 "ai on\ninstall --request=x foo\ninstall fire\u202efox\nremove \u0430pp\n```\n"
+                 "Mirrored: \u202eabc\n")
 
 
 def chat(lines, **extra):
@@ -461,8 +462,9 @@ check(r.returncode == 0 and buttons == ["[1] invictus-sys install firefox   (typ
       and not read(f"{LOG}.sys"),
       "A13: a proposal shows as a numbered button and nothing runs; guard rails, full access, ai, options and "
       "shell tricks are never offered", f"chat buttons {buttons} sys log {read(f'{LOG}.sys')!r} out {r.stdout!r}")
-check("\x1b" not in r.stdout and "\x07" not in r.stdout,
-      "the reply reaches the terminal with no escape sequences (no clipboard or screen tricks)", f"escapes in {r.stdout!r}")
+check("\x1b" not in r.stdout and "\x07" not in r.stdout and "\u202e" not in r.stdout,
+      "the reply reaches the terminal with no escape sequences or direction overrides (no clipboard or screen tricks, "
+      "no button that reads differently from what it runs)", f"escapes in {r.stdout!r}")
 req = REQUESTS[-1] if REQUESTS else {}
 msgs = req.get("body", {}).get("messages", [])
 check(req.get("auth") == "Bearer sk-home-key" and req.get("path") == "/v1/chat/completions"
