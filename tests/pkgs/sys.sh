@@ -285,10 +285,10 @@ else sfail "rollback restore: rc $rc"; fi
 rm -f "$TMP/proc/cmdline"
 
 # report-collect writes only under /var/lib/invictus/report, last 5 kept.
-new_root rep custodia; export_env
+new_root rep custodia; export_env; sleep 0.05; : > "$TMP/rep.mark"; sleep 0.05
 for _ in 1 2 3 4 5 6 7; do isys report-collect; done
 n="$(find "$R/var/lib/invictus/report" -name 'journal-errors-*' | wc -l)"
-other="$(find "$R" -newer "$R/etc/pacman.conf" -type f ! -path "$R/var/lib/invictus/report/*" ! -path "$R/state/*" | wc -l)"
+other="$(find "$R" -newer "$TMP/rep.mark" -type f ! -path "$R/var/lib/invictus/report/*" ! -path "$R/state/*" | wc -l)"
 if [[ $rc == 0 && $n == 5 && $other == 0 ]] && logged "journalctl -b -p err --no-pager -n 500"; then
     ok "SM22: report-collect writes only under /var/lib/invictus/report and keeps the last 5"
 else sfail "report-collect: rc $rc, $n files, $other other files"; fi
@@ -539,19 +539,21 @@ if os.fork() == 0:
     os._exit(0)
 ' "$1" "$2"
 }
+# got FILE: wait up to 3 s for the listener to write FILE (load-proof).
+got() { local i; for i in $(seq 30); do [[ -s "$1" ]] && break; sleep 0.1; done; cat "$1" 2>/dev/null; }
 me="$(id -u)"
 new_root sock libertas; export_env; grd apply
 mkdir -p "$R/run/user/$me/invictus"
 listen_tribune "$R/run/user/$me/invictus/tribune.sock" "$TMP/tribune.got"
-grd set custodia; sleep 0.3
-[[ "$(cat "$TMP/tribune.got" 2>/dev/null)" == "restart-profile uid=$me" ]] && ok "G7: a switch sends restart-profile to the Moneta panel's socket" || gbad "tribune socket got '$(cat "$TMP/tribune.got" 2>/dev/null)'"
+grd set custodia
+[[ "$(got "$TMP/tribune.got")" == "restart-profile uid=$me" ]] && ok "G7: a switch sends restart-profile to the Moneta panel's socket" || gbad "tribune socket got '$(cat "$TMP/tribune.got" 2>/dev/null)'"
 # L1 (Janus): a /run/user/N folder whose owner is not N gets nothing.
 new_root sock2 libertas; export_env; grd apply
 other=4242; [[ "$me" == 4242 ]] && other=4243
 mkdir -p "$R/run/user/$other/invictus"
 listen_tribune "$R/run/user/$other/invictus/tribune.sock" "$TMP/tribune2.got"
-grd set custodia; sleep 0.3
-[[ ! -s "$TMP/tribune2.got" ]] && ok "L1-socket-owner: a /run/user/$other folder owned by uid $me is skipped" || gbad "L1-socket-owner: root signalled a socket in a folder its uid does not own: '$(cat "$TMP/tribune2.got")'"
+grd set custodia
+! grep -q 'told .* Moneta panel' "$TMP/grd.out" && [[ ! -s "$TMP/tribune2.got" ]] && ok "L1-socket-owner: a /run/user/$other folder owned by uid $me is skipped" || gbad "L1-socket-owner: root signalled a socket in a folder its uid does not own: '$(cat "$TMP/tribune2.got")'"
 pkill -f "tribune2.got" 2>/dev/null || true
 # L1 as root: the connection is made as the folder's owner, not as root.
 if [[ $EUID -eq 0 ]]; then
@@ -559,9 +561,10 @@ if [[ $EUID -eq 0 ]]; then
     chmod 711 "$TMP"
     mkdir -p "$R/run/user/65534/invictus"; chown -R 65534 "$R/run/user/65534"
     listen_tribune "$R/run/user/65534/invictus/tribune.sock" "$TMP/tribune3.got"
-    grd set custodia; sleep 0.3
+    grd set custodia
+    t3="$(got "$TMP/tribune3.got")"
     chmod 700 "$TMP"
-    [[ "$(cat "$TMP/tribune3.got" 2>/dev/null)" == "restart-profile uid=65534" ]] && ok "L1-socket-owner: root connects to /run/user/65534's socket as uid 65534" \
+    [[ "$t3" == "restart-profile uid=65534" ]] && ok "L1-socket-owner: root connects to /run/user/65534's socket as uid 65534" \
         || gbad "L1-socket-owner: root connected as '$(cat "$TMP/tribune3.got" 2>/dev/null)', not as the folder's owner"
 else
     echo "note  not root: connecting as the folder's owner is checked in the root run"
@@ -721,7 +724,7 @@ fi
 mkdir -p "$R/run/user/$me/invictus"; listen_tribune "$R/run/user/$me/invictus/tribune.sock" "$TMP/tribune-ai.got"
 : > "$TMP/sys.log"
 INVICTUS_PEOPLE="$TMP/people" FAKE_INSTALLED="claude-code invictus-moneta" isys ai off
-sleep 0.3
+got "$TMP/tribune-ai.got" >/dev/null
 if [[ $rc == 0 && "$(cat "$R/etc/invictus/ai")" == off && "$(stat -c %a "$R/etc/invictus/ai")" == 644 ]] \
    && grep -q 'pkexec action=org.invictus.sys.ai-off ' "$TMP/sys.log" \
    && grep -qx 'full-access = off' "$R/etc/invictus/assistant" && [[ "$(readlink "$R/etc/claude-code/managed-settings.json")" == */fixed.json ]] \
@@ -739,7 +742,7 @@ if [[ ! -e "$HA/.claude/.credentials.json" && -f "$HA/.claude/projects/p1/chat.j
    && [[ "$(stat -c %a "$HA/.claude.json")" == 600 ]] && grep -q "^claude auth logout uid=$me" "$HA/claude-called" 2>/dev/null; then
     ok "N3/N6: the person who asked: claude auth logout, the credential file deleted, the account block gone from ~/.claude.json (the rest and its 0600 kept), the memory kept"
 else gbad "ai off caller's home: $(find "$HA" -maxdepth 2 | paste -sd' ') claude: $(cat "$HA/claude-called" 2>/dev/null)"; fi
-[[ -f "$HE/.claude/.credentials.json" && ! -e "$HE/claude-called" ]] && ok "N3: a home not owned by the person it belongs to is left alone" || gbad "ai off touched a home that is not its owner's"
+[[ -f "$HE/.claude/.credentials.json" && ! -e "$HE/claude-called" ]] && grep -q "skipped eve: $HE is not theirs" "$TMP/sys.out" && ok "N3: a home not owned by the person it belongs to is left alone" || gbad "ai off touched a home that is not its owner's"
 [[ -f "$R/var/lib/invictus/ai-off-pending/$me" && -f "$R/var/lib/invictus/ai-off-pending/4242" ]] \
     && ok "N3: every person gets an ai-off-pending marker, so their next login clears the provider keys" || gbad "ai-off-pending markers missing"
 if [[ $EUID -eq 0 ]]; then
