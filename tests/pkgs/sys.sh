@@ -554,7 +554,6 @@ mkdir -p "$R/run/user/$other/invictus"
 listen_tribune "$R/run/user/$other/invictus/tribune.sock" "$TMP/tribune2.got"
 grd set custodia
 ! grep -q 'told .* Moneta panel' "$TMP/grd.out" && [[ ! -s "$TMP/tribune2.got" ]] && ok "L1-socket-owner: a /run/user/$other folder owned by uid $me is skipped" || gbad "L1-socket-owner: root signalled a socket in a folder its uid does not own: '$(cat "$TMP/tribune2.got")'"
-pkill -f "tribune2.got" 2>/dev/null || true
 # L1 as root: the connection is made as the folder's owner, not as root.
 if [[ $EUID -eq 0 ]]; then
     new_root sock3 libertas; export_env; grd apply
