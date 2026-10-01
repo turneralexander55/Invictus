@@ -644,8 +644,8 @@ if [[ $rc == 0 && "$(readlink "$R/etc/claude-code/managed-settings.json")" == */
         && ok "SM26: full access is refused under Custodia and with No AI; under Libertas on links the full profile, off the fixed one" \
         || gbad "full access off"
 else gbad "full access on: rc $rc: $(cat "$TMP/sys.out")"; fi
-python3 -c 'import json,sys; f=json.load(open(sys.argv[1])); d=f["permissions"]["deny"]; assert "Bash" in d and "Edit" in d and "Write" in d; g=json.load(open(sys.argv[2]))["permissions"]["deny"]; assert "Bash" not in g and "Bash(sudo *)" in g and "Bash(pacman *)" in g' \
-    "$GRD/claude/fixed.json" "$GRD/claude/full.json" && ok "A7/4.3: the fixed profile denies Bash, Edit and Write; the full one keeps Bash under A7's deny rules" || gbad "managed profiles"
+python3 -c 'import json,sys; f=json.load(open(sys.argv[1])); d=f["permissions"]["deny"]; assert "Bash" in d and "NotebookEdit" in d; h=f["hooks"]["PreToolUse"][0]; assert "Edit" in h["matcher"] and "Write" in h["matcher"] and h["hooks"][0]["command"].endswith(" pre fixed"); g=json.load(open(sys.argv[2]))["permissions"]["deny"]; assert "Bash" not in g and "Bash(sudo *)" in g and "Bash(pacman *)" in g' \
+    "$GRD/claude/fixed.json" "$GRD/claude/full.json" && ok "A7/4.3: the fixed profile denies Bash and NotebookEdit and keeps Edit and Write to the A6 allowlist (guard hook); the full one keeps Bash under A7's deny rules" || gbad "managed profiles"
 
 # ---- ai on|off (design-no-ai.md N1, N3, N4.3, N7; NA1, NA2, NA5, NA6) ----
 
