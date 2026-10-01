@@ -14,6 +14,8 @@ Type=oneshot
 ExecStart=/usr/lib/invictus/ai-pending
 Restart=on-failure
 RestartSec=10min
+# 2: pacman failed for a reason other than the download; retrying will not help.
+RestartPreventExitStatus=2
 
 [Install]
 WantedBy=multi-user.target

@@ -236,12 +236,21 @@ ai_turn_on() {  # returns 5 when the packages wait for a connection
     local rc=0
     local -a names
     write_ai on
+    # The keyring markers ai off left belong to that No AI choice: with AI
+    # on again, invictus-session must not clear anyone's keys (Minerva G1).
+    rm -f -- "$AI_OFF_PENDING"/*
     if browser_policy_ours; then rm -f "$BROWSER_POLICY"; fi
     read -ra names <<< "$AI_ON_INSTALL"
-    pacman_install_needed "${names[@]}" || rc=$?
+    pacman_install_classified "${names[@]}" || rc=$?
     if ((rc == 0)); then
         rm -f "$AI_PENDING"; "$SYSTEMCTL" disable invictus-ai-pending.service >/dev/null 2>&1 || true
         return 0
+    fi
+    # Only a download failure waits for the connection (Janus N-L2): a
+    # conflict or a bad signature would fail the same way at every boot.
+    if [[ "$PACMAN_FAILURE" != download ]]; then
+        say "AI is on, but its programs could not be installed (pacman stopped, exit $rc). Update first, then turn AI on again."
+        return 1
     fi
     mkdir -p "$(dirname "$AI_PENDING")"
     printf 'by = %s\nat = %s\n' "$CALLER" "$(date --iso-8601=seconds)" > "$AI_PENDING"

@@ -12,6 +12,12 @@
 #   pacman_install_needed CMD... runs CMD... -Syu --needed --noconfirm -- names
 #                               under the INHIBIT array (shutdown and sleep
 #                               held off while pacman runs)
+#   pacman_install_classified NAME... the same, and sets PACMAN_FAILURE:
+#                               "" (it worked), "download" (no connection
+#                               or no mirror answered: worth trying again
+#                               later) or "other" (a conflict, a bad
+#                               signature, a full disk...: trying again
+#                               will not help)
 # Callers set PACMAN and INHIBIT (an array) before calling.
 # ------------------------------------------------------------
 
@@ -25,4 +31,22 @@ valid_package_name() {
 # everything else in the same transaction.
 pacman_install_needed() {
     "${INHIBIT[@]}" "$PACMAN" -Syu --needed --noconfirm -- "$@"
+}
+
+# pacman's own summary lines (LC_ALL=C) when the databases or the packages
+# could not be downloaded. Checked against pacman 7 in Arch with no network
+# (tests/pkgs/e2e-sys.sh). Nothing else counts as a download failure, and
+# there is no separate `pacman -Sy` probe (MUST A4).
+PACMAN_DOWNLOAD_FAILED='failed to synchronize all databases|failed to retrieve some files|download library error'
+pacman_install_classified() {
+    local err rc=0
+    PACMAN_FAILURE=""
+    err="$(mktemp)"
+    pacman_install_needed "$@" 2>"$err" || rc=$?
+    cat -- "$err" >&2
+    if ((rc != 0)); then
+        if grep -qE -- "$PACMAN_DOWNLOAD_FAILED" "$err"; then PACMAN_FAILURE=download; else PACMAN_FAILURE=other; fi
+    fi
+    rm -f -- "$err"
+    return "$rc"
 }

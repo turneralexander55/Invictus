@@ -67,6 +67,7 @@ if [[ "${FAKE_SNAP_PAC:-1}" == 1 ]]; then
   "$FAKE_DIR/snapper" -c root create --type pre --print-number --description "pacman $*" >/dev/null
   "$FAKE_DIR/snapper" -c root create --type post --print-number --description "pacman $*" >/dev/null
 fi
+[[ -n "${FAKE_PACMAN_ERR:-}" ]] && echo "$FAKE_PACMAN_ERR" >&2
 exit "${FAKE_PACMAN_RC:-0}"
 EOF
 cat > "$F/logger" <<'EOF'
@@ -669,17 +670,38 @@ if [[ $rc == 0 && "$(cat "$R/etc/invictus/ai")" == on && "$(stat -c %a "$R/etc/i
    && acta_has "INVICTUS_VERB=ai-on" && acta_has "INVICTUS_RESULT=ok" && grep -q 'invictus-sys: ok snapshot=1' "$TMP/sys.out"; then
     ok "NA6: ai on (org.invictus.sys.ai-on): /etc/invictus/ai on (0644), our browser policy removed, invictus-moneta in one -Syu --needed, pre/post pair, Acta"
 else gbad "ai on: rc $rc: $(paste -sd'|' "$TMP/sys.log") out: $(cat "$TMP/sys.out")"; fi
-# Offline: the choice stands, the install waits for the connection.
+# Offline: the choice stands, the install waits for the connection. The
+# error lines are pacman 7's own (e2e-sys.sh checks them in Arch).
+NET_ERR='error: failed to synchronize all databases (download library error)'
+GET_ERR='error: failed to commit transaction (failed to retrieve some files)'
 new_root aioff1 custodia; export_env; grd apply; echo off > "$R/etc/invictus/ai"
-: > "$TMP/sys.log"; FAKE_PACMAN_RC=1 isys ai on
+: > "$TMP/sys.log"; FAKE_PACMAN_RC=1 FAKE_PACMAN_ERR="$NET_ERR" isys ai on
 if [[ $rc == 0 && "$(cat "$R/etc/invictus/ai")" == on && -f "$R/var/lib/invictus/ai-install-pending" ]] \
    && grep -q 'invictus-sys: pending' "$TMP/sys.out" && logged "systemctl enable --now --no-block invictus-ai-pending.service" && acta_has "INVICTUS_RESULT=pending"; then
     ok "N1: ai on with no connection: AI reads on, the pending marker is written and invictus-ai-pending.service enabled"
 else gbad "ai on offline: rc $rc: $(cat "$TMP/sys.out")"; fi
+# N-L2 (Janus): any other pacman failure is "failed", exit 1, no pending
+# marker and no retry unit; AI stays on and the person is told to update.
+new_root aiconf custodia; export_env; grd apply; echo off > "$R/etc/invictus/ai"
+: > "$TMP/sys.log"; FAKE_PACMAN_RC=1 FAKE_PACMAN_ERR='error: failed to commit transaction (conflicting files)' isys ai on
+if [[ $rc == 1 && "$(cat "$R/etc/invictus/ai")" == on && ! -e "$R/var/lib/invictus/ai-install-pending" ]] \
+   && ! logged "invictus-ai-pending" && grep -q 'Update first, then turn AI on again' "$TMP/sys.out" \
+   && grep -q 'invictus-sys: failed' "$TMP/sys.out" && acta_has "INVICTUS_RESULT=failed"; then
+    ok "N-L2-not-a-download: ai on with a conflict is 'failed' (exit 1): no pending marker, no retry unit, 'update first'"
+else gbad "N-L2-not-a-download: rc $rc: $(paste -sd'|' "$TMP/sys.log") out: $(cat "$TMP/sys.out")"; fi
+: > "$TMP/sys.log"; FAKE_PACMAN_RC=1 FAKE_PACMAN_ERR="$GET_ERR" isys ai on
+[[ $rc == 0 && -f "$R/var/lib/invictus/ai-install-pending" ]] && grep -q 'invictus-sys: pending' "$TMP/sys.out" \
+    && ok "N-L2: a package download that fails mid-way also waits for the connection (pending)" || gbad "N-L2 retrieve failure: rc $rc: $(cat "$TMP/sys.out")"
+grep -qx 'RestartPreventExitStatus=2' "$REPO/scripts/systemd/invictus-ai-pending.service" \
+    && ok "N-L2: invictus-ai-pending.service stops retrying on exit 2" || gbad "N-L2: invictus-ai-pending.service has no RestartPreventExitStatus=2"
 # ai-pending: installs only while the marker exists and AI still reads on.
 PEND() { rc=0; bash "$SYS/ai-pending.sh" > "$TMP/pend.out" 2>&1 || rc=$?; }
-: > "$TMP/sys.log"; FAKE_PACMAN_RC=1 PEND
-[[ $rc == 1 && -f "$R/var/lib/invictus/ai-install-pending" ]] || gbad "ai-pending: a failed install should keep the marker and fail (rc $rc)"
+: > "$TMP/sys.log"; FAKE_PACMAN_RC=1 FAKE_PACMAN_ERR="$NET_ERR" PEND
+[[ $rc == 1 && -f "$R/var/lib/invictus/ai-install-pending" ]] || gbad "ai-pending: a failed download should keep the marker and fail (rc $rc)"
+: > "$TMP/acta.log"; FAKE_PACMAN_RC=1 FAKE_PACMAN_ERR='error: failed to commit transaction (invalid or corrupted package (PGP signature))' PEND
+[[ $rc == 2 && -f "$R/var/lib/invictus/ai-install-pending" ]] && acta_has "INVICTUS_RESULT=failed" \
+    && ok "N-L2-pending-exit-2: ai-pending exits 2 (no retry) on a failure that is not a download, with an Acta entry" \
+    || gbad "N-L2-pending-exit-2: ai-pending on a bad signature: rc $rc $(cat "$TMP/pend.out")"
 : > "$TMP/sys.log"; PEND
 if [[ $rc == 0 && ! -e "$R/var/lib/invictus/ai-install-pending" ]] && logged "pacman -Syu --needed --noconfirm -- invictus-moneta" \
    && logged "systemctl disable invictus-ai-pending.service" && acta_has "INVICTUS_ARGS=pending"; then :
@@ -759,6 +781,13 @@ chmod 700 "$TMP"
 grd apply --check; [[ $rc == 0 ]] || gbad "NA5: after ai off, guardrails check is not consistent: $(cat "$TMP/grd.out")"
 isys set-config assistant.full-access on
 [[ $rc == 3 ]] && grep -q 'No AI' "$TMP/sys.out" && ok "NA2/NA5: after ai off the rails stay consistent and full access is refused (No AI)" || gbad "full access after ai off: rc $rc"
+# G1 (Minerva): ai on again takes away the keyring markers ai off left, so
+# invictus-session never clears anyone's keys while AI is on.
+n_mark="$(find "$R/var/lib/invictus/ai-off-pending" -mindepth 1 | wc -l)"
+isys ai on
+[[ $rc == 0 && $n_mark -ge 2 && -d "$R/var/lib/invictus/ai-off-pending" && -z "$(find "$R/var/lib/invictus/ai-off-pending" -mindepth 1)" ]] \
+    && ok "G1-ai-on-clears-markers: ai off then ai on leaves no ai-off-pending marker ($n_mark removed)" \
+    || gbad "G1-ai-on-clears-markers: rc $rc, left: $(ls -A "$R/var/lib/invictus/ai-off-pending" | paste -sd' ')"
 # A browser policy file that is not ours is never overwritten or removed.
 new_root aipol libertas; export_env; grd apply; echo on > "$R/etc/invictus/ai"
 mkdir -p "$(dirname "$POL")"; echo '{"policies": {"DisableTelemetry": true}}' > "$POL"

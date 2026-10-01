@@ -11,7 +11,10 @@
 # /etc/invictus/ai reads on: the person's password at the time of the
 # choice is the consent, and `ai off` since then cancels it. On success
 # (or when cancelled) the marker goes and the service is disabled.
-# Exit: 0 done or nothing to do; pacman's code on failure (retried).
+# Exit: 0 done or nothing to do; 1 the download failed (no connection
+# yet: the unit tries again); 2 pacman failed for another reason (a
+# conflict, a bad signature): trying again will not help, so the unit's
+# RestartPreventExitStatus=2 stops the retries until the next start.
 # Env (tests, from a checkout only): INVICTUS_SYS_ROOT, INVICTUS_LIB,
 #   INVICTUS_PACMAN, INVICTUS_SYSTEMCTL, INVICTUS_INHIBIT, ACTA_LOGGER
 # ------------------------------------------------------------
@@ -51,10 +54,16 @@ fi
 read -ra names <<< "$AI_ON_INSTALL"
 say "installing: ${names[*]}"
 rc=0
-pacman_install_needed "${names[@]}" || rc=$?
+pacman_install_classified "${names[@]}" || rc=$?
 if ((rc != 0)); then
-    say "pacman stopped (exit $rc); trying again later"
-    exit "$rc"
+    if [[ "$PACMAN_FAILURE" == download ]]; then
+        say "could not download (exit $rc); trying again later"
+        exit 1
+    fi
+    acta "AI packages could not be installed (pacman exit $rc, not a download failure): update first, then turn AI on again" \
+        VERB=ai-on ARGS=pending RESULT=failed UID=0 USER=root
+    say "pacman stopped (exit $rc), not for want of a connection; not trying again"
+    exit 2
 fi
 done_pending
 acta "AI packages installed (AI was turned on while offline): ${names[*]}" VERB=ai-on ARGS=pending RESULT=ok UID=0 USER=root
