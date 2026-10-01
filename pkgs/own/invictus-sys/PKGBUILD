@@ -21,7 +21,7 @@
 
 pkgname=invictus-sys
 pkgver=0.2.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Invictus system helper: the fixed verbs that change the system, each behind its own polkit prompt'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'

@@ -8,6 +8,11 @@
 #   invictus-update --noconfirm  no pacman questions
 #   invictus-update --aur        also paru -Sua afterwards (builds AUR
 #                                packages you installed yourself)
+#   invictus-update --system     the system half only: the doctor's system
+#                                checks, nothing in any home folder (no
+#                                waybar cache, no paru). invictus-sys update
+#                                runs this as root, then the per-user checks
+#                                as you. Always on when run as root.
 #
 # What it never does: git pull, git stash, or a partial upgrade
 # (pacman -Sy without -u). The desktop config arrives inside the
@@ -31,14 +36,22 @@ else SUDO="sudo"; fi
 
 CONFIRM=()
 AUR=false
+# Root never reads a person's home (Janus H1): as root, system half only.
+SYSTEM=false
+[[ $EUID -eq 0 ]] && SYSTEM=true
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --noconfirm) CONFIRM=(--noconfirm); shift ;;
         --aur) AUR=true; shift ;;
-        -h|--help) sed -n '2,22p' "$0"; exit 0 ;;
+        --system) SYSTEM=true; shift ;;
+        -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
         *) echo "invictus-update: unknown argument $1" >&2; exit 2 ;;
     esac
 done
+if $SYSTEM && $AUR; then
+    echo "invictus-update: --aur builds your own AUR packages; run it as yourself, without --system" >&2
+    exit 2
+fi
 
 echo "==> Invictus update"
 
@@ -59,7 +72,9 @@ if [[ $rc -ne 0 ]]; then
     exit "$rc"
 fi
 
-if $AUR; then
+if $SYSTEM; then
+    :
+elif $AUR; then
     if command -v "$PARU" >/dev/null; then
         echo "==> $PARU -Sua ${CONFIRM[*]}"
         "$PARU" -Sua "${CONFIRM[@]}"
@@ -70,13 +85,18 @@ elif command -v "$PARU" >/dev/null && n="$("$PARU" -Qua 2>/dev/null | grep -c .)
     echo "==> $n AUR package(s) you installed yourself have updates: invictus-update --aur"
 fi
 
-# Waybar's update counter
-rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/waybar-updates.cache"
-pkill -RTMIN+8 waybar 2>/dev/null || true
+# Waybar's update counter (the person's own cache and bar; invictus-sys
+# does this in its user half)
+if ! $SYSTEM; then
+    rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/waybar-updates.cache"
+    pkill -RTMIN+8 waybar 2>/dev/null || true
+fi
 
 echo
 echo "==> Checking the system after the update"
-if "$DOCTOR" --post-update; then
+doctor_args=(--post-update)
+$SYSTEM && doctor_args+=(--system)
+if "$DOCTOR" "${doctor_args[@]}"; then
     echo "==> Update complete."
 else
     echo "==> Updated, but invictus-doctor found a problem (above)."

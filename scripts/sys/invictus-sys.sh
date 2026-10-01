@@ -8,7 +8,9 @@
 #
 #   invictus-sys [--request ID] VERB [ARGS]
 #
-#   update                         update everything (pacman -Syu, then the doctor)
+#   update                         update everything (pacman -Syu and the doctor's
+#                                  system checks as root, then its checks on
+#                                  your own files as you)
 #   install PKG...                 install from the configured repos (with -Syu)
 #   remove PKG...                  remove (never the packages that keep it working)
 #   snapshot DESCRIPTION...        make a safety copy now
@@ -30,7 +32,7 @@
 # Exit: 0 ok; 1 the change failed; 2 bad arguments; 3 refused; 4 busy;
 # 126 no password given or not allowed (pkexec); 127 pkexec failed.
 # Env (tests): INVICTUS_LIB, INVICTUS_PKEXEC, INVICTUS_SYS_HELPER,
-#   INVICTUS_GUARDRAILS, INVICTUS_SYS_ROOT
+#   INVICTUS_GUARDRAILS, INVICTUS_SYS_ROOT, INVICTUS_DOCTOR
 # ------------------------------------------------------------
 set -euo pipefail
 
@@ -42,8 +44,9 @@ LIB="${INVICTUS_LIB:-/usr/lib/invictus}"
 HELPER="${INVICTUS_SYS_HELPER:-/usr/lib/invictus/invictus-sys}"
 PKEXEC="${INVICTUS_PKEXEC:-pkexec}"
 GUARDRAILS="${INVICTUS_GUARDRAILS:-/usr/lib/invictus/guardrails}"
+DOCTOR="${INVICTUS_DOCTOR:-invictus-doctor}"
 
-usage() { sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//'; }
 
 if [[ "${1:-}" == --request ]]; then
     [[ "${2:-}" =~ ^[A-Za-z0-9._:-]{1,64}$ ]] || { sys_err "--request takes an id of letters, digits and ._:-"; exit 2; }
@@ -51,9 +54,9 @@ if [[ "${1:-}" == --request ]]; then
 fi
 verb="${1:-help}"; shift || true
 
-as_root() {  # as_root ROOTVERB ARGS...: check, then pkexec (or run, as root)
+run_root() {  # run_root ROOTVERB ARGS...: check, then pkexec (or run, as root); sets rc
     sys_validate "$@" || exit 2
-    local rc=0
+    rc=0
     # As root (the installer, a root terminal) no prompt is needed; tests
     # that set INVICTUS_PKEXEC go through the fake pkexec even as root.
     if [[ $EUID -eq 0 && -z "${INVICTUS_PKEXEC:-}" ]]; then "$HELPER" "$@" || rc=$?
@@ -62,12 +65,27 @@ as_root() {  # as_root ROOTVERB ARGS...: check, then pkexec (or run, as root)
         126) sys_err "not done: no password was given, or this account may not do that" ;;
         127) sys_err "not done: pkexec could not run (is polkit running?)" ;;
     esac
-    exit "$rc"
+}
+as_root() { run_root "$@"; exit "$rc"; }
+
+# update_user_half: after a good update, what root must not do (Janus H1):
+# the doctor's checks on your own files, run as you, and your waybar's
+# update counter. Exit 3 if the doctor finds a problem, as invictus-update.
+update_user_half() {
+    rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/waybar-updates.cache"
+    pkill -RTMIN+8 -u "$EUID" waybar 2>/dev/null || true
+    command -v "$DOCTOR" >/dev/null || return 0
+    echo "==> Checking your own settings after the update"
+    "$DOCTOR" --post-update --user || { echo "==> Updated, but invictus-doctor found a problem in your settings (above)."; return 3; }
 }
 
 case "$verb" in
     help|-h|--help) usage ;;
-    update|install|remove|rollback|service|report-collect)
+    update)
+        run_root update "$@"
+        ((rc != 0)) || [[ $EUID -eq 0 ]] || update_user_half || rc=$?
+        exit "$rc" ;;
+    install|remove|rollback|service|report-collect)
         as_root "$verb" "$@" ;;
     snapshot)
         as_root snapshot "$*" ;;

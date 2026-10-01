@@ -5,6 +5,11 @@
 #
 #   invictus-doctor                 all checks
 #   invictus-doctor --post-update   all checks, plus what to do if one fails
+#   invictus-doctor --system        only the system checks (pinned, repo,
+#                                   snapshots, guardrails, kernel)
+#   invictus-doctor --user          only the checks on your own files
+#                                   (hypr, defaults)
+#                                   (--post-update combines with either)
 #   invictus-doctor --hypr          only the Hyprland config check
 #   invictus-doctor --diff PATH     show how your copy of a shipped default
 #                                   differs from the one installed now
@@ -24,6 +29,10 @@
 #   defaults  your copies of the shipped defaults: which changed upstream
 #             since first login (never overwritten, only listed)
 #
+# As root the doctor never reads a home folder (Janus H1; and root's own
+# ~/.config/hypr is not a desktop): the per-user checks are skipped with a
+# note, and --user, --hypr and --diff are refused (exit 2).
+#
 # Changes nothing. Exit 0 when nothing FAILs, 1 otherwise.
 # Lines: "ok    ", "note  ", "warn  ", "FAIL  " then check: message.
 # ------------------------------------------------------------
@@ -40,18 +49,38 @@ BOOT="${INVICTUS_BOOT:-/boot}"
 MODULES="${INVICTUS_MODULES:-/usr/lib/modules}"
 PACMAN_CONF="${INVICTUS_PACMAN_CONF:-/etc/pacman.conf}"
 GUARDRAILS="${INVICTUS_GUARDRAILS:-/usr/lib/invictus/guardrails}"
-CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
+# INVICTUS_DOCTOR_AS_ROOT (tests, from a checkout only): 1 makes a
+# person's run behave like root's; 0 lets the test suite, which also runs
+# as root, check the per-user code. The installed copy ignores it.
+AS_ROOT=0
+[[ $EUID -eq 0 ]] && AS_ROOT=1
+case "$(readlink -f -- "$0")" in
+    /usr/*) ;;
+    *) case "${INVICTUS_DOCTOR_AS_ROOT:-}" in 1) AS_ROOT=1 ;; 0) AS_ROOT=0 ;; esac ;;
+esac
+CFG=""
+((AS_ROOT)) || CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 MODE=all
+POST=0
+PART=both   # both | system | user
 DIFF_PATH=""
-case "${1:-}" in
-    "") ;;
-    --post-update) MODE="post" ;;
-    --hypr) MODE="hypr" ;;
-    --diff) MODE="diff"; DIFF_PATH="${2:?--diff needs a path}" ;;
-    -h|--help) sed -n '2,28p' "$0"; exit 0 ;;
-    *) echo "invictus-doctor: unknown argument $1" >&2; exit 2 ;;
-esac
+while (($#)); do
+    case "$1" in
+        --post-update) POST=1; shift ;;
+        --system) PART=system; shift ;;
+        --user) PART=user; shift ;;
+        --hypr) MODE="hypr"; shift ;;
+        --diff) MODE="diff"; DIFF_PATH="${2:?--diff needs a path}"; shift 2 ;;
+        -h|--help) sed -n '2,37p' "$0"; exit 0 ;;
+        *) echo "invictus-doctor: unknown argument $1" >&2; exit 2 ;;
+    esac
+done
+if ((AS_ROOT)) && [[ "$MODE" != all || "$PART" == user ]]; then
+    echo "invictus-doctor: --user, --hypr and --diff check your own files: run them as yourself, not as root" >&2
+    exit 2
+fi
+((AS_ROOT)) && [[ "$PART" == both ]] && PART=system
 
 fails=0 warns=0
 ok()   { printf 'ok    %s\n' "$*"; }
@@ -236,12 +265,16 @@ show_diff() {
 case "$MODE" in
     diff) show_diff "$DIFF_PATH" ;;
     hypr) check_hypr ;;
-    *) check_hypr; check_pinned; check_repo; check_snapshots; check_guardrails; check_kernel; check_defaults ;;
+    *)
+        if ((AS_ROOT)); then note "per-user checks skipped as root (your Hyprland config and defaults: run invictus-doctor --user as yourself)"; fi
+        [[ "$PART" == system ]] || check_hypr
+        [[ "$PART" == user ]] || { check_pinned; check_repo; check_snapshots; check_guardrails; check_kernel; }
+        [[ "$PART" == system ]] || check_defaults ;;
 esac
 
 echo
 echo "invictus-doctor: $fails failed, $warns warnings"
-if [[ "$MODE" == post && $fails -gt 0 ]]; then
+if [[ $POST == 1 && $fails -gt 0 ]]; then
     echo
     echo "Something above failed after the update. Nothing was changed by this check."
     echo "If the desktop does not start, reboot and pick the snapshot taken before"

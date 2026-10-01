@@ -17,7 +17,7 @@
 
 pkgname=invictus-tools
 pkgver=0.1.0
-pkgrel=4
+pkgrel=5
 pkgdesc='Invictus commands: theme, motion, update, doctor, and the scripts the desktop runs'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'

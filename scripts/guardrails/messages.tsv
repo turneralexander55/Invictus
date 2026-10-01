@@ -1,6 +1,9 @@
 # Plain words for the Invictus polkit agent (design-simple-mode G1, NA8).
 # action id <TAB> text. {args} is what follows the verb in pkexec's
-# command_line detail. Clio writes the final wording; these are the design's
+# command_line detail. The agent fills {args} only after sys_validate
+# (/usr/lib/invictus/lib/sys-verbs.sh) accepts the verb and arguments, and
+# otherwise shows the line without them: a program can call pkexec directly
+# with arguments nobody has checked (Janus L2). Clio writes the final wording; these are the design's
 # examples so the agent has something to show. Unknown ids get "An app
 # wants to change this computer" plus the vendor message. Under Custodia
 # the agent adds the scam line (G3); the hold list is hold-list.txt (G6).

@@ -14,6 +14,14 @@
 # (tests/pkgs/polkit-rules.js), with polkitd's order and defaults.
 # Everything the scripts write lands under a fake root (INVICTUS_SYS_ROOT).
 
+# Run on its own, every helper this file needs is missing and each check
+# would print "command not found" and still exit 0 (Janus, 2026-10-01).
+if [[ "${BASH_SOURCE[0]}" == "$0" ]] || ! declare -F ok bad >/dev/null || [[ -z "${REPO:-}" || -z "${TMP:-}" ]]; then
+    echo "tests/pkgs/sys.sh is groups 14 to 16 of tests/pkgs/run.sh: run that" >&2
+    # shellcheck disable=SC2317 # exit is reached when run, not sourced
+    return 2 2>/dev/null || exit 2
+fi
+
 # These groups check exit codes themselves: run them without errexit (a
 # failing check must print FAIL, not end the suite) and restore it after.
 set +e
@@ -28,6 +36,7 @@ cat > "$F/snapper" <<'EOF'
 # fake snapper: create prints the next number; list prints csv
 st="$FAKE_STATE"; echo "snapper $*" >> "$FAKE_LOG"
 [[ "${FAKE_SNAPPER_FAIL:-0}" == 1 ]] && exit 1
+[[ -n "${FAKE_SNAPPER_SLEEP:-}" ]] && exec sleep "$FAKE_SNAPPER_SLEEP"
 csv=0; [[ "$1" == --csvout ]] && { csv=1; shift; }
 [[ "$1" == -c ]] && shift 2
 case "$1" in
@@ -46,6 +55,7 @@ EOF
 cat > "$F/pacman" <<'EOF'
 #!/bin/bash
 echo "pacman $*" >> "$FAKE_LOG"
+echo "pacman-env LC_ALL=${LC_ALL-unset}" >> "$FAKE_LOG"
 case "$1" in
   -Q) [[ "$2" == snap-pac && "${FAKE_SNAP_PAC:-1}" == 1 ]]; exit ;;
   -Rsp) shift 3; [[ "$1" == -- ]] && shift; printf '%s\n' "$@"; [[ -n "${FAKE_REMOVE_EXTRA:-}" ]] && echo "$FAKE_REMOVE_EXTRA"; exit 0 ;;
@@ -153,12 +163,13 @@ for a in ET.parse(pol).getroot().iter("action"):
     want = "auth_admin" if v in nokeep else "auth_admin_keep"
     if d.find("allow_active").text != want: print("active", i, d.find("allow_active").text)
     if d.find("allow_any").text != "auth_admin" or d.find("allow_inactive").text != "auth_admin": print("any/inactive", i)
-    if "$(command_line)" not in a.find("message").text: print("message has no $(command_line)", i)
+    # L2 (Janus): no unchecked arguments in the fallback prompt.
+    if "command_line" in a.find("message").text: print("message shows $(command_line), arguments not yet checked", i)
     if "org.freedesktop.policykit.exec.allow_gui" in ann: print("allow_gui", i)
 if sorted(seen) != sorted(verbs): print("verbs", sorted(seen), sorted(verbs))
 PY
 )"
-if [[ -z "$pol_check" ]]; then ok "A2: one polkit action per verb (${SYS_ROOT_VERBS// /, }), helper path + argv1, keep only on the design's verbs, the arguments in the message"
+if [[ -z "$pol_check" ]]; then ok "A2/L2: one polkit action per verb (${SYS_ROOT_VERBS// /, }), helper path + argv1, keep only on the design's verbs, no unchecked arguments in the message"
 else sfail "A2 policy: $pol_check"; fi
 
 new_root verbs custodia; export_env
@@ -178,9 +189,9 @@ done
 # A2, A3, A4: install goes through its own action, names the packages, and
 # is one pacman -Syu --needed, never -Sy alone.
 : > "$TMP/sys.log"; INVICTUS_REQUEST=thread-42 isys --request thread-42 install firefox vlc
-if [[ $rc == 0 ]] && grep -q 'pkexec action=org.invictus.sys.install message=.*install firefox vlc' "$TMP/sys.log" \
+if [[ $rc == 0 ]] && grep -q 'pkexec action=org.invictus.sys.install message=Type your password to install software' "$TMP/sys.log" \
    && logged "pacman -Syu --needed --noconfirm -- firefox vlc" && logged inhibit; then
-    ok "A2/A4: install prompts as org.invictus.sys.install naming 'firefox vlc', then one pacman -Syu --needed under an inhibitor"
+    ok "A2/A4: install prompts as org.invictus.sys.install, then one pacman -Syu --needed -- firefox vlc under an inhibitor"
 else sfail "install: rc $rc: $(paste -sd'|' "$TMP/sys.log") out: $(paste -sd'|' "$TMP/sys.out")"; fi
 # A5 + A11: snap-pac's pre snapshot is the one reported and logged.
 pre="$(awk -F, '$2 == "pre" { print $1; exit }' "$R/state/snaps" 2>/dev/null)"
@@ -286,6 +297,58 @@ rc=0; PKEXEC_UID="$(id -u)" bash -c 'exec "$0" snapshot test' "$SYS/invictus-sys
 if [[ $rc == 0 ]] && acta_has "INVICTUS_SESSION=7" && acta_has "INVICTUS_REQUEST=moneta-thread-9"; then
     ok "A11: Acta records the logind session (7) and request id of the process that ran pkexec"
 else sfail "A11 session: rc $rc: $(paste -sd'|' "$TMP/acta.log")"; fi
+
+# H1 (Janus): the update verb (tier 1, no password under Custodia) never
+# hands root the caller's home: no HOME and no home lookup in its branch,
+# and invictus-update runs the doctor's system checks only. The caller's
+# own checks (their Hyprland config, their defaults) run afterwards in the
+# user half, as the caller.
+upd_branch="$(awk '/^    update\)/ { on = 1; next } on && /^    [a-z|-]+\)/ { exit } on' "$SYS/invictus-sys-root.sh")"
+if [[ -n "$upd_branch" ]] && ! grep -qE 'HOME|getent passwd|CALLER_UID' <<< "$upd_branch"; then
+    ok "H1-update-no-home: the root update branch passes no HOME and looks up no home"
+else sfail "H1-update-no-home: the root update branch hands root the caller's home: $(grep -nE 'HOME|getent passwd|CALLER_UID' <<< "$upd_branch" | paste -sd'|')"; fi
+cat > "$F/doctor" <<'EOF'
+#!/bin/bash
+echo "doctor $* uid=$(id -u)" >> "$FAKE_LOG"
+exit "${FAKE_DOCTOR_RC:-0}"
+EOF
+chmod +x "$F/doctor"
+new_root h1 custodia; export_env
+mkdir -p "$TMP/h1home/.config/hypr"
+: > "$TMP/sys.log"
+HOME="$TMP/h1home" INVICTUS_UPDATE="$REPO/scripts/invictus-update.sh" INVICTUS_DOCTOR="$F/doctor" INVICTUS_SUDO="" INVICTUS_PARU=no-such-paru \
+    isys update
+docs="$(grep '^doctor ' "$TMP/sys.log" | sed 's/ uid=.*//' | paste -sd'|')"
+want_docs="doctor --post-update --system|doctor --post-update --user"
+[[ $EUID -eq 0 ]] && want_docs="doctor --post-update --system"   # root's own call: no person's files to check
+if [[ $rc == 0 && "$docs" == "$want_docs" ]] && logged "pacman -Syu --noconfirm"; then
+    ok "H1-doctor-split: update runs pacman -Syu and the doctor's system checks as root, then the per-user checks in the user half"
+else sfail "H1-doctor-split: rc $rc, doctor calls '$docs': $(cat "$TMP/sys.out")"; fi
+: > "$TMP/sys.log"
+HOME="$TMP/h1home" INVICTUS_UPDATE="$REPO/scripts/invictus-update.sh" INVICTUS_DOCTOR="$F/doctor" INVICTUS_SUDO="" INVICTUS_PARU=no-such-paru \
+    FAKE_DOCTOR_RC=1 isys update
+want_rc=3; [[ $EUID -eq 0 ]] && want_rc=0   # as root only the system half runs; its result line says so
+[[ $rc == "$want_rc" ]] && grep -q 'doctor found a problem' "$TMP/sys.out" && ok "H1: a doctor problem after a good update is reported (exit $want_rc here)" || sfail "H1 doctor failure: rc $rc $(cat "$TMP/sys.out")"
+
+# LC_ALL=C in the root helper: the caller's locale never reaches pacman.
+new_root locale custodia; export_env
+: > "$TMP/sys.log"; LC_ALL=C.UTF-8 isys install htop
+[[ $rc == 0 ]] && logged "pacman-env LC_ALL=C$" && ! logged "pacman-env LC_ALL=C.UTF-8" \
+    && ok "LC_ALL-C: the root helper runs pacman with LC_ALL=C whatever the caller's locale" || sfail "LC_ALL-C: $(grep pacman-env "$TMP/sys.log" | head -1)"
+
+# This file refuses to run on its own (Janus: it used to exit 0 with
+# "ok: command not found").
+for f in sys.sh runtime.sh; do
+    rc=0; bash "$REPO/tests/pkgs/$f" > "$TMP/alone.out" 2>&1 || rc=$?
+    [[ $rc != 0 ]] && grep -q 'tests/pkgs/run.sh' "$TMP/alone.out" || sfail "sys-standalone: bash tests/pkgs/$f alone exits $rc: $(head -2 "$TMP/alone.out")"
+done
+[[ $s_fail == 0 ]] && ok "sys-standalone: tests/pkgs/sys.sh and runtime.sh refuse to run outside run.sh (exit 2)"
+
+# L3 (Janus): pending-extras runs as root from a service and drops every
+# INVICTUS_* override when installed, like the other root scripts.
+px="$REPO/scripts/invictus-extras.sh"
+grep -q "case \"\$(readlink -f -- \"\$0\")\" in" "$px" && grep -q 'export PATH=/usr/bin' "$px" && grep -q "grep -E '^(INVICTUS_|ACTA_)'" "$px" \
+    && ok "L3-extras-guard: pending-extras drops INVICTUS_* overrides and sets PATH when installed" || sfail "L3-extras-guard: pending-extras has no /usr/* override guard"
 
 # Every root script drops test overrides when installed (/usr/...).
 for f in "$SYS/invictus-sys-root.sh" "$GRD/guardrails.sh" "$GRD/pre-admin-snapshot.sh"; do
@@ -450,17 +513,50 @@ if [[ $rc == 0 && "$(cat "$R/etc/invictus/guardrails")" == custodia && ! -e "$R/
     ok "SM21/SM26: set custodia: no snapshot needed, sudo timestamps and polkit temp auths cleared, the G2 stamp reset, full access off, fixed profile, lecture, HoldPkg and tier 1 back"
 else gbad "to custodia: rc $rc: $(cat "$TMP/grd.out")"; fi
 
-# The assistant is told to restart (tribune socket).
-new_root sock libertas; export_env; grd apply
-mkdir -p "$R/run/user/1000/invictus"
-python3 -c '
-import socket, sys, os
-s = socket.socket(socket.AF_UNIX); s.bind(sys.argv[1]); s.listen(1); s.settimeout(10)
+# The assistant is told to restart (tribune socket). The listener records
+# what it got and the uid that connected (SO_PEERCRED).
+listen_tribune() {  # listen_tribune SOCKET OUTFILE
+    rm -f "$2"
+    python3 -c '
+import socket, struct, sys, os
+s = socket.socket(socket.AF_UNIX); s.bind(sys.argv[1]); os.chmod(sys.argv[1], 0o777); s.listen(1); s.settimeout(10)
 if os.fork() == 0:
-    c, _ = s.accept(); open(sys.argv[2], "wb").write(c.recv(100)); os._exit(0)
-' "$R/run/user/1000/invictus/tribune.sock" "$TMP/tribune.got"
+    try:
+        c, _ = s.accept()
+        pid, uid, gid = struct.unpack("3i", c.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12))
+        open(sys.argv[2], "w").write("%s uid=%d" % (c.recv(100).decode().strip(), uid))
+    except Exception:
+        pass
+    os._exit(0)
+' "$1" "$2"
+}
+me="$(id -u)"
+new_root sock libertas; export_env; grd apply
+mkdir -p "$R/run/user/$me/invictus"
+listen_tribune "$R/run/user/$me/invictus/tribune.sock" "$TMP/tribune.got"
 grd set custodia; sleep 0.3
-[[ "$(cat "$TMP/tribune.got" 2>/dev/null)" == restart-profile ]] && ok "G7: a switch sends restart-profile to the Moneta panel's socket" || gbad "tribune socket got '$(cat "$TMP/tribune.got" 2>/dev/null)'"
+[[ "$(cat "$TMP/tribune.got" 2>/dev/null)" == "restart-profile uid=$me" ]] && ok "G7: a switch sends restart-profile to the Moneta panel's socket" || gbad "tribune socket got '$(cat "$TMP/tribune.got" 2>/dev/null)'"
+# L1 (Janus): a /run/user/N folder whose owner is not N gets nothing.
+new_root sock2 libertas; export_env; grd apply
+other=4242; [[ "$me" == 4242 ]] && other=4243
+mkdir -p "$R/run/user/$other/invictus"
+listen_tribune "$R/run/user/$other/invictus/tribune.sock" "$TMP/tribune2.got"
+grd set custodia; sleep 0.3
+[[ ! -s "$TMP/tribune2.got" ]] && ok "L1-socket-owner: a /run/user/$other folder owned by uid $me is skipped" || gbad "L1-socket-owner: root signalled a socket in a folder its uid does not own: '$(cat "$TMP/tribune2.got")'"
+pkill -f "tribune2.got" 2>/dev/null || true
+# L1 as root: the connection is made as the folder's owner, not as root.
+if [[ $EUID -eq 0 ]]; then
+    new_root sock3 libertas; export_env; grd apply
+    chmod 711 "$TMP"
+    mkdir -p "$R/run/user/65534/invictus"; chown -R 65534 "$R/run/user/65534"
+    listen_tribune "$R/run/user/65534/invictus/tribune.sock" "$TMP/tribune3.got"
+    grd set custodia; sleep 0.3
+    chmod 700 "$TMP"
+    [[ "$(cat "$TMP/tribune3.got" 2>/dev/null)" == "restart-profile uid=65534" ]] && ok "L1-socket-owner: root connects to /run/user/65534's socket as uid 65534" \
+        || gbad "L1-socket-owner: root connected as '$(cat "$TMP/tribune3.got" 2>/dev/null)', not as the folder's owner"
+else
+    echo "note  not root: connecting as the folder's owner is checked in the root run"
+fi
 
 # SM25: timed Libertas.
 new_root timed custodia; export_env; mkdir -p "$R/run/systemd/system"; grd apply
@@ -555,10 +651,33 @@ echo custodia > "$R/etc/invictus/guardrails"; pas polkit-1
 [[ "$(snaps | tail -1)" == "2,single,Before: polkit-1, alex,important=yes" ]] || gbad "Custodia ignores nets: no snapshot: $(snaps | tail -1)"
 rc=0; FAKE_SNAPPER_FAIL=1 PAM_SERVICE=sudo PAM_USER=alex bash "$GRD/pre-admin-snapshot.sh" || rc=$?
 [[ $rc == 0 ]] || gbad "pre-admin-snapshot failed the authentication when snapper failed"
-rm -f "$R/run/invictus/pre-admin-snapshot.stamp"
+rm -f "$R/run/invictus/pre-admin-snapshot.stamp" "$R/run/invictus/pre-admin-snapshot.failed"
 PAM_SERVICE='sudo;rm -rf /' PAM_USER='$(id)' bash "$GRD/pre-admin-snapshot.sh"
 [[ "$(snaps | tail -1)" == "3,single,Before: sudorm-rf, id,important=yes" ]] || gbad "PAM_SERVICE/PAM_USER not cleaned: $(snaps | tail -1)"
 [[ $g_fail == 0 ]] && ok "SM17: only for auth, off only under Libertas with the net off, never fails the password (exit 0)"
+# M1 (Janus): a failing snapper costs one wait, not one per password. The
+# failure is stamped too and retried after 2 minutes; snapper gets 8 s.
+new_root m1 custodia; export_env
+: > "$TMP/sys.log"
+for _ in 1 2 3; do FAKE_SNAPPER_FAIL=1 pas sudo; done
+n_try="$(grep -c 'snapper -c root create' "$TMP/sys.log")"
+touch -d '-3 minutes' "$R/run/invictus/pre-admin-snapshot.failed"
+FAKE_SNAPPER_FAIL=1 pas sudo
+n_try2="$(grep -c 'snapper -c root create' "$TMP/sys.log")"
+touch -d '-3 minutes' "$R/run/invictus/pre-admin-snapshot.failed"; pas sudo
+if [[ $n_try == 1 && $n_try2 == 2 && "$(snaps | wc -l)" == 1 && -f "$R/run/invictus/pre-admin-snapshot.stamp" && ! -e "$R/run/invictus/pre-admin-snapshot.failed" ]] \
+   && [[ "$(grep -c 'INVICTUS_RESULT=failed' "$TMP/acta.log")" == 2 ]]; then
+    ok "M1-failure-stamp: three auths with snapper failing call it once; it is tried again after 2 minutes; a later success stamps as usual"
+else gbad "M1-failure-stamp: snapper called $n_try then $n_try2 times, snaps $(snaps | wc -l)"; fi
+new_root m1t custodia; export_env
+t0="$(date +%s)"; rc=0; FAKE_SNAPPER_SLEEP=60 pas sudo || rc=$?; dt=$(( $(date +%s) - t0 ))
+[[ $rc == 0 && $dt -le 11 ]] && ok "M1-timeout: a hanging snapper holds the password for ${dt}s (at most about 8), and never fails it" \
+    || gbad "M1-timeout: a hanging snapper held the password for ${dt}s (rc $rc)"
+new_root m1c libertas; export_env; grd apply; mkdir -p "$R/run/invictus"
+touch "$R/run/invictus/pre-admin-snapshot.failed"; SYS_USER=alex grd set custodia
+[[ ! -e "$R/run/invictus/pre-admin-snapshot.failed" ]] && ok "M1: the switch to Custodia clears the failure stamp too, so the next admin action tries a copy" \
+    || gbad "M1: set custodia left the failure stamp"
+
 # The PAM file: polkit's own lines plus ours, right after auth include.
 want_pam="$(printf 'auth include system-auth\nauth optional pam_exec.so quiet type=auth /usr/lib/invictus/pre-admin-snapshot\naccount include system-auth\npassword include system-auth\nsession include system-auth')"
 [[ "$(grep -v '^#\|^$' "$GRD/polkit-1.pam" | tr -s ' \t' ' ')" == "$want_pam" ]] \

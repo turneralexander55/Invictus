@@ -19,8 +19,9 @@
 #   guardrails set libertas [--for 1h] [--by USER]
 #   guardrails expire                  the timer's run: ends a timed
 #                                      Libertas whose end has passed
-#   guardrails signal                  tell a running Moneta panel to
+#   guardrails signal [stop]           tell a running Moneta panel to
 #                                      restart with the profile now in place
+#                                      (or, with stop, to end: ai off)
 #   guardrails hold-warning            the pacman hook's text (Custodia only)
 #   guardrails uninstall               the package's pre_remove: take the
 #                                      derived files and lines away
@@ -268,16 +269,34 @@ notice() {  # for invictus-session to show at the next chance (design 12.1)
 # The Moneta panel (tribune, part 6) listens on
 # /run/user/<uid>/invictus/tribune.sock; "restart-profile" makes it end the
 # running agent (SIGTERM to its process group, SIGKILL after 5 s) and start
-# it again under the profile now in place. No socket: nothing to tell.
-signal_assistant() {
-    local s sent=0
+# it again under the profile now in place; "stop" (ai off) makes it end the
+# agent and itself. No socket: nothing to tell.
+# Each user owns their /run/user/<uid> and decides what the socket path
+# points at, so root connects as that folder's owner, and skips a folder
+# whose owner is not the uid it is named after (Janus L1).
+signal_assistant() {  # signal_assistant [restart-profile|stop]
+    local msg="${1:-restart-profile}" s dir n owner gid sent=0
+    local -a as
+    [[ "$msg" == restart-profile || "$msg" == stop ]] || die "signal: restart-profile or stop" 2
     for s in "$R"/run/user/*/invictus/tribune.sock; do
         [[ -S "$s" ]] || continue
-        if timeout 3 python3 -c 'import socket,sys; c=socket.socket(socket.AF_UNIX); c.connect(sys.argv[1]); c.sendall(b"restart-profile\n")' "$s" 2>/dev/null; then
+        dir="${s%/invictus/tribune.sock}"; n="${dir##*/}"
+        owner="$(stat -c %u -- "$dir" 2>/dev/null)" || continue
+        [[ "$n" =~ ^[0-9]+$ && "$owner" == "$n" ]] || continue
+        if [[ "$owner" == "$EUID" ]]; then as=()
+        elif [[ $EUID -eq 0 ]]; then
+            gid="$(getent passwd "$owner" 2>/dev/null | cut -d: -f4)"
+            [[ "$gid" =~ ^[0-9]+$ ]] || gid="$(stat -c %g -- "$dir")"
+            as=(setpriv --reuid="$owner" --regid="$gid" --clear-groups)
+        else continue; fi
+        if timeout 3 "${as[@]}" python3 -c 'import socket,sys; c=socket.socket(socket.AF_UNIX); c.connect(sys.argv[1]); c.sendall(sys.argv[2].encode() + b"\n")' "$s" "$msg" 2>/dev/null; then
             sent=$((sent + 1))
         fi
     done
-    if ((sent)); then say "told $sent Moneta panel(s) to restart with the new rules"; fi
+    if ((sent)); then
+        if [[ "$msg" == stop ]]; then say "told $sent Moneta panel(s) to stop"
+        else say "told $sent Moneta panel(s) to restart with the new rules"; fi
+    fi
 }
 
 # ---- switching ---------------------------------------------------------------------------
@@ -306,7 +325,7 @@ to_custodia() {  # to_custodia HOW
     # authorizations for the session that asked.
     rm -f "$SUDO_TS"/* 2>/dev/null || true
     "$PKCHECK" --revoke-temp >/dev/null 2>&1 || true
-    rm -f "$RUN/pre-admin-snapshot.stamp"
+    rm -f "$RUN/pre-admin-snapshot.stamp" "$RUN/pre-admin-snapshot.failed"
     signal_assistant
     notice "Guard rails are back on"
     local extra=""
@@ -412,7 +431,7 @@ case "$cmd" in
         expire_if_due expired
         ;;
     signal)
-        signal_assistant
+        signal_assistant "${1:-restart-profile}"
         ;;
     uninstall)
         # The package's pre_remove: nothing may point at files about to go.

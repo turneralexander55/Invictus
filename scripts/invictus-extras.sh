@@ -20,6 +20,11 @@
 #              INVICTUS_EXTRAS_PENDING, INVICTUS_EXTRAS_LIST, INVICTUS_LIB
 # ------------------------------------------------------------
 set -euo pipefail
+# The installed copy runs as root and honours no test overrides (Janus L3).
+case "$(readlink -f -- "$0")" in
+    /usr/*) export PATH=/usr/bin
+            while read -r v; do unset "$v"; done < <(compgen -v | grep -E '^(INVICTUS_|ACTA_)' || true) ;;
+esac
 # shellcheck source=scripts/lib/pacman.sh
 . "${INVICTUS_LIB:-/usr/lib/invictus}/lib/pacman.sh"
 

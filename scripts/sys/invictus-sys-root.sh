@@ -28,6 +28,9 @@
 # ------------------------------------------------------------
 set -euo pipefail
 umask 022
+# One locale for every child (pacman, snapper): the caller's LC_* never
+# reach root's tools (Janus, 2026-10-01).
+export LC_ALL=C
 
 REQUEST_ENV="${INVICTUS_REQUEST:-}"
 # The installed copy honours no test overrides, whoever runs it.
@@ -170,11 +173,14 @@ write_full_access() {  # on | off, then the profile link and the panel (12.3)
 rc=0
 case "$VERB" in
     update)
-        # The one update path (design 1.4): pacman -Syu, then the doctor.
-        # Without invictus-tools (a headless machine), the same -Syu alone.
-        home="$(getent passwd "$CALLER_UID" 2>/dev/null | cut -d: -f6)"
+        # The one update path (design 1.4): pacman -Syu, then the doctor's
+        # system checks. Without invictus-tools (a headless machine), the
+        # same -Syu alone. Tier 1 under Custodia (no password), so root
+        # never reads anything in the caller's home folder (H1): none is
+        # passed, and --system skips the per-user checks, which the user
+        # half runs afterwards as the caller.
         if [[ -x "$UPDATE" ]]; then
-            with_pacman "${INHIBIT[@]}" env HOME="${home:-/root}" "$UPDATE" --noconfirm || rc=$?
+            with_pacman "${INHIBIT[@]}" "$UPDATE" --noconfirm --system || rc=$?
         else
             with_pacman "${INHIBIT[@]}" "$PACMAN" -Syu --noconfirm || rc=$?
         fi
