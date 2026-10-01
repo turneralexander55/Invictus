@@ -206,14 +206,17 @@ chmod 755 /usr/bin/claude
 mkdir -p "/run/user/$tu"; chown tester "/run/user/$tu"; chmod 700 "/run/user/$tu"
 offered() { sudo -u tester env XDG_RUNTIME_DIR="/run/user/$tu" HOME="$th" "$@" invictus-provider list --json \
             | python3 -c 'import json,sys; print(" ".join(sorted(x["name"] for x in json.load(sys.stdin) if x["offered"])))'; }
-waitfor() { local i; for i in $(seq 1 100); do eval "$1" && return 0; sleep 0.1; done; return 1; }
+# waitfor CODE: CODE is evaluated on each try, so callers single-quote it.
+waitfor() { for _ in $(seq 1 100); do eval "$1" && return 0; sleep 0.1; done; return 1; }
 sudo -u tester env XDG_RUNTIME_DIR="/run/user/$tu" HOME="$th" tribune run < /dev/null > /tmp/tribune.log 2>&1 &
 tpid=$!
+# shellcheck disable=SC2016 # evaluated on each try
 if waitfor '[[ -S /run/user/$tu/invictus/tribune.sock && -s /tmp/claude.pids ]]' && [[ "$(offered)" == "claude-code none openai-compatible" ]]; then
     ok "tribune runs as tester with the shipped claude-code provider; Libertas without Full access offers no command-line agent"
 else bad "tribune start: $(cat /tmp/tribune.log) offered '$(offered)'"; fi
 c1="$(head -1 /tmp/claude.pids)"
 invictus-sys set-config assistant.full-access on > "$WORK/fa.log" 2>&1 || bad "full access on: $(cat "$WORK/fa.log")"
+# shellcheck disable=SC2016 # evaluated on each try
 if waitfor '[[ $(grep -c "started claude-code" /tmp/tribune.log) == 2 ]]' && ! kill -0 "$c1" 2>/dev/null \
    && [[ "$(readlink /etc/claude-code/managed-settings.json)" == */full.json && "$(offered)" == "claude-code generic-cli none openai-compatible" ]]; then
     ok "SM26: Full access on (real verb) restarts the panel's agent under the full profile (old pid gone) and offers generic-cli"
@@ -223,12 +226,13 @@ if [[ "$(offered INVICTUS_GUARDRAILS=/bin/false INVICTUS_PROVIDERS_DIR=/tmp)" ==
 else bad "installed copy honoured an override: '$(offered INVICTUS_GUARDRAILS=/bin/false INVICTUS_PROVIDERS_DIR=/tmp)'"; fi
 c2="$(sed -n 2p /tmp/claude.pids)"
 invictus-sys guardrails set custodia > "$WORK/cust.log" 2>&1 || bad "set custodia: $(cat "$WORK/cust.log")"
+# shellcheck disable=SC2016 # evaluated on each try
 if waitfor '[[ $(grep -c "started claude-code" /tmp/tribune.log) == 3 ]]' && ! kill -0 "$c2" 2>/dev/null \
    && [[ "$(readlink /etc/claude-code/managed-settings.json)" == */fixed.json && "$(offered)" == "claude-code none openai-compatible" ]]; then
     ok "SM10/SM21: the switch to Custodia restarts the agent under the fixed profile; generic-cli is offered nowhere"
 else bad "custodia restart: $(cat /tmp/tribune.log) offered '$(offered)'"; fi
 /usr/lib/invictus/guardrails signal stop > "$WORK/stop.log" 2>&1
-if waitfor '! kill -0 $tpid 2>/dev/null' && ! pgrep -u tester -f 'sleep 300' >/dev/null && [[ ! -e "/run/user/$tu/invictus/tribune.sock" ]] \
+if waitfor "! kill -0 $tpid 2>/dev/null" && ! pgrep -u tester -f 'sleep 300' >/dev/null && [[ ! -e "/run/user/$tu/invictus/tribune.sock" ]] \
    && grep -q 'told 1 Moneta panel' "$WORK/stop.log"; then
     ok "NA2/G7: root's stop reaches the real panel through setpriv; the panel, its agent and its socket are gone"
 else bad "stop: $(cat "$WORK/stop.log") $(cat /tmp/tribune.log) $(pgrep -u tester -a 2>&1 | paste -sd' ')"; fi
