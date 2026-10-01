@@ -289,6 +289,23 @@ new_env t5b
 export STUB_ROFI_CHOICE=
 "$TOOL" pick >/dev/null 2>&1
 expect "pick on a fresh install has Dusk in place" test -s "$HOME/.config/invictus/current/rofi-picker.rasi"
+# Janus M1: a theme id is a path part. A planted theme whose id climbs out of
+# its folder, or is absolute, must not write anywhere (swatches, apply).
+new_env t5m
+mkdir -p "$HOME/.config/invictus/themes" "$HOME/Pictures"
+echo "family photo" > "$HOME/Pictures/holiday.svg"
+for evil in "../../../../Pictures/holiday" "$HOME/Pictures/holiday" "Dusk Two"; do
+    n=$((${n:-0} + 1))
+    sed "s#^id = \"dusk\"#id = \"$evil\"#; s#^default = true#default = false#" "$REPO/theme/dusk.toml" > "$HOME/.config/invictus/themes/evil$n.toml"
+done
+"$TOOL" swatches > "$TMP/t5m/sw" 2>/dev/null
+"$TOOL" apply "../../../../Pictures/holiday" >/dev/null 2>&1; rc_apply=$?
+"$TOOL" apply "$HOME/Pictures/holiday" >/dev/null 2>&1; rc_abs=$?
+expect "M1: a theme id that climbs out (or is absolute, or has a space) writes no swatch outside swatches/" \
+    bash -c "[[ \"\$(cat '$HOME/Pictures/holiday.svg')\" == 'family photo' ]] && ! grep -qi -e Pictures -e 'Dusk Two' '$TMP/t5m/sw' && ! ls '$HOME/Pictures' | grep -q png"
+expect "M1: such a theme is skipped by list, and apply refuses a path as an id" \
+    bash -c "! '$TOOL' list 2>/dev/null | grep -qi -e Pictures -e 'Dusk Two' && [[ $rc_apply != 0 && $rc_abs != 0 ]] && [[ \"\$(cat '$HOME/Pictures/holiday.svg')\" == 'family photo' ]] && [[ ! -e '$HOME/.local/state/invictus/theme/../../../../Pictures' || -z \"\$(ls -A '$HOME/Pictures' | grep -v holiday.svg)\" ]]"
+unset n
 # swatches: the picker's icons, for first start's Look step too
 new_env t5c
 "$TOOL" swatches > "$TMP/t5c/sw" 2>/dev/null

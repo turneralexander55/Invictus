@@ -36,6 +36,27 @@ import sys
 import tomllib
 from pathlib import Path
 
+
+def _invictus_env():
+    # INVICTUS_* overrides work only from a checkout: scripts/lib/invictus_env.py
+    import importlib.util
+    here = os.path.realpath(__file__)
+    if here.startswith("/usr/"):
+        paths = ["/usr/lib/invictus/lib/invictus_env.py"]
+    else:  # a checkout, or a test's install tree
+        d = os.path.dirname(here)
+        paths = [os.path.join(d, *p, "invictus_env.py") for p in
+                 (("lib",), ("..", "lib"), ("..", "scripts", "lib"), ("..", "..", "lib"),
+                  ("..", "lib", "invictus", "lib"))]
+    path = next(p for p in paths if os.path.isfile(p))
+    spec = importlib.util.spec_from_file_location("invictus_env", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.for_script(here)
+
+
+ENV = _invictus_env()
+
 # ---------------------------------------------------------------- schema
 
 DARK = "night basalt stone line marble parchment ash sol sol-bright pompeii laurel lapis verdigris tyrian".split()
@@ -44,6 +65,9 @@ TERMINAL = ("background foreground selection-background selection-foreground cur
             + [f"color{i}" for i in range(16)])
 META = "id name source concept wallpaper lock gnome-accent papirus-folders default".split()
 CONCEPT_MAX = 62
+# A theme id names files and folders (generated output, swatches, the
+# `current` link), so it is a plain name, never a path (Janus M1).
+ID_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
 HEX_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 # Text tokens that must reach AA (4.5) on each surface, from look.md.
@@ -67,15 +91,15 @@ def home():
 
 
 def config_dir():
-    return Path(os.environ.get("INVICTUS_CONFIG") or home() / ".config" / "invictus")
+    return Path(ENV("INVICTUS_CONFIG") or home() / ".config" / "invictus")
 
 
 def state_dir():
-    return Path(os.environ.get("INVICTUS_STATE") or home() / ".local" / "state" / "invictus" / "theme")
+    return Path(ENV("INVICTUS_STATE") or home() / ".local" / "state" / "invictus" / "theme")
 
 
 def builtin_dir():
-    env = os.environ.get("INVICTUS_THEME_DIR")
+    env = ENV("INVICTUS_THEME_DIR")
     here = Path(__file__).resolve().parent
     for c in ([Path(env)] if env else []) + [here, here.parent / "theme", Path("/usr/share/invictus/theme")]:
         if (c / "templates").is_dir() and any(c.glob("*.toml")):
@@ -84,7 +108,7 @@ def builtin_dir():
 
 
 def wallpaper_dir():
-    env = os.environ.get("INVICTUS_WALLPAPERS")
+    env = ENV("INVICTUS_WALLPAPERS")
     if env:
         return Path(env)
     for c in (builtin_dir().parent / "assets" / "wallpapers", Path("/usr/share/invictus/wallpapers")):
@@ -94,14 +118,14 @@ def wallpaper_dir():
 
 
 def game_mode_file():
-    env = os.environ.get("INVICTUS_GAMEMODE_FILE")
+    env = ENV("INVICTUS_GAMEMODE_FILE")
     if env:
         return Path(env)
     return Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "invictus" / "game-mode"
 
 
 def tool(envname, default):
-    return os.environ.get(envname) or default
+    return ENV(envname, default)
 
 
 # ---------------------------------------------------------------- colour maths
@@ -198,9 +222,12 @@ class Theme:
 def load_file(path):
     try:
         with open(path, "rb") as f:
-            return Theme(tomllib.load(f), Path(path))
+            t = Theme(tomllib.load(f), Path(path))
     except (OSError, tomllib.TOMLDecodeError) as e:
         raise ThemeError(f"{path}: {e}")
+    if not isinstance(t.id, str) or not ID_RE.fullmatch(t.id):
+        raise ThemeError(f"{path}: the id {t.id!r} is not a plain name (a-z, 0-9 and -, up to 32)")
+    return t
 
 
 def all_themes():
@@ -234,6 +261,8 @@ def all_themes():
 
 
 def find_theme(tid):
+    if not isinstance(tid, str) or not ID_RE.fullmatch(tid):
+        raise ThemeError(f"'{tid}' is not a theme id")
     # user folder first (spec), then built-in
     udir = config_dir() / "themes" / f"{tid}.toml"
     if udir.is_file():
@@ -566,6 +595,8 @@ def swatch(t):
     sw = state_dir().parent / "swatches"
     sw.mkdir(parents=True, exist_ok=True)
     icon = sw / f"{t.id}.svg"
+    if not ID_RE.fullmatch(t.id) or icon.resolve().parent != sw.resolve():
+        raise ThemeError(f"theme id {t.id!r} would leave the swatches folder")
     icon.write_text(render((builtin_dir() / "templates" / "swatch.svg").read_text(), t, "", "swatch.svg"))
     try:
         if rsvg_to_png(icon, sw / f"{t.id}.png", 88, 88):
