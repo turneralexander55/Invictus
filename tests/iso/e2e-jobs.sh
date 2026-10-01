@@ -137,8 +137,9 @@ check "limine EFI binary on the ESP" test -s "$T/boot/EFI/limine/limine_x64.efi"
 check "no EFI variables here: limine is the fallback loader" test -s "$T/boot/EFI/BOOT/BOOTX64.EFI"
 initrd="$(compgen -G "$T/boot/*/linux-cachyos/initramfs" | head -n 1)"
 if [[ -n "$initrd" ]]; then
-    lsinitcpio -a "$initrd" >"$W/lsinit" 2>&1 || true
-    check "the initramfs has the snapshot overlay unit" grep -q 'overlayfs-setup' <(lsinitcpio "$initrd")
+    # lsinitcpio lives in the target (mkinitcpio), not in this container.
+    arch-chroot "$T" lsinitcpio "${initrd#"$T"}" >"$W/lsinit" 2>&1 || true
+    check "the initramfs has the snapshot overlay unit" grep -q 'overlayfs-setup' "$W/lsinit"
 else
     bad "an initramfs to inspect"
 fi
@@ -155,13 +156,14 @@ check "no nested .snapshots subvolume left in @home" bash -c "! grep -Eq 'path @
 arch-chroot "$T" snapper --no-dbus -c root list >"$W/root-list" 2>&1 || true
 check "snapshot 1 of / is Fresh install" grep -q 'Fresh install' "$W/root-list"
 check "snapshot 1 lives in @snapshots" test -d "$T/.snapshots/1/snapshot/etc"
-arch-chroot "$T" snapper --no-dbus -c home get-config >"$W/home-cfg" 2>&1 || true
-check "home config: ALLOW_GROUPS users" grep -Eq 'ALLOW_GROUPS +\| users' "$W/home-cfg"
-check "home config: SYNC_ACL yes" grep -Eq 'SYNC_ACL +\| yes' "$W/home-cfg"
-check "home config: hourly timeline 24, daily 7" bash -c "grep -Eq 'TIMELINE_LIMIT_HOURLY +\\| 24' '$W/home-cfg' && grep -Eq 'TIMELINE_LIMIT_DAILY +\\| 7' '$W/home-cfg'"
+# Read the config files: snapper's get-config table uses box-drawing
+# separators in newer versions, so grepping its table is brittle.
+hc="$T/etc/snapper/configs/home"; rc_="$T/etc/snapper/configs/root"
+check "home config: ALLOW_GROUPS users" grep -qx 'ALLOW_GROUPS="users"' "$hc"
+check "home config: SYNC_ACL yes" grep -qx 'SYNC_ACL="yes"' "$hc"
+check "home config: hourly timeline 24, daily 7" bash -c "grep -qx 'TIMELINE_LIMIT_HOURLY=\"24\"' '$hc' && grep -qx 'TIMELINE_LIMIT_DAILY=\"7\"' '$hc'"
 check "the users group can open /home/.snapshots (ACL)" bash -c "getfacl -p '$T/home/.snapshots' 2>/dev/null | grep -q '^group:users:r-x'"
-arch-chroot "$T" snapper --no-dbus -c root get-config >"$W/root-cfg" 2>&1 || true
-check "root config: no timeline" grep -Eq 'TIMELINE_CREATE +\| no' "$W/root-cfg"
+check "root config: no timeline" grep -qx 'TIMELINE_CREATE="no"' "$rc_"
 check "services enabled" bash -c "for u in snapper-cleanup.timer snapper-timeline.timer limine-snapper-sync.service; do arch-chroot '$T' systemctl is-enabled \$u >/dev/null || exit 1; done"
 check "the VM folder is No_COW" bash -c "lsattr -d '$T/var/lib/invictus/vm' | cut -d' ' -f1 | grep -q C"
 if grep -q 'snapshot entries added' "$W/snap.log"; then
