@@ -540,7 +540,7 @@ if os.fork() == 0:
 ' "$1" "$2"
 }
 # got FILE: wait up to 3 s for the listener to write FILE (load-proof).
-got() { local i; for i in $(seq 30); do [[ -s "$1" ]] && break; sleep 0.1; done; cat "$1" 2>/dev/null; }
+got() { local _; for _ in $(seq 30); do [[ -s "$1" ]] && break; sleep 0.1; done; cat "$1" 2>/dev/null; }
 me="$(id -u)"
 new_root sock libertas; export_env; grd apply
 mkdir -p "$R/run/user/$me/invictus"
