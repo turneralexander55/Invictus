@@ -1,0 +1,612 @@
+# Group 17 of tests/pkgs/run.sh (through moneta.sh): the Moneta panel
+# (tribune), the provider layer, the chat client, the MCP server and the A6
+# config guard. Prints "ok    ..." or "FAIL  ..." lines; exit 1 on any FAIL.
+#
+# usage: python3 -I moneta_tests.py REPO TMPDIR
+#
+# Faked at the seam: `guardrails status` (a script reading a state file),
+# secret-tool, invictus-sys, invictus-doctor and journalctl (recorders), the
+# agent (a script that leaves a grandchild in its own session) and an
+# OpenAI-compatible endpoint (http.server on 127.0.0.1).
+import http.server
+import json
+import os
+import shutil
+import socket
+import stat
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+
+REPO, TMP = sys.argv[1], sys.argv[2]
+MON = os.path.join(REPO, "scripts/moneta/moneta.py")
+MCP = os.path.join(REPO, "scripts/moneta/mcp.py")
+GUARD = os.path.join(REPO, "scripts/guardrails/claude/config-guard.py")
+PY = sys.executable
+FAILED = 0
+
+
+def ok(msg):
+    print(f"ok    {msg}", flush=True)
+
+
+def bad(msg):
+    global FAILED
+    FAILED = 1
+    print(f"FAIL  {msg}", flush=True)
+
+
+def check(cond, good, failmsg):
+    ok(good) if cond else bad(failmsg)
+    return cond
+
+
+W = os.path.join(TMP, "moneta")
+shutil.rmtree(W, ignore_errors=True)
+FAKE = os.path.join(W, "fake")
+os.makedirs(FAKE)
+STATE = os.path.join(W, "state")
+LOG = os.path.join(W, "log")
+
+
+def script(name, body):
+    p = os.path.join(FAKE, name)
+    with open(p, "w") as f:
+        f.write("#!/bin/bash\n" + body)
+    os.chmod(p, 0o755)
+    return p
+
+
+script("guardrails", '[[ "$1" == status ]] || exit 2\n[[ -f "$FAKE_STATE" ]] || exit 1\ncat "$FAKE_STATE"\n')
+script("invictus-sys", 'printf "%s\\n" "$(printf "%q " "$@")" >> "$FAKE_LOG.sys"\necho "invictus-sys: ok snapshot=7"\nexit "${FAKE_SYS_RC:-0}"\n')
+script("secret-tool", 'printf "%s\\n" "$*" >> "$FAKE_LOG.secret"\n'
+       'if [[ "$1" == store ]]; then cat > "$FAKE_LOG.secret-stdin"; fi\n'
+       'if [[ "$1" == lookup && -f "$FAKE_KEY" ]]; then cat "$FAKE_KEY"; fi\n')
+script("doctor", 'echo "doctor $*" >> "$FAKE_LOG.doctor"\necho "FAIL  hypr: user.lua line 3"\nexit "${FAKE_DOCTOR_RC:-0}"\n')
+script("journalctl", 'echo \'{"__REALTIME_TIMESTAMP":"1759320000000000","INVICTUS_VERB":"install","INVICTUS_ARGS":"firefox","INVICTUS_RESULT":"ok","INVICTUS_SNAPSHOT":"12","INVICTUS_REQUEST":"t-1","INVICTUS_USER":"alex"}\'\n')
+# The agent: records its pid, leaves a grandchild in its own session (a
+# process group kill alone would miss it), and optionally ignores SIGTERM.
+AGENT = script("agent", 'echo "$$" >> "$FAKE_LOG.agent"\n'
+               'setsid sleep 300 & echo "$!" >> "$FAKE_LOG.grandchild"\n'
+               '[[ -n "${AGENT_IGNORE_TERM:-}" ]] && trap "" TERM\n'
+               'echo "agent env thread=$INVICTUS_THREAD provider=$INVICTUS_PROVIDER" >> "$FAKE_LOG.agent-env"\n'
+               'while :; do sleep 0.2; done\n')
+SHELL_AGENT = script("shell-agent", 'echo ran >> "$FAKE_LOG.shell"\nsleep 300\n')
+
+SYSPROV = os.path.join(W, "providers")
+shutil.copytree(os.path.join(REPO, "scripts/moneta/providers"), SYSPROV)
+# The shipped claude-code provider runs /usr/bin/claude; here, the fake agent.
+with open(os.path.join(SYSPROV, "claude-code/provider.toml")) as f:
+    shipped_claude = f.read()
+with open(os.path.join(SYSPROV, "claude-code/provider.toml"), "w") as f:
+    f.write(shipped_claude.replace('chat = ["/usr/bin/claude", "--plugin-dir", "/usr/share/invictus/claude-plugin"]',
+                                   f'chat = ["{AGENT}"]'))
+
+HOME = os.path.join(W, "home")
+CONF = os.path.join(HOME, ".config")
+# A socket path must fit in 108 bytes: the runtime folder goes in /tmp.
+RUN = tempfile.mkdtemp(prefix="mon.", dir="/tmp")
+os.makedirs(CONF)
+
+
+def state(rails="libertas", full="off", ai="on"):
+    with open(STATE, "w") as f:
+        f.write(f"rails={rails}\neffective={rails}\nfull-access={full}\nai={ai}\n")
+
+
+def envmap(**extra):
+    e = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": HOME, "XDG_CONFIG_HOME": CONF,
+         "XDG_RUNTIME_DIR": RUN, "INVICTUS_GUARDRAILS": os.path.join(FAKE, "guardrails"),
+         "INVICTUS_PROVIDERS_DIR": SYSPROV, "INVICTUS_SYS": os.path.join(FAKE, "invictus-sys"),
+         "INVICTUS_SECRET_TOOL": os.path.join(FAKE, "secret-tool"), "INVICTUS_JOURNALCTL": os.path.join(FAKE, "journalctl"),
+         "INVICTUS_DOCTOR": os.path.join(FAKE, "doctor"), "FAKE_STATE": STATE, "FAKE_LOG": LOG,
+         "TRIBUNE_GRACE": "2", "LC_ALL": "C.UTF-8"}
+    e.update({k: v for k, v in extra.items() if v is not None})
+    return e
+
+
+def provider(*args, stdin="", **extra):
+    return subprocess.run([PY, "-I", MON, "provider", *args], input=stdin, capture_output=True, text=True,
+                          env=envmap(**extra), timeout=30)
+
+
+def read(path, default=""):
+    try:
+        with open(path) as f:
+            return f.read()
+    except OSError:
+        return default
+
+
+def reset_logs():
+    for n in os.listdir(W):
+        if n.startswith("log"):
+            os.unlink(os.path.join(W, n))
+
+
+def settings(text):
+    os.makedirs(os.path.join(CONF, "invictus"), exist_ok=True)
+    with open(os.path.join(CONF, "invictus/moneta.toml"), "w") as f:
+        f.write(text)
+
+
+def alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    try:
+        with open(f"/proc/{pid}/stat") as f:
+            return f.read().rsplit(")", 1)[1].split()[0] != "Z"
+    except OSError:
+        return False
+
+
+def pids(name):
+    return [int(x) for x in read(f"{LOG}.{name}").split()]
+
+
+# ---- provider layer -------------------------------------------------------------------
+print("== Moneta: provider layer", flush=True)
+state()
+r = provider("list", "--json")
+rows = {x["name"]: x for x in json.loads(r.stdout or "[]")} if r.returncode == 0 else {}
+check(set(rows) == {"claude-code", "generic-cli", "openai-compatible", "none"} and rows["claude-code"]["selected"],
+      "4.2: four shipped providers (claude-code, generic-cli, openai-compatible, none); claude-code is the default",
+      f"provider list: rc {r.returncode} {r.stdout} {r.stderr}")
+
+# A home provider never replaces a shipped one (A8: the agent cannot change
+# its own command by writing ~/.config/invictus/providers/claude-code).
+os.makedirs(os.path.join(CONF, "invictus/providers/claude-code"))
+with open(os.path.join(CONF, "invictus/providers/claude-code/provider.toml"), "w") as f:
+    f.write(f'name = "claude-code"\nkind = "cli"\nchat = ["{SHELL_AGENT}"]\n')
+os.makedirs(os.path.join(CONF, "invictus/providers/mine"))
+with open(os.path.join(CONF, "invictus/providers/mine/provider.toml"), "w") as f:
+    f.write(f'name = "mine"\nkind = "cli"\nchat = ["{SHELL_AGENT}"]\n')
+r = provider("list", "--json")
+rows = {x["name"]: x for x in json.loads(r.stdout or "[]")}
+check(rows.get("claude-code", {}).get("source") == "system" and rows.get("mine", {}).get("command_agent") is True,
+      "A8: a home provider named claude-code is ignored; a home cli provider counts as a command-line agent",
+      f"shadowing: {rows}")
+
+# SM10, SM26, A13: who may run, from root-owned state only.
+matrix = []
+for rails, full, ai in (("custodia", "off", "on"), ("custodia", "on", "on"), ("libertas", "off", "on"),
+                        ("libertas", "on", "on"), ("libertas", "on", "off")):
+    state(rails, full, ai)
+    r = provider("list", "--json")
+    offered = sorted(x["name"] for x in json.loads(r.stdout or "[]") if x["offered"])
+    matrix.append((rails, full, ai, offered))
+want = [("custodia", "off", "on", ["claude-code", "none", "openai-compatible"]),
+        ("custodia", "on", "on", ["claude-code", "none", "openai-compatible"]),
+        ("libertas", "off", "on", ["claude-code", "none", "openai-compatible"]),
+        ("libertas", "on", "on", ["claude-code", "generic-cli", "mine", "none", "openai-compatible"]),
+        ("libertas", "on", "off", ["none"])]
+check(matrix == want, "SM10/SM26: generic-cli and home cli agents are offered only under Libertas with Full access; "
+      "No AI offers none", f"offered matrix {matrix}")
+os.unlink(STATE)
+r = provider("list", "--json")
+offered = sorted(x["name"] for x in json.loads(r.stdout or "[]") if x["offered"])
+check(offered == ["none"], "unreadable guard-rails state: only none (fails closed)", f"no state: {offered}")
+
+state("custodia", "on")
+before = read(os.path.join(CONF, "invictus/moneta.toml"), None)
+r = provider("set", "generic-cli", "--command", "--", SHELL_AGENT)
+check(r.returncode == 3 and "command-line agent is off" in r.stderr
+      and read(os.path.join(CONF, "invictus/moneta.toml"), None) == before,
+      "SM10: under Custodia `set generic-cli` is refused (exit 3) and the settings file is unchanged",
+      f"set generic-cli under custodia: rc {r.returncode} {r.stderr}")
+
+state("libertas", "on")
+r = provider("set", "generic-cli", "--command", "--", SHELL_AGENT, "-x")
+mode = stat.S_IMODE(os.stat(os.path.join(CONF, "invictus/moneta.toml")).st_mode) if r.returncode == 0 else 0
+got = json.loads(provider("get", "--json").stdout or "{}")
+check(r.returncode == 0 and mode == 0o600 and got.get("name") == "generic-cli" and got.get("permitted"),
+      "Libertas + Full access: generic-cli set with its command; moneta.toml is 0600",
+      f"set generic-cli: rc {r.returncode} {r.stderr} mode {oct(mode)} get {got}")
+state("libertas", "off")
+r = provider("check")
+check(r.returncode == 3 and "command-line agent is off" in r.stdout,
+      "SM26: a configured generic-cli fails `check` once Full access is off", f"check: {r.returncode} {r.stdout}")
+
+# Endpoints: plain http only at home, no credentials in the URL.
+results = {}
+for url in ("http://example.com/v1", "http://8.8.8.8/v1", "http://192.168.1.5:11434/v1", "http://localhost:8080/v1",
+            "http://box.lan/v1", "https://api.example.com/v1", "http://u:p@192.168.1.5/v1", "file:///etc/passwd"):
+    results[url] = provider("set", "openai-compatible", "--endpoint", url, "--model", "m1").returncode
+check(results == {"http://example.com/v1": 2, "http://8.8.8.8/v1": 2, "http://192.168.1.5:11434/v1": 0,
+                  "http://localhost:8080/v1": 0, "http://box.lan/v1": 0, "https://api.example.com/v1": 0,
+                  "http://u:p@192.168.1.5/v1": 2, "file:///etc/passwd": 2},
+      "keys never cross the internet in clear text: http only to this computer or the home network",
+      f"endpoints: {results}")
+
+# Keys: stdin to secret-tool, never argv; the namespace ai off clears.
+reset_logs()
+provider("set", "openai-compatible", "--endpoint", "http://127.0.0.1:9/v1", "--model", "m1")
+r = provider("key", "set", "openai-compatible", stdin="sk-test-secret-123\n")
+argv_log = read(f"{LOG}.secret")
+check(r.returncode == 0 and "sk-test-secret-123" not in argv_log and read(f"{LOG}.secret-stdin") == "sk-test-secret-123"
+      and "invictus-namespace invictus/provider provider openai-compatible endpoint http://127.0.0.1:9/v1" in argv_log,
+      "S2: the API key goes to the keyring on secret-tool's stdin, under invictus/provider and its endpoint",
+      f"key set: rc {r.returncode} argv {argv_log!r} stdin {read(f'{LOG}.secret-stdin')!r}")
+reset_logs()
+provider("key", "clear")
+check(read(f"{LOG}.secret").strip() == "clear invictus-namespace invictus/provider",
+      "NA2: `key clear` removes every Moneta key by the namespace", f"key clear: {read(f'{LOG}.secret')!r}")
+
+# ---- the panel ---------------------------------------------------------------------------
+print("== Moneta: the panel (tribune)", flush=True)
+SOCK = os.path.join(RUN, "invictus/tribune.sock")
+
+
+class Panel:
+    def __init__(self, **extra):
+        self.out = os.path.join(W, f"panel.{time.time_ns()}")
+        self.f = open(self.out, "w")
+        self.p = subprocess.Popen([PY, "-I", MON, "run"], stdin=subprocess.PIPE, stdout=self.f, stderr=subprocess.STDOUT,
+                                  env=envmap(**extra), text=True)
+
+    def text(self):
+        return read(self.out)
+
+    def wait_for(self, what, timeout=10, count=1):
+        end = time.time() + timeout
+        while time.time() < end:
+            if self.text().count(what) >= count:
+                return True
+            if self.p.poll() is not None:
+                return self.text().count(what) >= count
+            time.sleep(0.05)
+        return False
+
+    def finish(self):
+        if self.p.poll() is None:
+            self.p.terminate()
+            try:
+                self.p.wait(10)
+            except subprocess.TimeoutExpired:
+                self.p.kill()
+        for pid in pids("agent") + pids("grandchild"):
+            try:
+                os.kill(pid, 9)
+            except OSError:
+                pass
+
+
+def send(msg):
+    s = socket.socket(socket.AF_UNIX)
+    try:
+        s.connect(SOCK)
+        s.sendall(msg)
+    except OSError:
+        pass  # the panel hangs up after 64 bytes
+    s.close()
+
+
+def gone(pid_list, timeout):
+    end = time.time() + timeout
+    while time.time() < end:
+        if not any(alive(p) for p in pid_list):
+            return True
+        time.sleep(0.05)
+    return False
+
+
+state("libertas", "off")
+settings('provider = "claude-code"\n')
+reset_logs()
+P = Panel()
+started = P.wait_for("[tribune] started claude-code")
+time.sleep(0.3)
+st = os.stat(SOCK) if os.path.exists(SOCK) else None
+check(started and st and stat.S_ISSOCK(st.st_mode) and stat.S_IMODE(st.st_mode) == 0o600
+      and stat.S_IMODE(os.stat(os.path.dirname(SOCK)).st_mode) == 0o700,
+      "panel: starts claude-code and listens on $XDG_RUNTIME_DIR/invictus/tribune.sock (0600, folder 0700)",
+      f"panel start: {P.text()!r} sock {st}")
+env_line = read(f"{LOG}.agent-env")
+check("provider=claude-code" in env_line and "thread=t-" in env_line,
+      "panel: the agent gets its thread id (INVICTUS_THREAD) for invictus-sys --request", f"agent env {env_line!r}")
+
+second = subprocess.run([PY, "-I", MON, "run"], stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                        env=envmap(), timeout=20)
+check(second.returncode == 3 and "already open" in second.stdout and os.path.exists(SOCK),
+      "panel: a second panel refuses (exit 3) and leaves the first one's socket alone",
+      f"second panel: {second.returncode} {second.stdout!r}")
+
+a1 = pids("agent")
+send(b"rm -rf ~\n")
+send(b"x" * 5000)
+send(b"restart-profilex\n")
+time.sleep(0.6)
+check(a1 and all(alive(p) for p in a1) and P.p.poll() is None and P.text().count("[tribune] started") == 1,
+      "panel: anything but exactly 'stop' or 'restart-profile' is ignored", f"junk messages: {P.text()!r}")
+
+t0 = time.time()
+send(b"restart-profile\n")
+restarted = P.wait_for("[tribune] started claude-code", count=2, timeout=8)
+a2 = [p for p in pids("agent") if p not in a1]
+old_gone = gone(a1 + pids("grandchild")[:1], 6)
+check(restarted and a2 and old_gone and time.time() - t0 < 5 and "starting again with the new rules" in P.text(),
+      f"G7/SM26: restart-profile ends the agent and what it left behind and starts it again (new pid) in {time.time() - t0:.1f} s",
+      f"restart: restarted={restarted} new={a2} old_gone={old_gone} {P.text()!r}")
+
+t0 = time.time()
+send(b"stop\n")
+try:
+    rc = P.p.wait(8)
+except subprocess.TimeoutExpired:
+    rc = None
+all_pids = pids("agent") + pids("grandchild")
+check(rc == 0 and gone(all_pids, 3) and not os.path.exists(SOCK) and time.time() - t0 < 5
+      and "AI was turned off" in P.text(),
+      f"NA2: stop ends the agent, its leftovers and the panel within 5 s ({time.time() - t0:.1f} s); the socket is removed",
+      f"stop: rc {rc} alive {[p for p in all_pids if alive(p)]} sock {os.path.exists(SOCK)} {P.text()!r}")
+P.finish()
+
+# An agent that ignores SIGTERM is killed after the grace time.
+reset_logs()
+P = Panel(AGENT_IGNORE_TERM="1", TRIBUNE_GRACE="1")
+P.wait_for("[tribune] started")
+time.sleep(0.3)
+a1 = pids("agent")
+send(b"stop\n")
+try:
+    rc = P.p.wait(8)
+except subprocess.TimeoutExpired:
+    rc = None
+check(rc == 0 and gone(a1, 2), "G7: an agent that ignores SIGTERM gets SIGKILL after the grace time",
+      f"TERM-ignoring agent: rc {rc} alive {[p for p in a1 if alive(p)]}")
+P.finish()
+
+# SM26: a switch that turns Full access off ends generic-cli and does not start it again.
+reset_logs()
+state("libertas", "on")
+settings(f'provider = "generic-cli"\n\n["generic-cli"]\nchat = ["{AGENT}"]\n')
+P = Panel()
+started = P.wait_for("[tribune] started generic-cli")
+a1 = pids("agent")
+state("custodia", "off")
+t0 = time.time()
+send(b"restart-profile\n")
+refused = P.wait_for("command-line agent is off", timeout=8)
+time.sleep(0.5)
+check(started and refused and gone(a1, 5) and time.time() - t0 < 5 and P.text().count("[tribune] started") == 1
+      and P.p.poll() is None,
+      "SM26: after the switch to Custodia generic-cli is gone within 5 s and the panel refuses to start it again",
+      f"generic-cli after custodia: started={started} refused={refused} {P.text()!r}")
+try:
+    P.p.stdin.write("\n")
+    P.p.stdin.flush()
+except OSError:
+    pass
+time.sleep(0.8)
+check(P.text().count("[tribune] started") == 1 and not read(f"{LOG}.shell"),
+      "SM26: pressing Enter in the panel still does not start it", f"enter: {P.text()!r}")
+P.finish()
+
+# The panel refuses a home cli provider without Full access, and every provider with No AI.
+reset_logs()
+state("libertas", "off")
+settings('provider = "mine"\n')
+P = Panel()
+r1 = P.wait_for("command-line agent is off")
+P.finish()
+state("libertas", "on", "off")
+settings('provider = "claude-code"\n')
+P = Panel()
+r2 = P.wait_for("AI is off")
+P.finish()
+check(r1 and r2 and not read(f"{LOG}.shell") and not read(f"{LOG}.agent"),
+      "A13/NA: a home cli agent needs Full access; with No AI nothing starts", f"refusals: {r1} {r2}")
+
+# Acta in the panel's header.
+state("libertas", "off")
+settings('provider = "none"\n')
+P = Panel()
+P.wait_for("No assistant is set up")
+check("install  firefox  ok  snapshot=12" in P.text(), "Acta: the panel shows the last invictus-sys calls",
+      f"acta header: {P.text()!r}")
+P.finish()
+r = subprocess.run([PY, "-I", MON, "acta", "-n", "5"], capture_output=True, text=True, env=envmap(), timeout=20)
+check(r.returncode == 0 and "thread t-1" in r.stdout, "Acta: `tribune acta` lists them with the thread that asked",
+      f"tribune acta: {r.stdout!r}")
+
+# ---- the chat client (api providers, A13) ---------------------------------------------
+print("== Moneta: chat client", flush=True)
+REQUESTS = []
+REPLY = {"text": ""}
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length", "0"))
+        REQUESTS.append({"path": self.path, "auth": self.headers.get("Authorization"),
+                         "body": json.loads(self.rfile.read(n))})
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.end_headers()
+        for part in (REPLY["text"][:20], REPLY["text"][20:]):
+            self.wfile.write(b"data: " + json.dumps({"choices": [{"delta": {"content": part}}]}).encode() + b"\n\n")
+        self.wfile.write(b"data: [DONE]\n\n")
+
+
+srv = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+threading.Thread(target=srv.serve_forever, daemon=True).start()
+endpoint = f"http://127.0.0.1:{srv.server_port}/v1"
+settings(f'provider = "openai-compatible"\n\n["openai-compatible"]\nendpoint = "{endpoint}"\nmodel = "m1"\n')
+KEYFILE = os.path.join(W, "key")
+with open(KEYFILE, "w") as f:
+    f.write("sk-home-key\n")
+REPLY["text"] = ("Sure.\x1b]52;c;ZXZpbA==\x07\x1b[2J Here:\n```invictus-sys\ninstall firefox\n"
+                 "guardrails set libertas\nset-config assistant.full-access on\ninstall foo; rm -rf ~\n"
+                 "ai on\ninstall --request=x foo\n```\n")
+
+
+def chat(lines, **extra):
+    return subprocess.run([PY, "-I", MON, "chat"], input=lines, capture_output=True, text=True,
+                          env=envmap(FAKE_KEY=KEYFILE, INVICTUS_THREAD="t-chat-1", **extra), timeout=30)
+
+
+reset_logs()
+r = chat("hello\n/quit\n")
+buttons = [ln.strip() for ln in r.stdout.splitlines() if ln.strip().startswith("[")]
+check(r.returncode == 0 and buttons == ["[1] invictus-sys install firefox   (type 1 and Enter to run it)"]
+      and not read(f"{LOG}.sys"),
+      "A13: a proposal shows as a numbered button and nothing runs; guard rails, full access, ai, options and "
+      "shell tricks are never offered", f"chat buttons {buttons} sys log {read(f'{LOG}.sys')!r} out {r.stdout!r}")
+check("\x1b" not in r.stdout and "\x07" not in r.stdout,
+      "the reply reaches the terminal with no escape sequences (no clipboard or screen tricks)", f"escapes in {r.stdout!r}")
+req = REQUESTS[-1] if REQUESTS else {}
+msgs = req.get("body", {}).get("messages", [])
+check(req.get("auth") == "Bearer sk-home-key" and req.get("path") == "/v1/chat/completions"
+      and [m["role"] for m in msgs] == ["system", "user"] and msgs[1]["content"] == "hello",
+      "A12: the request carries the person's words and the fixed system prompt, nothing else; the key comes from the keyring",
+      f"request {req}")
+
+reset_logs()
+r = chat("hello\n2\n1\n/quit\n")
+check(read(f"{LOG}.sys").strip() == "--request t-chat-1 install firefox" and "Done." in r.stdout,
+      "A13: pressing 1 runs exactly `invictus-sys --request <thread> install firefox`; a number with no button runs nothing",
+      f"press: {read(f'{LOG}.sys')!r} {r.stdout[-300:]!r}")
+reset_logs()
+r = chat("hello\n1\n", FAKE_SYS_RC="126")
+check("You said no" in r.stdout, "exit 126 from invictus-sys reads as 'You said no; nothing changed.'", f"126: {r.stdout[-200:]!r}")
+
+settings('provider = "openai-compatible"\n\n["openai-compatible"]\nendpoint = "http://example.com/v1"\nmodel = "m1"\n')
+n_before = len(REQUESTS)
+reset_logs()
+r = chat("hello\n/quit\n")
+check(r.returncode == 3 and len(REQUESTS) == n_before and not read(f"{LOG}.secret").count("lookup"),
+      "an endpoint edited to plain http on the internet is refused before any key is read or sent",
+      f"edited endpoint: rc {r.returncode} {r.stdout!r}")
+srv.shutdown()
+
+# ---- MCP server ------------------------------------------------------------------------
+print("== Moneta: MCP server", flush=True)
+
+
+def mcp(calls, **extra):
+    lines = [json.dumps({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}}),
+             json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"})]
+    for i, (method, params) in enumerate(calls, 1):
+        lines.append(json.dumps({"jsonrpc": "2.0", "id": i, "method": method, "params": params}))
+    r = subprocess.run([PY, "-I", MCP], input="\n".join(lines) + "\n", capture_output=True, text=True,
+                       env=envmap(INVICTUS_THREAD="t-mcp-1", **extra), timeout=30)
+    return {m["id"]: m for m in (json.loads(x) for x in r.stdout.splitlines())}
+
+
+reset_logs()
+out = mcp([("tools/list", {})])
+names = sorted(t["name"] for t in out.get(1, {}).get("result", {}).get("tools", []))
+check(out.get(0, {}).get("result", {}).get("serverInfo", {}).get("name") == "invictus"
+      and names == ["acta", "doctor", "package_install", "package_remove", "report_collect", "rollback", "service_set",
+                    "snapshot", "update_now"],
+      "MCP: initialize, then exactly nine tools; none for the guard rails, Full access or AI on/off (SM26)", f"tools {names}")
+
+
+def text_of(m):
+    return "".join(c.get("text", "") for c in m.get("result", {}).get("content", []))
+
+
+out = mcp([("tools/call", {"name": "package_install", "arguments": {"names": ["firefox", "git"]}}),
+           ("tools/call", {"name": "service_set", "arguments": {"unit": "bluetooth.service", "action": "restart"}}),
+           ("tools/call", {"name": "snapshot", "arguments": {"description": "before the new theme"}})])
+check([ln.strip() for ln in read(f"{LOG}.sys").splitlines()] == ["--request t-mcp-1 install firefox git",
+                                          "--request t-mcp-1 service restart bluetooth.service",
+                                          "--request t-mcp-1 snapshot before the new theme"]
+      and not out[1]["result"]["isError"],
+      "MCP: tools call invictus-sys with argv only and the thread id", f"mcp sys log {read(f'{LOG}.sys')!r}")
+reset_logs()
+out = mcp([("tools/call", {"name": "package_install", "arguments": {"names": ["-Syu"]}}),
+           ("tools/call", {"name": "package_install", "arguments": {"names": "firefox; rm -rf ~"}}),
+           ("tools/call", {"name": "service_set", "arguments": {"unit": "x", "action": "mask"}}),
+           ("tools/call", {"name": "update_now", "arguments": {"command": "rm -rf ~"}}),
+           ("tools/call", {"name": "snapshot", "arguments": {"description": "a --for 7d"}}),
+           ("tools/call", {"name": "guardrails_set", "arguments": {}}),
+           ("tools/call", {"name": "rollback", "arguments": {"id": "1; reboot"}})])
+check(not read(f"{LOG}.sys") and all(out[i]["result"]["isError"] for i in range(1, 8)),
+      "MCP: options, strings for lists, unknown actions, extra arguments, unknown tools: refused, nothing run",
+      f"mcp refusals ran {read(f'{LOG}.sys')!r}")
+HS = os.path.join(W, "help-session")
+open(HS, "w").close()
+out = mcp([("tools/call", {"name": "update_now", "arguments": {}})], INVICTUS_HELP_SESSION=HS)
+check(not read(f"{LOG}.sys") and "Support is helping" in text_of(out[1]),
+      "SM13: during a help session the action tools wait", f"help session: {text_of(out[1])!r}")
+out = mcp([("tools/call", {"name": "acta", "arguments": {"limit": 3}})])
+check("install" in text_of(out[1]) and '"INVICTUS_SNAPSHOT": "12"' in text_of(out[1]),
+      "MCP: the acta tool returns the Acta entries", f"acta tool {text_of(out[1])!r}")
+
+# ---- A6 config guard -------------------------------------------------------------------------
+print("== Moneta: A6 config guard", flush=True)
+GH = os.path.join(W, "ghome")
+os.makedirs(os.path.join(GH, ".config/hypr"))
+os.makedirs(os.path.join(GH, ".config/waybar"))
+os.makedirs(os.path.join(GH, "projects"))
+with open(os.path.join(GH, ".config/hypr/user.lua"), "w") as f:
+    f.write("-- good\n")
+with open(os.path.join(GH, ".bashrc"), "w") as f:
+    f.write("# bashrc\n")
+os.symlink(os.path.join(GH, ".bashrc"), os.path.join(GH, ".config/waybar/evil.css"))
+
+
+def guard(mode, path, profile=None, raw=None, **extra):
+    args = [PY, "-I", GUARD, mode] + ([profile] if profile else [])
+    data = raw if raw is not None else json.dumps({"tool_name": "Edit", "tool_input": {"file_path": path}})
+    return subprocess.run(args, input=data, capture_output=True, text=True,
+                          env=envmap(HOME_OVERRIDE=GH, **extra), timeout=30)
+
+
+cases = {
+    (".config/hypr/user.lua", "fixed"): 0, (".config/hypr/monitors.lua", "fixed"): 0,
+    (".config/waybar/style.css", "fixed"): 0, (".config/invictus/motion", "fixed"): 0,
+    (".bashrc", "fixed"): 2, (".bashrc", "full"): 2, (".config/hypr/hyprland.lua", "fixed"): 2,
+    (".config/invictus/moneta.toml", "full"): 2, (".config/invictus/providers/x/provider.toml", "full"): 2,
+    (".config/waybar/evil.css", "fixed"): 2, (".config/waybar/../../.bashrc", "fixed"): 2,
+    (".claude/settings.json", "full"): 2, ("projects/app.py", "fixed"): 2, ("projects/app.py", "full"): 0,
+}
+got = {k: guard("pre", os.path.join(GH, k[0]), k[1]).returncode for k in cases}
+got[("/etc/hosts", "full")] = guard("pre", "/etc/hosts", "full").returncode
+got[("relative", "full")] = guard("pre", "user.lua", "full").returncode
+want = dict(cases)
+want[("/etc/hosts", "full")] = 2
+want[("relative", "full")] = 2
+check(got == want, "A6: edits only on the allowlist (fixed), plus non-dot home paths (full); symlinks and .. "
+      "are followed; who-answers files, ~/.bashrc and ~/.claude are never edited",
+      f"guard decisions differ: {[(k, got[k], want[k]) for k in want if got[k] != want[k]]}")
+r = guard("pre", "", "fixed", raw="not json")
+check(r.returncode == 2, "A6: a guard that cannot read its input blocks the edit (fails closed)", f"garbage: {r.returncode}")
+
+r = guard("pre", os.path.join(GH, ".config/hypr/user.lua"), "fixed")
+bk = os.path.join(GH, ".local/state/invictus/backups")
+copies = [os.path.join(dp, f) for dp, _, fs in os.walk(bk) for f in fs if f == "user.lua"]
+with open(os.path.join(GH, ".config/hypr/user.lua"), "w") as f:
+    f.write("this is not lua (\n")
+r2 = guard("post", os.path.join(GH, ".config/hypr/user.lua"), FAKE_DOCTOR_RC="1")
+check(r.returncode == 0 and copies and read(copies[0]) == "-- good\n"
+      and read(os.path.join(GH, ".config/hypr/user.lua")) == "-- good\n" and r2.returncode == 2
+      and "broke the Hyprland config check" in r2.stderr and "--hypr" in read(f"{LOG}.doctor"),
+      "A6: a backup before the edit; a change that fails invictus-doctor --hypr is put back and Moneta is told",
+      f"restore: pre {r.returncode} copies {copies} file {read(os.path.join(GH, '.config/hypr/user.lua'))!r} post {r2.returncode} {r2.stderr!r}")
+newf = os.path.join(GH, ".config/hypr/monitors.lua")
+guard("pre", newf, "fixed")
+with open(newf, "w") as f:
+    f.write("broken(\n")
+r = guard("post", newf, FAKE_DOCTOR_RC="1")
+check(r.returncode == 2 and not os.path.exists(newf), "A6: a new file that fails the check is removed",
+      f"new file: {r.returncode} exists={os.path.exists(newf)}")
+guard("pre", os.path.join(GH, ".config/hypr/user.lua"), "fixed")
+with open(os.path.join(GH, ".config/hypr/user.lua"), "w") as f:
+    f.write("-- better\n")
+r = guard("post", os.path.join(GH, ".config/hypr/user.lua"), FAKE_DOCTOR_RC="0")
+check(r.returncode == 0 and read(os.path.join(GH, ".config/hypr/user.lua")) == "-- better\n",
+      "A6: a change that passes the check stays", f"good change: {r.returncode}")
+
+shutil.rmtree(RUN, ignore_errors=True)
+sys.exit(FAILED)

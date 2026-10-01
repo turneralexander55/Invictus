@@ -53,7 +53,9 @@ P=(pacman --config "$CONF" --dbpath "$DB" --logfile /dev/null)
 mapfile -t metas < <("${P[@]}" -Sl invictus-testing | awk '$2 ~ /^invictus-/ { print $2 }' | sort)
 checked=()
 for m in "${metas[@]}"; do
-    [[ " $AI_METAS " == *" $m "* ]] && continue
+    # The AI set itself (its metas and our own AI packages, such as
+    # invictus-tribune) may depend on each other.
+    [[ " $AI_PKGS " == *" $m "* ]] && continue
     checked+=("$m")
     tree="$(pactree --config "$CONF" --dbpath "$DB" -s -u "$m" 2>/dev/null || true)"
     [[ -n "$tree" ]] || { bad "$m: pactree found nothing"; continue; }

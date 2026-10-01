@@ -29,8 +29,12 @@
 # 15. The polkit rules, run in node with polkitd's order and defaults.
 # 16. The guard rails: apply, the live switch both ways, timed Libertas,
 #    nets, full access, pre-admin-snapshot, the pacman hook (SM9 to SM26).
+# 17. The Moneta panel and the provider layer: the panel's socket and
+#    restarts, who may run (SM10, SM26), the chat client (A13), the MCP
+#    server, the A6 guard, the managed profiles (A7, A8), A9 and A12.
 #
-# Needs lua 5.4+ for groups 7 and 10 (LUA=...), node and python3 for 14-16.
+# Needs lua 5.4+ for groups 7 and 10 (LUA=...), node and python3 (3.11+)
+# for 14-17.
 # ------------------------------------------------------------
 set -euo pipefail
 
@@ -162,6 +166,8 @@ done
 # shellcheck source=scripts/lib/ai-set.sh
 . "$HERE/../../scripts/lib/ai-set.sh"
 AI_SETS="$AI_METAS"
+# Packages in the AI set (metas and our own, such as invictus-tribune) may
+# pull each other; everything else must pull none of them.
 pb_of() { local d; for d in meta own; do [[ -f "$REPO/pkgs/$d/$1/PKGBUILD" ]] && { echo "$REPO/pkgs/$d/$1/PKGBUILD"; return; }; done; }
 closure() {
     local todo=("$1") seen=" " n pb
@@ -178,7 +184,7 @@ n_noai=0
 : > "$TMP/noai"
 for pb in "$REPO"/pkgs/meta/*/PKGBUILD "$REPO"/pkgs/own/*/PKGBUILD; do
     set_name="$(basename "$(dirname "$pb")")"
-    if [[ " $AI_SETS " == *" $set_name "* ]]; then continue; fi
+    if [[ " $AI_PKGS " == *" $set_name "* ]]; then continue; fi
     n_noai=$((n_noai + 1))
     for n in $(closure "$set_name"); do
         if [[ " $AI_PKGS " == *" $n "* ]]; then echo "$set_name pulls $n" >> "$TMP/noai"; fi
@@ -424,6 +430,8 @@ echo
 . "$HERE/runtime.sh"
 # shellcheck source=tests/pkgs/sys.sh
 . "$HERE/sys.sh"
+# shellcheck source=tests/pkgs/moneta.sh
+. "$HERE/moneta.sh"
 
 if [[ $fail == 0 ]]; then echo "ALL PASSED"; else echo "SOME TESTS FAILED"; fi
 exit $fail

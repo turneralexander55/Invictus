@@ -10,7 +10,9 @@ files["config/hypr"] = { read_globals = { "hl" } }
 -- The test harness installs a mock `hl`, replaces require() the way
 -- Hyprland does, and logs loader order through LOADER_LOG.
 files["tests/hyprland-lua"] = {
-    globals = { "hl", "require", "LOADER_LOG", "os" }, -- os.getenv is swapped to give each config load its own environment
+    -- os.getenv is swapped to give each config load its own environment;
+    -- package.searchpath to hide a module (No AI: no moneta.lua on disk)
+    globals = { "hl", "require", "LOADER_LOG", "os", "package" },
     ignore = {
         "542", -- empty if branch: used as a "this case is fine" arm in key parsing
         "432", -- shadowing an upvalue argument: opts in nested helpers
