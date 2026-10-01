@@ -140,6 +140,44 @@ PY
 then ok "L2: the guard's hooks have short timeouts (pre <= 15 s), and its doctor run ends before the post hook's"
 else bad "L2: hook timeouts (see the assertion above)"; fi
 
+# Minerva's final review: the docs say what the guard does. Every fixed-profile
+# entry is in TOOLS.md's "Without Full access" item, moneta-panel.md and the A6
+# row, and none of those name user.lua as allowed without Full access; the S2
+# row carries the Wi-Fi exception and its 802.1X exclusion, note 45 and
+# first-boot.md point to it; note 37b no longer says byte-identical.
+if python3 - "$REPO" <<'PY'
+import ast, re, sys
+repo = sys.argv[1]
+src = open(f"{repo}/scripts/guardrails/claude/config-guard.py").read()
+fixed = next(n.value for n in ast.parse(src).body if isinstance(n, ast.Assign) and n.targets[0].id == "FIXED_ALLOW")
+entries = [f"~/{e.elts[0].value}/{e.elts[1].value}" for e in fixed.elts]
+assert entries == ["~/.config/invictus/themes/*.toml", "~/.config/invictus/motion", "~/.config/waybar/*.css"], entries
+tools = open(f"{repo}/collegium/template/TOOLS.md").read()
+item = re.search(r"^- \*\*Without Full access\*\*.*$", tools, re.M).group(0)
+for e in entries:
+    folder, name = e.rsplit("/", 1)
+    assert (e in item or (folder + "/" in item and name in item)), ("TOOLS.md", e)
+assert "user.lua" not in item.split("Files a program executes")[0], "TOOLS.md lists user.lua as allowed without Full access"
+panel = open(f"{repo}/docs/moneta-panel.md").read()
+design = open(f"{repo}/docs/design.md").read()
+a6 = next(l for l in design.splitlines() if l.startswith("| A6 |"))
+for e in entries:
+    assert e in panel, ("moneta-panel.md", e)
+    assert e in a6, ("A6 row", e)
+s2 = next(l for l in design.splitlines() if l.startswith("| S2 |"))
+assert "Wi-Fi passwords of shared networks" in s2 and "802.1X" in s2 and "auth_admin_keep" in s2, "S2 row"
+n45 = next(l for l in design.splitlines() if l.startswith("45. "))
+assert "design.md S2" in n45, "note 45"
+fb = " ".join(open(f"{repo}/docs/first-boot.md").read().split())
+assert "802.1X exclusion: design.md S2" in fb, "first-boot.md"
+n37b = next(l for l in design.splitlines() if l.startswith("37b. "))
+assert "byte-identical" not in n37b, "note 37b"
+sm8 = next(l for l in open(f"{repo}/docs/design-simple-mode.md").read().splitlines() if l.startswith("| SM8 |"))
+assert "no Write/Edit of any file a program executes; data files on the A6 fixed list only" in sm8, "SM8"
+PY
+then ok "A6/S2 docs: TOOLS.md, moneta-panel.md, the A6 and SM8 rows match the guard's fixed list; S2 has the Wi-Fi exception, note 45 and first-boot.md point to it; note 37b fixed"
+else bad "A6/S2 docs out of step with the guard or Minerva's text (see the assertion above)"; fi
+
 # A9: no tool of ours names the Windows VM's or the work profile's files, except
 # the deny rules that keep Moneta out of them.
 hits="$(grep -rnE '/var/lib/invictus/vm|invictus/windows|winapps' "$REPO/scripts" "$REPO/config" \
