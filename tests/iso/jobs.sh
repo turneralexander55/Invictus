@@ -10,6 +10,16 @@
 # ------------------------------------------------------------
 set -uo pipefail
 
+# settings.sh chowns what it creates to the new user, as Calamares runs it
+# (root). As a normal user (CI) that fails, so re-run this file in a user
+# namespace where we are root. Only our own uid is mapped there, so the fake
+# user below gets uid:gid 0:0 instead of 1000:1000.
+if [[ $EUID -ne 0 ]] && command -v unshare >/dev/null && unshare -r true 2>/dev/null; then
+    exec unshare -r env INVICTUS_TEST_USERNS=1 bash "${BASH_SOURCE[0]}" "$@"
+fi
+MARIA_IDS=1000:1000
+[[ -n "${INVICTUS_TEST_USERNS:-}" ]] && MARIA_IDS=0:0
+
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd -- "$HERE/../.." && pwd)"
 JOBS="$REPO/installer/jobs"
@@ -102,7 +112,7 @@ check "cleanup: /etc still there after the refusal" test -f "$ROOTDIR/etc/passwd
 # ---- settings.sh ---------------------------------------------------------------------
 new_target settings
 bash "$JOBS/cleanup-live.sh" "$ROOTDIR" >/dev/null 2>&1
-printf 'maria:x:1000:1000:Maria:/home/maria:/bin/zsh\n' >>"$ROOTDIR/etc/passwd"
+printf 'maria:x:%s:%s:Maria:/home/maria:/bin/zsh\n' "${MARIA_IDS%:*}" "${MARIA_IDS#*:}" >>"$ROOTDIR/etc/passwd"
 mkdir -p "$ROOTDIR/home/maria"
 # shellcheck disable=SC2016  # a literal $(reboot) the job must drop
 printf 'version=2026.09.30\nchannel=testing\nbuild=dev\nevil=$(reboot)\n' >"$T/iso-release"
@@ -113,8 +123,8 @@ check "settings: guard rails file says custodia" test "$(cat "$ROOTDIR/etc/invic
 check "settings: guard rails file is 644" test "$(stat -c %a "$ROOTDIR/etc/invictus/guardrails")" = 644
 check "settings: flavor file says atrium" test "$(cat "$ROOTDIR/home/maria/.config/invictus/flavor")" = atrium
 if [[ $EUID -eq 0 ]]; then
-    check "settings: flavor file owned by the user" test "$(stat -c %u:%g "$ROOTDIR/home/maria/.config/invictus/flavor")" = 1000:1000
-    check "settings: created folders owned by the user" test "$(stat -c %u:%g "$ROOTDIR/home/maria/.config")" = 1000:1000
+    check "settings: flavor file owned by the user" test "$(stat -c %u:%g "$ROOTDIR/home/maria/.config/invictus/flavor")" = "$MARIA_IDS"
+    check "settings: created folders owned by the user" test "$(stat -c %u:%g "$ROOTDIR/home/maria/.config")" = "$MARIA_IDS"
 fi
 check "settings: hostname made from the user" test "$(cat "$ROOTDIR/etc/hostname")" = maria-invictus
 check "settings: release file written with the install time" grep -q '^installed=' "$ROOTDIR/etc/invictus/release"

@@ -56,6 +56,9 @@ jobs:
     env:
       KIND: ${{ inputs.kind || 'dev' }}
       CHANNEL: ${{ inputs.channel || 'testing' }}
+      # Same pin as checks.yml (the runner's apt copy is 0.9.0). Bump both together.
+      SHELLCHECK_VERSION: 0.11.0
+      SHELLCHECK_SHA256: 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
     outputs:
       iso: ${{ steps.iso.outputs.name }}
       version: ${{ steps.iso.outputs.version }}
@@ -68,10 +71,21 @@ jobs:
           docker image prune -af >/dev/null
           df -h /
 
+      - name: Install shellcheck (checksum pinned)
+        run: |
+          curl -sSfL -o shellcheck.tar.xz \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+          echo "${SHELLCHECK_SHA256}  shellcheck.tar.xz" | sha256sum -c -
+          tar -xJf shellcheck.tar.xz --strip-components=1 "shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
+          rm shellcheck.tar.xz
+          sudo install -m755 shellcheck /usr/local/bin/shellcheck
+          rm shellcheck
+          shellcheck --version | grep -qx "version: ${SHELLCHECK_VERSION}"
+
       - name: ISO and installer tests
         run: |
           sudo apt-get update -q
-          sudo apt-get install -yq python3-yaml python3-jsonschema shellcheck gnupg
+          sudo apt-get install -yq python3-yaml python3-jsonschema gnupg
           tests/iso/run.sh
 
       - name: Download the published signed repo (release)
