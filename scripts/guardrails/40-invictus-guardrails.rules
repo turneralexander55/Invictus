@@ -2,13 +2,16 @@
 // Shipped by invictus-guardrails in /usr/share/polkit-1/rules.d.
 //
 // Switching the guard rails back on is instant from your own desktop: it
-// only adds friction (SM15, SM22). So is No AI (design-no-ai.md N1): it only
-// removes. From anywhere else (an inactive session, ssh, a service) the
-// action's default applies: a password. guardrails-libertas,
-// assistant-full-access, ai-on and everything else get no rule here.
+// only adds friction (SM15, SM22). No AI is instant only for an
+// administrator (wheel) at their own desktop (design-no-ai.md N1, revised
+// 2026-10-01): it signs every person out and removes the AI set for the
+// whole machine, so for anyone else it is an admin's choice. From anywhere
+// else (an inactive session, ssh, a service) the action's default
+// applies: a password. guardrails-libertas, assistant-full-access, ai-on
+// and everything else get no rule here.
 polkit.addRule(function(action, subject) {
     if ((action.id == "org.invictus.sys.guardrails-custodia" ||
-         action.id == "org.invictus.sys.ai-off") &&
+         (action.id == "org.invictus.sys.ai-off" && subject.isInGroup("wheel"))) &&
         subject.local && subject.active) {
         return polkit.Result.YES;
     }

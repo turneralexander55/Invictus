@@ -413,7 +413,8 @@ else
         while read -r id l a g res; do
             v="${id#org.invictus.sys.}"
             if [[ "$id" == org.freedesktop.policykit.exec ]]; then want=no-such-action
-            elif [[ "$v" =~ ^(guardrails-custodia|ai-off)$ && $l == 1 && $a == 1 ]]; then want=yes
+            elif [[ "$v" == guardrails-custodia && $l == 1 && $a == 1 ]]; then want=yes
+            elif [[ "$v" == ai-off && $l == 1 && $a == 1 && $g == wheel ]]; then want=yes
             elif [[ "$1" == custodia && " $TIER1 " == *" $v "* && $l == 1 && $a == 1 && $g == wheel ]]; then want=yes
             elif [[ $l == 1 && $a == 1 ]]; then
                 case "$v" in assistant-full-access|guardrails-libertas|guardrails-custodia|ai-on|ai-off) want=auth_admin ;; *) want=auth_admin_keep ;; esac
@@ -422,7 +423,7 @@ else
         done < <(paste -d' ' <(queries | cut -d' ' -f1-4) <(queries | q | cut -d' ' -f2))
     }
     expect libertas
-    [[ $p_fail == 0 ]] && ok "Libertas: every verb asks for a password (auth_admin_keep; no keep for full access, the rails and AI), except guard rails on and No AI from your own desktop"
+    [[ $p_fail == 0 ]] && ok "Libertas: every verb asks for a password (auth_admin_keep; no keep for full access, the rails and AI), except guard rails on from your own desktop, and No AI from an admin's own desktop (N-M1: a users-only account gets auth_admin)"
     cp "$GRD/40-invictus-custodia.rules" "$RD/etc/"
     expect custodia
     [[ $p_fail == 0 ]] && ok "Custodia: tier 1 (update, snapshot, report-collect) is YES only for wheel at a local active desktop; tier 2 keeps its password; nothing grants pkexec itself"
