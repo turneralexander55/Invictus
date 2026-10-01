@@ -16,6 +16,8 @@ set -uo pipefail
 # user below gets uid:gid 0:0 instead of 1000:1000.
 if [[ $EUID -ne 0 ]] && command -v unshare >/dev/null && unshare -r true 2>/dev/null; then
     exec unshare -r env INVICTUS_TEST_USERNS=1 bash "${BASH_SOURCE[0]}" "$@"
+elif [[ $EUID -ne 0 ]]; then
+    echo "jobs.sh: not root and 'unshare -r' is unavailable; the ownership checks will fail (on Ubuntu, set kernel.apparmor_restrict_unprivileged_userns=0)" >&2
 fi
 MARIA_IDS=1000:1000
 [[ -n "${INVICTUS_TEST_USERNS:-}" ]] && MARIA_IDS=0:0

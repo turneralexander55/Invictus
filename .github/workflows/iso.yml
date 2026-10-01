@@ -86,6 +86,9 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -yq python3-yaml python3-jsonschema gnupg
+          # Ubuntu 24.04 blocks unprivileged user namespaces through AppArmor;
+          # tests/iso/jobs.sh needs `unshare -r` to run the install jobs as non-root.
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0; fi
           tests/iso/run.sh
 
       - name: Download the published signed repo (release)
