@@ -830,7 +830,7 @@ mkdir -p "$usite"; echo 'open(__import__("os").path.expanduser("~/pwned-site"), 
 INVICTUS_PEOPLE="$TMP/people-l1" isys ai off
 if [[ $rc == 0 && ! -e "$HL/pwned-cwd" && ! -e "$HL/pwned-site" ]] && ! grep -q oauthAccount "$HL/.claude.json"; then
     ok "N-L1-python-I: ai-signout's python loads nothing from the person's home (no ~/json.py, no usercustomize) and still removes the account block"
-else gbad "N-L1-python-I: $(ls -A "$HL" | paste -sd' ') $(cat "$HL/.claude.json")"; fi
+else gbad "N-L1-python-I: $(find "$HL" -mindepth 1 -maxdepth 1 -printf '%f ') $(cat "$HL/.claude.json")"; fi
 
 # SM17 / G2: pre-admin-snapshot.
 new_root g2 custodia; export_env
