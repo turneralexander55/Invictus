@@ -213,7 +213,7 @@ people() {
 # person (ai-signout), never as root; the logout for the caller only.
 # shellcheck disable=SC2329
 sign_out_everyone() {
-    local name uid gid home
+    local name uid gid home out
     local -a as args
     mkdir -p "$AI_OFF_PENDING"; chmod 755 "$AI_OFF_PENDING"
     while IFS=: read -r name uid gid home; do
@@ -227,8 +227,16 @@ sign_out_everyone() {
         elif [[ $EUID -eq 0 ]]; then as=(setpriv --reuid="$uid" --regid="$gid" --clear-groups)
         else say "skipped $name: not root (a test run)"; continue; fi
         args=(); [[ "$uid" == "$CALLER_UID" ]] && args=(--logout)
-        timeout 30 "${as[@]}" env -i HOME="$home" USER="$name" PATH=/usr/bin LC_ALL=C CLAUDE="$CLAUDE_CMD" \
-            "$BASH" "$AI_SIGNOUT" "${args[@]}" 2>&1 | sed "s/^ai-signout:/  $name:/" || say "could not finish signing $name out"
+        # Janus N-L1: the person's run writes to a root-owned temp file, not
+        # a pipe, so nothing they leave running (setsid) can keep root
+        # waiting; timeout ends their process group at 30 s (KILL 5 s
+        # later). No stdin: the caller's terminal is not theirs to read.
+        # Root shows at most 4 KiB of it, without control characters.
+        out="$(mktemp)"
+        timeout -k 5 30 "${as[@]}" env -i HOME="$home" USER="$name" PATH=/usr/bin LC_ALL=C CLAUDE="$CLAUDE_CMD" \
+            "$BASH" "$AI_SIGNOUT" "${args[@]}" </dev/null >"$out" 2>&1 || say "could not finish signing $name out"
+        head -c 4096 -- "$out" | tr -d '\000-\010\013-\037\177-\237' | sed "s/^ai-signout:/  $name:/"
+        rm -f -- "$out"
     done < <(people)
 }
 # shellcheck disable=SC2329 # called through with_pair

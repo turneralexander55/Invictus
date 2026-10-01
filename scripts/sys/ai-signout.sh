@@ -39,7 +39,9 @@ fi
 
 # A regular file only: a link is not followed, and nothing else is touched.
 if [[ -f .claude.json && ! -L .claude.json ]] && grep -q '"oauthAccount"' .claude.json 2>/dev/null; then
-    if python3 - .claude.json <<'PY' 2>/dev/null
+    # -I: no user site-packages, no PYTHON* variables and not the home
+    # folder on sys.path (python3 - would import ~/json.py) (Janus N-L1).
+    if python3 -I - .claude.json <<'PY' 2>/dev/null
 import json, os, sys, tempfile
 p = sys.argv[1]
 with open(p) as f:

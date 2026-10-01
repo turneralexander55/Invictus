@@ -738,6 +738,8 @@ if [[ $EUID -eq 0 ]]; then
     mkdir -p "$TMP/vdir"; echo '{"root":"secret"}' > "$TMP/vdir/.credentials.json"
     echo '{"oauthAccount": {"root": 1}}' > "$TMP/victim.json"; chmod 644 "$TMP/victim.json"
     rm -rf "$HB/.claude" "$HB/.claude.json"; ln -s "$TMP/vdir" "$HB/.claude"; ln -s "$TMP/victim.json" "$HB/.claude.json"
+    # N-I4: proof that bob's run happened. Only a run as bob removes this.
+    echo x > "$HB/.local/state/invictus/collegium/gh-login"
     chown -R 65534:65534 "$HB"; chown -h 65534:65534 "$HB/.claude" "$HB/.claude.json"
     echo "bob:65534:65534:$HB" >> "$TMP/people"
     HC="$R/home/carol"; mkhome "$HC"; chown -R 65533:65533 "$HC"
@@ -769,9 +771,9 @@ else gbad "ai off caller's home: $(find "$HA" -maxdepth 2 | paste -sd' ') claude
     && ok "N3: every person gets an ai-off-pending marker, so their next login clears the provider keys" || gbad "ai-off-pending markers missing"
 if [[ $EUID -eq 0 ]]; then
     if [[ -f "$TMP/vdir/.credentials.json" && "$(cat "$TMP/victim.json")" == '{"oauthAccount": {"root": 1}}' && ! -e "$HB/claude-called" ]] \
-       && [[ -L "$HB/.claude" ]]; then
-        ok "ai-off-as-person: links in a person's home reach none of root's files (the clean-up runs as that person); no logout for someone who did not ask"
-    else gbad "ai-off-as-person: root followed a person's link: vdir $(ls -A "$TMP/vdir") victim $(cat "$TMP/victim.json")"; fi
+       && [[ -L "$HB/.claude" && ! -e "$HB/.local/state/invictus/collegium/gh-login" ]] && ! grep -q 'bob' <(grep -E 'skipped|could not finish' "$TMP/sys.out"); then
+        ok "ai-off-as-person: links in a person's home reach none of root's files (the clean-up ran as that person: N-I4, their gh-login record is gone); no logout for someone who did not ask"
+    else gbad "ai-off-as-person: root followed a person's link, or bob's run never happened (N-I4): vdir $(ls -A "$TMP/vdir") victim $(cat "$TMP/victim.json") gh-login $(ls "$HB/.local/state/invictus/collegium/" 2>&1) out: $(grep bob "$TMP/sys.out")"; fi
     if [[ ! -e "$HC/.claude/.credentials.json" && "$(stat -c %u "$HC/.claude.json")" == 65533 && ! -e "$HC/claude-called" ]] \
        && ! grep -q oauthAccount "$HC/.claude.json" && [[ -f "$HC/.claude/projects/p1/chat.jsonl" ]]; then
         ok "N3: another person's credential file and account block are removed by a process running as them (the rewritten file is theirs), memory kept, no logout run for them"
@@ -795,6 +797,40 @@ mkdir -p "$(dirname "$POL")"; echo '{"policies": {"DisableTelemetry": true}}' > 
 k1="$(cat "$POL")"; isys ai on; k2="$(cat "$POL")"
 [[ "$k1" == '{"policies": {"DisableTelemetry": true}}' && "$k2" == "$k1" ]] && grep -q 'not locked off' <(INVICTUS_PEOPLE="$TMP/people" bash "$SYS/invictus-sys.sh" ai off 2>&1) \
     && ok "N7: someone else's policies.json is kept by ai off and ai on, and ai off says AI features are not locked" || gbad "foreign browser policy: '$k1' '$k2'"
+# N-L1 (Janus): a person's sign-out run leaves a setsid process behind and
+# prints terminal escapes. ai off must not wait for it (it did, through the
+# pipe, for as long as the process lived) and must not pass the escapes on.
+new_root ail1 libertas; export_env; grd apply; echo on > "$R/etc/invictus/ai"
+HL="$R/home/lena"; mkdir -p "$HL"; chmod 755 "$R/home" "$HL"
+printf 'lena:%s:%s:%s\n' "$(id -u)" "$(id -g)" "$HL" > "$TMP/people-l1"
+cat > "$TMP/signout-stub.sh" <<EOF
+setsid sleep 60 &
+echo \$! > "$HL/stub.pid"
+printf '\033]0;owned\007\nai-signout: hello\033[2J\n'
+exit 0
+EOF
+chmod 755 "$TMP/signout-stub.sh"
+t0="$(date +%s)"
+INVICTUS_PEOPLE="$TMP/people-l1" INVICTUS_AI_SIGNOUT="$TMP/signout-stub.sh" isys ai off
+dt=$(( $(date +%s) - t0 ))
+[[ -s "$HL/stub.pid" ]] && kill "$(cat "$HL/stub.pid")" 2>/dev/null
+if [[ $rc == 0 && $dt -lt 35 ]] && acta_has "INVICTUS_VERB=ai-off" && acta_has "INVICTUS_RESULT=ok"; then
+    ok "N-L1-setsid: ai off returns in ${dt}s when a person's run leaves a setsid process holding its output, with the Acta entry"
+else gbad "N-L1-setsid: ai off took ${dt}s (rc $rc): $(cat "$TMP/sys.out")"; fi
+if grep -q '^  lena: hello' "$TMP/sys.out" && ! grep -q $'[\001-\010\013-\037\177]' "$TMP/sys.out"; then
+    ok "N-L1-escapes: a person's output reaches the caller without control characters"
+else gbad "N-L1-escapes: $(od -c "$TMP/sys.out" | head -5)"; fi
+# ai-signout's python must not run code from the person's home: their
+# ~/json.py (python3 - puts the working folder first) or their user site.
+new_root ail1py libertas; export_env; grd apply; echo on > "$R/etc/invictus/ai"
+mkdir -p "$HL/.claude"; echo '{"oauthAccount": {"a": 1}, "n": 1}' > "$HL/.claude.json"
+echo 'open(__import__("os").path.expanduser("~/pwned-cwd"), "w").close()' > "$HL/json.py"
+usite="$(HOME="$HL" python3 -c 'import site; print(site.getusersitepackages())')"
+mkdir -p "$usite"; echo 'open(__import__("os").path.expanduser("~/pwned-site"), "w").close()' > "$usite/usercustomize.py"
+INVICTUS_PEOPLE="$TMP/people-l1" isys ai off
+if [[ $rc == 0 && ! -e "$HL/pwned-cwd" && ! -e "$HL/pwned-site" ]] && ! grep -q oauthAccount "$HL/.claude.json"; then
+    ok "N-L1-python-I: ai-signout's python loads nothing from the person's home (no ~/json.py, no usercustomize) and still removes the account block"
+else gbad "N-L1-python-I: $(ls -A "$HL" | paste -sd' ') $(cat "$HL/.claude.json")"; fi
 
 # SM17 / G2: pre-admin-snapshot.
 new_root g2 custodia; export_env
