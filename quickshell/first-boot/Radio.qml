@@ -9,6 +9,7 @@ Item {
     property bool checked: false
     property string title: ""
     property string line: ""
+    property string icon: ""            // a file:// URL, or none
     signal clicked()
 
     Layout.fillWidth: true
@@ -36,6 +37,15 @@ Item {
                 color: row.theme.marble
                 visible: row.checked
             }
+        }
+        Image {
+            // an optional picture, such as a theme's swatch (look.md, The switcher)
+            visible: row.icon !== ""
+            source: row.icon
+            Layout.preferredWidth: 44
+            Layout.preferredHeight: 44
+            sourceSize.width: 88
+            sourceSize.height: 88
         }
         ColumnLayout {
             Layout.fillWidth: true

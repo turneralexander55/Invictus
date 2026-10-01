@@ -289,6 +289,21 @@ new_env t5b
 export STUB_ROFI_CHOICE=
 "$TOOL" pick >/dev/null 2>&1
 expect "pick on a fresh install has Dusk in place" test -s "$HOME/.config/invictus/current/rofi-picker.rasi"
+# swatches: the picker's icons, for first start's Look step too
+new_env t5c
+"$TOOL" swatches > "$TMP/t5c/sw" 2>/dev/null
+expect "swatches: one '<id> <path>' line per theme, each file written and drawn in that theme's sol" python3 -c "
+import os, sys, tomllib, xml.dom.minidom as m
+lines = [l.split(' ', 1) for l in open(sys.argv[1]).read().splitlines()]
+assert sorted(i for i, _ in lines) == ['aegean', 'alexandria', 'dusk', 'porphyry'], lines
+for i, p in lines:
+    assert p.startswith(os.environ['HOME'] + '/.local/state/invictus/swatches/' + i + '.'), p
+    if p.endswith('.svg'):
+        m.parse(p)
+        sol = tomllib.load(open(sys.argv[2] + '/' + i + '.toml', 'rb'))['dark']['sol']
+        assert sol.lower() in open(p).read().lower(), (i, sol)
+    else:
+        assert os.path.getsize(p) > 0, p" "$TMP/t5c/sw" "$REPO/theme"
 
 echo "6. the shipped app configs (config/)"
 DUSK_OUT="$TMP/dusk-out"

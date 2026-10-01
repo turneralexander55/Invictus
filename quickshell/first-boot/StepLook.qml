@@ -77,6 +77,7 @@ Card {
                     theme: step.theme
                     checked: step.theme_ === modelData.id
                     title: modelData.name
+                    icon: modelData.swatch ? "file://" + modelData.swatch : ""
                     onClicked: step.theme_ = modelData.id
                 }
             }

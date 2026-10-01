@@ -98,7 +98,8 @@ Card {
                     spacing: 2
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: box.modelData.name
+                        // the model ("DELL U2720Q") when Hyprland knows it
+                        text: box.modelData.model || box.modelData.name
                         font.family: step.theme.sans
                         font.pixelSize: 15
                         font.weight: Font.Medium
@@ -106,7 +107,8 @@ Card {
                     }
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: box.modelData.width + " × " + box.modelData.height + (box.isMain ? "  ·  main" : "")
+                        text: (box.modelData.model ? box.modelData.name + "  ·  " : "")
+                            + box.modelData.width + " × " + box.modelData.height + (box.isMain ? "  ·  main" : "")
                         font.family: step.theme.sans
                         font.pixelSize: 12
                         color: step.theme.parchment

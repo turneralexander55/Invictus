@@ -8,6 +8,8 @@ Spec: docs/look.md, section "Themes". Python 3.11+, standard library only.
   invictus-theme generate <id> <outdir> [--wallpapers DIR]
   invictus-theme apply [<id>]        (alias: set <id>; no id = current, else Dusk)
   invictus-theme pick
+  invictus-theme swatches            write every theme's swatch; print "<id> <path>"
+                                     (the picker's icons; first start's Look step)
 
 Nothing in here hardcodes a repo path. Locations, in order of precedence:
 
@@ -558,6 +560,27 @@ def apply(tid=None):
 
 # ---------------------------------------------------------------- pick
 
+def swatch(t):
+    """Write theme t's swatch (look.md, The switcher) to the swatches folder
+    next to the generated themes; return the PNG, or the SVG without rsvg."""
+    sw = state_dir().parent / "swatches"
+    sw.mkdir(parents=True, exist_ok=True)
+    icon = sw / f"{t.id}.svg"
+    icon.write_text(render((builtin_dir() / "templates" / "swatch.svg").read_text(), t, "", "swatch.svg"))
+    try:
+        if rsvg_to_png(icon, sw / f"{t.id}.png", 88, 88):
+            icon = sw / f"{t.id}.png"
+    except ThemeError:
+        pass
+    return icon
+
+
+def cmd_swatches():
+    for t in all_themes():
+        if not check_theme(t):
+            print(f"{t.id} {swatch(t)}")
+
+
 def pick():
     themes = [t for t in all_themes() if not check_theme(t)]
     if not themes:
@@ -566,18 +589,9 @@ def pick():
     if not (config_dir() / "current").exists():
         apply(cur)  # fresh install: Dusk in place so the picker has colours
         cur = current_id()
-    state = state_dir()
-    sw = state.parent / "swatches"
-    sw.mkdir(parents=True, exist_ok=True)
     rows = []
     for t in themes:
-        icon = sw / f"{t.id}.svg"
-        icon.write_text(render((builtin_dir() / "templates" / "swatch.svg").read_text(), t, "", "swatch.svg"))
-        try:
-            if rsvg_to_png(icon, sw / f"{t.id}.png", 88, 88):
-                icon = sw / f"{t.id}.png"
-        except ThemeError:
-            pass
+        icon = swatch(t)
         name = t.name.replace("&", "&amp;").replace("<", "&lt;")
         concept = t.meta.get("concept", "").replace("&", "&amp;").replace("<", "&lt;").replace("|", "/")
         check = "   ✓" if t.id == cur else ""
@@ -635,6 +649,8 @@ def main(argv):
     try:
         if cmd == "list":
             cmd_list()
+        elif cmd == "swatches":
+            cmd_swatches()
         elif cmd == "check":
             return cmd_check(args)
         elif cmd == "generate":

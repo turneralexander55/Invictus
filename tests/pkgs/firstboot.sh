@@ -49,6 +49,7 @@ if [[ "${FAKE_LOGIN_OK:-0}" == 1 ]]; then mkdir -p "$HOME/.claude"; echo "{\"t\"
 exit 0'
 fake invictus-theme 'echo "invictus-theme $*" >> "$FAKE_DIR/log"
 [[ "$1" == list ]] && printf "* dusk Dusk\n  porphyry Porphyry\n  aegean Aegean\n  alexandria Alexandria\n"
+[[ "$1" == swatches ]] && printf "dusk /sw/dusk.png\nporphyry /sw/porphyry.png\naegean /sw/aegean.svg\n"
 exit 0'
 fake invictus-motion 'echo "invictus-motion $*" >> "$FAKE_DIR/log"; [[ "$1" == get ]] && echo showcase; exit 0'
 fake gsettings 'echo "gsettings $*" >> "$FAKE_DIR/log"; [[ "$1" == get ]] && echo "prefer-dark"; exit 0'
@@ -65,7 +66,7 @@ new_home() {   # new_home NAME [flavor]: a fresh home and fake state; sets H
     : > "$H/log"
     echo off > "$H/ai"
     cat > "$H/monitors.json" <<'EOF'
-[{"name": "DP-1", "description": "Dell Inc. DELL U2720Q 7XQ1", "width": 2560, "height": 1440,
+[{"name": "DP-1", "description": "Dell Inc. DELL U2720Q 7XQ1", "make": "Dell Inc.", "model": "DELL U2720Q", "width": 2560, "height": 1440,
   "refreshRate": 164.998, "x": 0, "y": 0, "scale": 1.0, "transform": 0, "disabled": false},
  {"name": "eDP-1", "description": "BOE 0x0BCA \"13\" panel", "width": 1920, "height": 1200,
   "refreshRate": 60.0, "x": 2560, "y": 0, "scale": 1.25, "transform": 0, "disabled": false}]
@@ -318,7 +319,7 @@ grep -q '"signed_in": false' "$H/out" && [[ ! -s "$H/log" ]] \
     && ok "sign-in with no shipped claude-code provider (AI pending): no terminal, not signed in" || bad "signin none: $(cat "$H/out" "$H/log")"
 mkdir -p "$TMP/fbshare/providers/claude-code" "$H/.config/invictus/providers/claude-code"
 echo 'login = ["/usr/bin/claude", "auth", "login"]' > "$TMP/fbshare/providers/claude-code/provider.toml"
-echo 'login = ["/bin/sh", "-c", "touch /tmp/pwned"]' > "$H/.config/invictus/providers/claude-code/provider.toml"
+echo 'login = ["/usr/bin/env", "HOME-FILE-LOGIN"]' > "$H/.config/invictus/providers/claude-code/provider.toml"
 FAKE_LOGIN_OK=1 fb signin
 if grep -qx "terminal --class invictus-signin --title Sign in to Claude /usr/bin/claude auth login" "$H/log" \
    && grep -q '"signed_in": true' "$H/out" && ! grep -rq SECRET-TOKEN-MARK "$H/out" "$H/err" "$H/.local"; then
@@ -373,6 +374,15 @@ if [[ "$(steps)" == "monitors look assistant ready" && "$(later)" == "collegium 
 else
     bad "tessera steps: $(steps) / later: $(later)"
 fi
+python3 -c "
+import json, sys
+d = json.load(open(sys.argv[1]))
+sw = {t['id']: t['swatch'] for t in d['themes']}
+assert sw == {'dusk': '/sw/dusk.png', 'porphyry': '/sw/porphyry.png', 'aegean': '/sw/aegean.svg', 'alexandria': ''}, sw
+m = {x['name']: (x['make'], x['model']) for x in d['monitors']}
+assert m['DP-1'] == ('Dell Inc.', 'DELL U2720Q') and m['eDP-1'] == ('', ''), m" "$H/out" \
+    && ok "state: each theme's swatch from invictus-theme swatches (none when it has none), each screen's make and model" \
+    || bad "state swatches/models: $(cat "$H/out")"
 new_home st4
 fb state
 grep -q '"flavor": "tessera"' "$H/out" && ok "no flavor file (an adopted home): Tessera" || bad "no flavor: $(cat "$H/out")"

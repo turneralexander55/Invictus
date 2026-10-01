@@ -245,6 +245,9 @@ def read_monitors():
             "scale": float(m.get("scale") or 1.0),
             "transform": int(m.get("transform") or 0),
             "laptop": name.startswith(LAPTOP_PREFIXES),
+            # "Dell Inc." "DELL U2720Q": what the monitors step shows
+            "make": str(m.get("make") or ""),
+            "model": str(m.get("model") or ""),
         })
     return mons
 
@@ -386,13 +389,19 @@ def cmd_monitors_write(args):
 
 # ---------------------------------------------------------------- look
 
-def themes():
+def themes(with_swatches=False):
     rc, so = run([tool("INVICTUS_THEME_CMD", "invictus-theme"), "list"])
     found = []
     for line in so.splitlines() if rc == 0 else []:
         m = re.match(r"^([* ]) (\S+) (.+)$", line)
         if m:
             found.append({"id": m.group(2), "name": m.group(3).strip(), "current": m.group(1) == "*"})
+    if with_swatches:
+        # the picker's swatches (look.md, The switcher), drawn by invictus-theme
+        rc, so = run([tool("INVICTUS_THEME_CMD", "invictus-theme"), "swatches"])
+        paths = dict(line.split(" ", 1) for line in so.splitlines() if rc == 0 and " " in line)
+        for t in found:
+            t["swatch"] = paths.get(t["id"], "")
     return found
 
 
@@ -653,7 +662,7 @@ def cmd_state(args):
         "online": is_online,
         "ai": ai_state(),
         "signed_in": credentials_file().is_file(),
-        "themes": themes() if fl == "tessera" else [],
+        "themes": themes(with_swatches=True) if fl == "tessera" else [],
         "motion": motion() if fl == "tessera" else None,
         "apps": color_scheme() if fl == "tessera" else None,
         "tokens": tokens(),

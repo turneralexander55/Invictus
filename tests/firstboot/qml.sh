@@ -33,7 +33,7 @@ fail=0
 ok()  { echo "ok    $1"; }
 bad() { echo "FAIL  $1"; fail=1; }
 
-pacman -Sy --noconfirm --needed quickshell qt6-declarative sway grim ttf-ibm-plex otf-cormorant python python-pillow \
+pacman -Sy --noconfirm --needed quickshell qt6-declarative qt6-svg sway grim ttf-ibm-plex otf-cormorant python python-pillow \
     >/tmp/pacman.log 2>&1 || { tail -20 /tmp/pacman.log; exit 1; }
 echo "quickshell $(pacman -Q quickshell | cut -d' ' -f2), qt $(pacman -Q qt6-declarative | cut -d' ' -f2)"
 mkdir -p "$OUT"
@@ -133,11 +133,10 @@ steps_json() {  # steps_json FLAVOR id... (the flavor only labels the call)
 
 state_json() {  # state_json FLAVOR NMON STEPS PRESET
     local mons='{"name":"HEADLESS-1","description":"","width":1920,"height":1080,"refresh":60.0,"x":0,"y":0,"scale":1.0,"transform":0,"laptop":false}'
-    (( $2 > 1 )) && mons+=',{"name":"HEADLESS-2","description":"","width":1920,"height":1080,"refresh":60.0,"x":1920,"y":0,"scale":1.0,"transform":0,"laptop":false}'
+    (( $2 > 1 )) && mons+=',{"name":"HEADLESS-2","description":"","make":"Dell Inc.","model":"DELL U2720Q","width":1920,"height":1080,"refresh":60.0,"x":1920,"y":0,"scale":1.0,"transform":0,"laptop":false}'
     cat <<EOF
 {"flavor":"$1","monitors":[$mons],"auto_main":"HEADLESS-1","online":true,"ai":"off","signed_in":false,
-"themes":[{"id":"dusk","name":"Dusk","current":true},{"id":"porphyry","name":"Porphyry","current":false},
- {"id":"aegean","name":"Aegean","current":false},{"id":"alexandria","name":"Alexandria","current":false}],
+"themes":$THEMES_JSON,
  "motion":"showcase","apps":"dark","tokens":{},"steps":$3,"later":["wifi"],"again":false,"assistant":null
  ${4:+,\"render_preset\":$4}}
 EOF
@@ -189,6 +188,16 @@ expect_pixels() {  # expect_pixels NAME FILE gold:none|some
         some) if (( g > 2000 )); then ok "$1: the gold button is there ($g px)"; else bad "$1: only $g gold pixels"; fi ;;
     esac
 }
+
+# The themes with real swatches, drawn by the theme tool from the checkout.
+THEMES_JSON="$(INVICTUS_STATE="$W/theme" python3 - "$SRC/theme/invictus-theme" <<'EOF'
+import json, subprocess, sys
+names = {"dusk": "Dusk", "porphyry": "Porphyry", "aegean": "Aegean", "alexandria": "Alexandria"}
+sw = dict(l.split(" ", 1) for l in subprocess.run([sys.argv[1], "swatches"], capture_output=True, text=True).stdout.splitlines())
+print(json.dumps([{"id": i, "name": n, "current": i == "dusk", "swatch": sw.get(i, "")} for i, n in names.items()]))
+EOF
+)"
+[[ "$THEMES_JSON" == *'.svg"'* || "$THEMES_JSON" == *'.png"'* ]] || bad "invictus-theme swatches drew nothing"
 
 start_sway 1
 ATRIUM_1="$(steps_json atrium assistant ready)"
