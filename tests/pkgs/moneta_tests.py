@@ -581,8 +581,18 @@ def guard(mode, path, profile=None, raw=None, **extra):
 
 
 cases = {
-    (".config/hypr/user.lua", "fixed"): 0, (".config/hypr/monitors.lua", "fixed"): 0,
+    # Minerva's final review, ruling 1: under fixed, files a program executes are refused
+    (".config/hypr/user.lua", "fixed"): 2, (".config/hypr/monitors.lua", "fixed"): 2,
+    (".config/waybar/config.json", "fixed"): 2, (".config/waybar/config", "fixed"): 2,
+    (".config/hypr/user.lua", "full"): 0, (".config/hypr/monitors.lua", "full"): 0,
+    (".config/waybar/config.json", "full"): 0,
+    # ... and only the listed data files pass (ruling 4: default-deny under ~/.config/invictus)
     (".config/waybar/style.css", "fixed"): 0, (".config/invictus/motion", "fixed"): 0,
+    (".config/invictus/themes/dusk-two.toml", "fixed"): 0,
+    (".config/invictus/newfile", "fixed"): 2, (".config/invictus/newfile", "full"): 0,
+    (".config/invictus/motion.d/kitty.conf", "fixed"): 2, (".config/invictus/themes/x.sh", "fixed"): 2,
+    (".config/invictus/themes/sub/x.toml", "fixed"): 2, (".config/waybar/scripts/x.css", "fixed"): 2,
+    (".config/invictus/flavor", "fixed"): 2, (".config/invictus/first-boot.json", "fixed"): 2,
     (".bashrc", "fixed"): 2, (".bashrc", "full"): 2, (".config/hypr/hyprland.lua", "fixed"): 2,
     (".config/invictus/moneta.toml", "full"): 2, (".config/invictus/providers/x/provider.toml", "full"): 2,
     (".config/waybar/evil.css", "fixed"): 2, (".config/waybar/../../.bashrc", "fixed"): 2,
@@ -595,8 +605,10 @@ got[("relative", "full")] = guard("pre", "user.lua", "full").returncode
 want = dict(cases)
 want[("/etc/hosts", "full")] = 2
 want[("relative", "full")] = 2
-check(got == want, "A6: edits only on the allowlist (fixed), plus non-dot home paths (full); symlinks and .. "
-      "are followed; who-answers files, theme hooks (I5), ~/.bashrc and ~/.claude are never edited",
+check(got == want, "A6: fixed allows data files only (themes/*.toml, motion, waybar/*.css), never user.lua, "
+      "monitors.lua or waybar's config, nor any unlisted file under ~/.config/invictus; full keeps the old list plus "
+      "non-dot home paths; symlinks and .. are followed; who-answers files, theme hooks (I5), ~/.bashrc and ~/.claude "
+      "are never edited",
       f"guard decisions differ: {[(k, got[k], want[k]) for k in want if got[k] != want[k]]}")
 # The guard alone, where invictus_env.py cannot be found: still exit 2.
 LONE = os.path.join(W, "lone")
@@ -610,7 +622,7 @@ check(r.returncode == 2, "A6: a guard that cannot load its helper still blocks t
 r = guard("pre", "", "fixed", raw="not json")
 check(r.returncode == 2, "A6: a guard that cannot read its input blocks the edit (fails closed)", f"garbage: {r.returncode}")
 
-r = guard("pre", os.path.join(GH, ".config/hypr/user.lua"), "fixed")
+r = guard("pre", os.path.join(GH, ".config/hypr/user.lua"), "full")
 bk = os.path.join(GH, ".local/state/invictus/backups")
 copies = [os.path.join(dp, f) for dp, _, fs in os.walk(bk) for f in fs if f == "user.lua"]
 with open(os.path.join(GH, ".config/hypr/user.lua"), "w") as f:
@@ -622,13 +634,13 @@ check(r.returncode == 0 and copies and read(copies[0]) == "-- good\n"
       "A6: a backup before the edit; a change that fails invictus-doctor --hypr is put back and Moneta is told",
       f"restore: pre {r.returncode} copies {copies} file {read(os.path.join(GH, '.config/hypr/user.lua'))!r} post {r2.returncode} {r2.stderr!r}")
 newf = os.path.join(GH, ".config/hypr/monitors.lua")
-guard("pre", newf, "fixed")
+guard("pre", newf, "full")
 with open(newf, "w") as f:
     f.write("broken(\n")
 r = guard("post", newf, FAKE_DOCTOR_RC="1")
 check(r.returncode == 2 and not os.path.exists(newf), "A6: a new file that fails the check is removed",
       f"new file: {r.returncode} exists={os.path.exists(newf)}")
-guard("pre", os.path.join(GH, ".config/hypr/user.lua"), "fixed")
+guard("pre", os.path.join(GH, ".config/hypr/user.lua"), "full")
 with open(os.path.join(GH, ".config/hypr/user.lua"), "w") as f:
     f.write("-- better\n")
 r = guard("post", os.path.join(GH, ".config/hypr/user.lua"), FAKE_DOCTOR_RC="0")

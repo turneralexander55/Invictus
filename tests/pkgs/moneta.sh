@@ -86,10 +86,13 @@ for path in sys.argv[1:]:
     assert d["hooks"]["PostToolUse"][0]["hooks"][0]["command"] == "/usr/lib/invictus/claude-config-guard post", path
     if kind == "fixed":
         assert "Bash" in p["deny"] and "NotebookEdit" in p["deny"] and d.get("allowManagedHooksOnly") is True, path
+        # Minerva's final review, ruling 1: files a program executes, denied by rule too (holds on a hook timeout)
+        for r in ("Edit(~/.config/hypr/**)", "Edit(~/.config/waybar/config*)", "Edit(~/.config/invictus/theme-hooks.d/**)"):
+            assert r in p["deny"], (path, r)
     else:
         assert "Bash" not in p["deny"], path
 PY
-then ok "A7/A8: both profiles carry every A7 deny rule, bypass and auto mode off, updates off and the A6 guard; only documented keys"
+then ok "A7/A8: both profiles carry every A7 deny rule, bypass and auto mode off, updates off and the A6 guard; only documented keys; fixed also denies Edit on hypr, waybar's config and theme hooks"
 else bad "A7/A8: the managed profiles (see the assertion above)"; fi
 
 # Janus L1: every print or write in the panel that interpolates a value goes

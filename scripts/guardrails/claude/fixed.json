@@ -26,7 +26,10 @@
       "Edit(~/.config/invictus/moneta.toml)",
       "Edit(~/.config/invictus/providers/**)",
       "Edit(~/.claude/settings.json)",
-      "Edit(~/.claude/settings.local.json)"
+      "Edit(~/.claude/settings.local.json)",
+      "Edit(~/.config/hypr/**)",
+      "Edit(~/.config/waybar/config*)",
+      "Edit(~/.config/invictus/theme-hooks.d/**)"
     ]
   },
   "disableAutoMode": "disable",

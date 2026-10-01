@@ -8,15 +8,24 @@
 #   claude-config-guard pre fixed|full    PreToolUse on Edit, Write, NotebookEdit
 #   claude-config-guard post              PostToolUse on the same tools
 #
-# pre: the file must be on the A6 allowlist in the home:
-#        ~/.config/hypr/user.lua, ~/.config/hypr/monitors.lua,
+# pre: the file must be on the A6 allowlist for the profile, in the home.
+#      fixed (Custodia, or Libertas without Full access): data files only,
+#        each listed by name next to the reader that validates every field
+#        it uses (Minerva, final review 2026-10-01, rulings 1 and 4):
+#          ~/.config/invictus/themes/*.toml   invictus-theme, schema on load
+#          ~/.config/invictus/motion          invictus-motion, three-word enum
+#          ~/.config/waybar/*.css             waybar style, no commands
+#        Anything else under ~/.config/invictus is refused until it is added
+#        here with its reader. Files a program executes (user.lua,
+#        monitors.lua, waybar's config) are the person's or a tool's: any of
+#        them can start a program (hl.exec_cmd, waybar exec/on-click).
+#      full (Full access): ~/.config/hypr/user.lua, ~/.config/hypr/monitors.lua,
 #        ~/.config/invictus/** (not moneta.toml or providers/: who answers is
 #        the person's choice, T7; not theme-hooks.d/: invictus-theme apply
-#        runs what is there, Janus I5), ~/.config/waybar/**
-#      fixed (Custodia, or Libertas without Full access): nothing else.
-#      full (Full access): also any path in the home whose first part does
-#        not start with a dot (projects, documents); no other dotfile, and
-#        nothing outside the home (the deny rules guard /etc, /usr, /boot).
+#        runs what is there, Janus I5), ~/.config/waybar/**, and any path in
+#        the home whose first part does not start with a dot (projects,
+#        documents); no other dotfile, and nothing outside the home (the
+#        deny rules guard /etc, /usr, /boot).
 #      Both the path as given and where it really leads must pass. Before an
 #      allowed edit of an existing file, a copy goes to
 #      ~/.local/state/invictus/backups/<time>/<path in home>.
@@ -32,6 +41,7 @@
 # hook's 60 s, so a slow check still ends in a restore, not a kill.
 # Env (tests, honoured only from a checkout): INVICTUS_DOCTOR, HOME_OVERRIDE.
 # ------------------------------------------------------------
+import fnmatch
 import hashlib
 import json
 import os
@@ -52,7 +62,11 @@ def _invictus_env():
         paths = [os.path.join(d, *p, "invictus_env.py") for p in
                  (("lib",), ("..", "lib"), ("..", "scripts", "lib"), ("..", "..", "lib"),
                   ("..", "lib", "invictus", "lib"))]
-    path = next(p for p in paths if os.path.isfile(p))
+    path = next((p for p in paths if os.path.isfile(p)), None)
+    if path is None:
+        raise ImportError(f"{os.path.basename(here)}: {paths[0] if here.startswith('/usr/') else 'invictus_env.py'} "
+                          "is missing (invictus-sys 0.2.0-4 or later installs it as "
+                          "/usr/lib/invictus/lib/invictus_env.py)")
     spec = importlib.util.spec_from_file_location("invictus_env", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -71,6 +85,14 @@ DOCTOR_TIMEOUT = 45
 HOME = os.path.realpath(env("HOME_OVERRIDE", "") or pwd.getpwuid(os.getuid()).pw_dir)
 STATE = os.path.join(HOME, ".local/state/invictus/backups")
 
+# fixed: (folder in the home, file-name pattern, the reader that validates it).
+# A file is on the list only in that folder itself, not below it.
+FIXED_ALLOW = (
+    (".config/invictus/themes", "*.toml", "invictus-theme: theme schema on load (note 48)"),
+    (".config/invictus", "motion", "invictus-motion: showcase, calm or off"),
+    (".config/waybar", "*.css", "waybar: style only, no commands"),
+)
+# full
 ALLOW_FILES = (".config/hypr/user.lua", ".config/hypr/monitors.lua")
 ALLOW_TREES = (".config/invictus", ".config/waybar")
 NEVER = (".config/invictus/moneta.toml", ".config/invictus/providers",
@@ -87,7 +109,10 @@ def under(rel, tree):
     return rel == tree or rel.startswith(tree + "/")
 
 
-def on_allowlist(rel):
+def on_allowlist(rel, profile):
+    if profile != "full":
+        folder, name = os.path.split(rel)
+        return any(folder == d and fnmatch.fnmatchcase(name, pat) for d, pat, _ in FIXED_ALLOW)
     if any(under(rel, n) for n in NEVER):
         return False
     return rel in ALLOW_FILES or any(under(rel, t) and rel != t for t in ALLOW_TREES)
@@ -103,15 +128,15 @@ def decide(path, profile):
         rel = rel_in_home(p)
         if rel is None:
             return f"{path} is outside your home folder; Moneta does not edit it."
-        if on_allowlist(rel):
+        if on_allowlist(rel, profile):
             continue
         if profile == "full" and not rel.split("/", 1)[0].startswith("."):
             continue
         if profile == "full":
             return (f"{path} is a settings file Moneta may not change. It may change ~/.config/hypr/user.lua, "
                     "monitors.lua, ~/.config/waybar and ~/.config/invictus.")
-        return (f"{path} is not one Moneta may change here. It may change ~/.config/hypr/user.lua, monitors.lua, "
-                "~/.config/waybar and ~/.config/invictus; anything else is yours to do.")
+        return (f"{path} is not one Moneta may change here. It may change themes in ~/.config/invictus/themes, "
+                "the motion level and waybar's style sheets; anything else is yours to do.")
     return None
 
 
@@ -208,4 +233,7 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # Only exit 2 blocks a PreToolUse call; any other non-zero lets it through.
+    # So the guard exits 2 or 0 (falling off the end), nothing else.
+    if main() != 0:
+        sys.exit(2)
