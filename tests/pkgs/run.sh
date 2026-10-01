@@ -32,6 +32,8 @@
 # 17. The Moneta panel and the provider layer: the panel's socket and
 #    restarts, who may run (SM10, SM26), the chat client (A13), the MCP
 #    server, the A6 guard, the managed profiles (A7, A8), A9 and A12.
+# 18. First start (invictus-first-boot): run once per person, monitors.lua,
+#    look, the assistant step's calls and its key handling, the snapshot.
 #
 # Needs lua 5.4+ for groups 7 and 10 (LUA=...), node and python3 (3.11+)
 # for 14-17.
@@ -432,6 +434,8 @@ echo
 . "$HERE/sys.sh"
 # shellcheck source=tests/pkgs/moneta.sh
 . "$HERE/moneta.sh"
+# shellcheck source=tests/pkgs/firstboot.sh
+. "$HERE/firstboot.sh"
 
 if [[ $fail == 0 ]]; then echo "ALL PASSED"; else echo "SOME TESTS FAILED"; fi
 exit $fail

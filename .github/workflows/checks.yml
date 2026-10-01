@@ -2,7 +2,8 @@
 # package tests, invictus-sys and the guard rails under a real polkitd, the
 # package sets checked against Arch and the AUR,
 # end-to-end signed-repo tests in Arch (including no-ai-in-base on the
-# built repo, and the one-command container build), and a secrets scan
+# built repo, and the one-command container build), the first-start
+# screens drawn by Quickshell under a headless sway, and a secrets scan
 # over the full git history.
 name: checks
 
@@ -97,6 +98,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: invictus-sys, the guard rails and the Moneta panel with real polkitd, pkexec, pacman and visudo
         run: bash tests/pkgs/e2e-sys.sh "$GITHUB_WORKSPACE"
+
+  firstboot-qml:
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: First-start screens in Quickshell (qmllint, headless renders)
+        run: bash tests/firstboot/qml.sh "$GITHUB_WORKSPACE" /tmp/firstboot-renders
 
   packages-live:
     runs-on: ubuntu-24.04

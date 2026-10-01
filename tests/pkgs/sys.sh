@@ -384,7 +384,7 @@ else sfail "hold hook targets"; fi
 pb_deps() { bash -c 'source "$1"; printf "%s\n" "${depends[@]}"' _ "$1"; }
 if pb_deps "$REPO/pkgs/meta/invictus-base/PKGBUILD" | grep -x invictus-guardrails >/dev/null \
    && ! pb_deps "$REPO/pkgs/own/invictus-sys/PKGBUILD" | grep -x invictus-tools >/dev/null \
-   && pb_deps "$REPO/pkgs/own/invictus-tools/PKGBUILD" | grep -x invictus-sys >/dev/null; then
+   && pb_deps "$REPO/pkgs/own/invictus-tools/PKGBUILD" | grep -xE 'invictus-sys(>=[0-9.:-]+)?' >/dev/null; then
     ok "invictus-base brings the guard rails and invictus-sys with no desktop package; invictus-tools brings invictus-sys"
 else sfail "package depends"; fi
 echo

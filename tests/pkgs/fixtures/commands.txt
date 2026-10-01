@@ -38,6 +38,7 @@ fastfetch                             fastfetch       config/shell/zshrc
 xdg-user-dirs-update                  xdg-user-dirs   scripts/first-login.sh
 fc-cache                              fontconfig      scripts/first-login.sh
 systemctl                             systemd         scripts/first-login.sh
+invictus-first-boot                   invictus-tools  scripts/first-login.sh optional
 
 # invictus-tools
 gsettings                             glib2           theme/invictus-theme

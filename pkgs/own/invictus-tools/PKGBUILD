@@ -5,7 +5,9 @@
 # tests/hyprland-lua/) at the same commit as this PKGBUILD: bump pkgrel
 # when any of them changes, or the published package is reused.
 #
-#   /usr/bin/invictus-theme, invictus-motion, invictus-update, invictus-doctor
+#   /usr/bin/invictus-theme, invictus-motion, invictus-update, invictus-doctor,
+#   invictus-first-boot, and /usr/share/invictus/first-boot/*.qml (the
+#   first-start screens; Quickshell comes with invictus-desktop)
 #   /usr/lib/invictus/show-keybindings, confirm            (Hyprland binds)
 #   /usr/lib/invictus/waybar/{alert,updates}               (waybar modules)
 #   /usr/lib/invictus/lib/defaults.sh                      (shared shell code)
@@ -17,7 +19,7 @@
 
 pkgname=invictus-tools
 pkgver=0.1.0
-pkgrel=5
+pkgrel=7
 pkgdesc='Invictus commands: theme, motion, update, doctor, and the scripts the desktop runs'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
@@ -25,8 +27,9 @@ license=('GPL-3.0-or-later')
 depends=(
   'bash' 'python' 'lua' 'invictus-branding'
   # pending-extras and the doctor read /usr/lib/invictus/lib/{pacman,
-  # guardrails-state}.sh; Settings and the desktop call invictus-sys
-  'invictus-sys'
+  # guardrails-state}.sh; Settings and the desktop call invictus-sys;
+  # invictus-first-boot and invictus-theme load lib/invictus_env.py (0.2.0-4)
+  'invictus-sys>=0.2.0-4'
   # waybar modules (checkupdates, free), the cheatsheet and pickers
   # (rofi, notify-send), pkill, gsettings for the GTK look
   'pacman-contrib' 'libnotify' 'rofi' 'util-linux' 'procps-ng' 'glib2'
@@ -47,6 +50,8 @@ package() {
   install -Dm755 "$root/scripts/invictus-update.sh" "$pkgdir/usr/bin/invictus-update"
   install -Dm755 "$root/scripts/invictus-doctor.sh" "$pkgdir/usr/bin/invictus-doctor"
   install -Dm755 "$root/scripts/invictus-motion.sh" "$pkgdir/usr/bin/invictus-motion"
+  install -Dm755 "$root/scripts/first-boot/invictus-first-boot" "$pkgdir/usr/bin/invictus-first-boot"
+  install -Dm644 -t "$pkgdir/usr/share/invictus/first-boot" "$root"/quickshell/first-boot/*.qml
 
   install -Dm755 "$root/scripts/show-keybindings.sh" "$lib/show-keybindings"
   install -Dm755 "$root/scripts/confirm.sh" "$lib/confirm"

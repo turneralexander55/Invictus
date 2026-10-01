@@ -531,13 +531,18 @@ local REMOVED_EXECS = {
 local WRAPPED_EXECS = {
     waybar = "invictus-theme apply; waybar",
 }
+-- New at the end of the start handler, in this order (each with its reason).
+local ADDED_EXECS = {
+    "invictus-first-boot start --if-pending", -- first start (design.md 2.3), once per person
+}
 
-test("autostart runs the same commands as autostart.conf, once at start", function(check)
+test("autostart runs the same commands as autostart.conf (plus first start), once at start", function(check)
     local want = {}
     for _, kw in ipairs(old.auto.keywords) do
         local cmd = trim((kw.value:gsub("%s*&%s*$", "")))
         if kw.kind == "exec-once" and not REMOVED_EXECS[cmd] then table.insert(want, WRAPPED_EXECS[cmd] or cmd) end
     end
+    for _, cmd in ipairs(ADDED_EXECS) do table.insert(want, cmd) end
     for cmd in pairs(REMOVED_EXECS) do
         for _, got in ipairs(state.execs) do check(got ~= cmd, cmd .. " is still autostarted") end
     end
@@ -711,6 +716,7 @@ local COMMAND_PACKAGES = {
     swaync = "swaync", hyprpaper = "hyprpaper", hypridle = "hypridle", waybar = "waybar",
     hyprctl = "hyprland",
     ["invictus-theme"] = "invictus-tools",
+    ["invictus-first-boot"] = "invictus-tools",
     hyprshutdown = "hyprshutdown", -- optional at runtime: the bind checks `command -v` first
     ["/usr/lib/invictus/show-keybindings"] = "invictus-tools",
     ["/usr/lib/invictus/confirm"] = "invictus-tools",

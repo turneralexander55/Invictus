@@ -67,6 +67,7 @@ For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera
 | `xdg-user-dirs`, `xdg-utils` | Home folders; `xdg-open` for links and files | first login, apps |
 | `swaync` | Notifications (both flavours) | autostart, waybar |
 | `kitty` | Terminal | binds, theme tool |
+| `quickshell` | The shell toolkit: first start now, the Desk and the Atrium shell later | invictus-first-boot |
 | `wl-clipboard`, `hyprshot`, `brightnessctl`, `playerctl` | Clipboard, screenshots, hardware keys | binds |
 | `thunar thunar-volman thunar-archive-plugin tumbler ffmpegthumbnailer gvfs gvfs-mtp gvfs-smb file-roller` | Files: drives, phones, shares, archives, thumbnails | Super+E, Atrium "Files" |
 | `loupe showtime papers` | Open photos, video, PDFs (both flavours download files) | Thunar, browsers, Atrium tiles |
@@ -74,6 +75,7 @@ For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera
 | `zen-browser-bin` | Browser (AUR) | Super+W, Atrium "Internet" |
 | `papirus-icon-theme`, `capitaine-cursors`, `adw-gtk-theme`, `qt6ct` | Icons, the cursor `env.lua` sets (`XCURSOR_THEME`), the GTK theme `invictus-theme` recolours, the Qt platform theme `env.lua` sets (`QT_QPA_PLATFORMTHEME=qt6ct`) | theme tool, rofi, Qt apps |
 | `fontconfig`, `ttf-ibm-plex`, `ttf-nerd-fonts-symbols-mono` | The UI and mono face and the glyph font the config names | kitty, waybar, rofi, swaync, first login |
+| `otf-cormorant` | Cormorant SC, the INVICTUS wordmark (look.md) | first start |
 | `noto-fonts noto-fonts-emoji ttf-liberation` | Latin, Greek, Cyrillic and most scripts, emoji, Arial/Times/Courier metrics (Chinese, Japanese and Korean: `noto-fonts-cjk`, an installer extra) | web, documents, games |
 | `zsh zsh-syntax-highlighting zsh-autosuggestions spaceship-prompt fastfetch` | The shipped `~/.zshrc` | every terminal |
 
@@ -209,8 +211,7 @@ Design plans dropped: `virtiofsd` in windows (dockur shares folders over SMB, no
 - `gparted`: `gnome-disk-utility` works through udisks without running a root app.
 - `xarchiver`: `file-roller` matches the GTK 4 apps.
 - `cups-browsed`: CUPS 2.4 finds driverless printers itself.
-- `qt5ct`, `papirus-folders` (AUR), `otf-cormorant` (look.md): the config does not use them yet (`env.lua` sets `QT_QPA_PLATFORMTHEME=qt6ct`, so Qt 5 apps get no theme); add each when the config does. `qt6ct` and `capitaine-cursors` joined desktop when `env.lua` switched to them (2026-09-30); `adwaita-cursors` left.
-- `quickshell`: nothing runs it yet; joins with the Desk or the Atrium shell.
+- `qt5ct`, `papirus-folders` (AUR): the config does not use them yet (`env.lua` sets `QT_QPA_PLATFORMTHEME=qt6ct`, so Qt 5 apps get no theme); add each when the config does. `qt6ct` and `capitaine-cursors` joined desktop when `env.lua` switched to them (2026-09-30); `adwaita-cursors` left.
 - A firewall (`ufw`, `firewalld`): nothing listens on the network by default (sshd off, the VM's RDP on 127.0.0.1). Revisit with RustDesk.
 - `zram-generator`: the design uses a swapfile. `reflector`: the installer's job.
 - `paru`: optional for `invictus-update --aur`; not built here (a Rust build every release).
