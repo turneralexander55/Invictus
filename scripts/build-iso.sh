@@ -28,7 +28,8 @@
 # too) fails when the ISO reaches that; it warns above 1.8 GiB, the
 # headroom Alex asked for (2026-09-30). The ISO is kept for inspection.
 #
-# Runs mkarchiso in a privileged Arch container (podman or docker; IMAGE=
+# Runs mkarchiso in a privileged Arch container (podman or docker, or
+# RUNTIME=docker to pick; rootless podman cannot mount /dev for the chroot; IMAGE=
 # overrides archlinux:base-devel, CONTAINER_ARGS= adds runtime flags such as
 # "--network host"). Inside the container it:
 #  1. dev: builds the package repo with scripts/build-repo.sh from a staged
@@ -134,7 +135,7 @@ if [[ -n "$PREPARE_ONLY" ]]; then
     WORK="$PREPARE_ONLY"
     mkdir -p "$WORK"
 else
-    RUNTIME="$(command -v podman || command -v docker || true)"
+    RUNTIME="${RUNTIME:-$(command -v podman || command -v docker || true)}"
     [[ -n "$RUNTIME" ]] || die "needs podman or docker"
     WORK="$(mktemp -d "${TMPDIR:-/tmp}/invictus-iso.XXXXXX")"
     if $KEEP_WORK; then echo "==> Work folder: $WORK"; else trap 'rm -rf "$WORK"' EXIT; fi

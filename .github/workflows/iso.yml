@@ -103,6 +103,9 @@ jobs:
           ls out/iso-repo | head -50
 
       - name: Build the ISO
+        env:
+          # The runner's podman is rootless and cannot mount /dev in the chroot.
+          RUNTIME: docker
         run: |
           args=(--channel "$CHANNEL")
           [ "$KIND" = release ] && args+=(--release)
