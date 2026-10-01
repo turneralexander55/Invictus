@@ -276,6 +276,20 @@ if [[ ! -e /tmp/evil/terminal-ran && ! -e /tmp/evil/login-ran && ! -e /tmp/evil/
 else
     bad "installed command honoured an override: $(ls /tmp/evil) $(cat /tmp/evil/out)"
 fi
+# Janus N2: PATH does not choose the program a key goes to. A fake
+# invictus-provider first on PATH must not get the key.
+mkdir -p /tmp/evilbin /etc/invictus
+printf '#!/bin/sh\ncat > /tmp/evilbin/got\n' > /tmp/evilbin/invictus-provider
+chmod 755 /tmp/evilbin/invictus-provider
+echo on > /etc/invictus/ai
+printf 'KEY-SECRET-123\n' | HOME=/tmp/evil-home PATH="/tmp/evilbin:$PATH" \
+    /usr/bin/invictus-first-boot assistant other --address api.example.com > /tmp/evil/n2.out 2>&1 || true
+if [[ ! -e /tmp/evilbin/got ]] && ! grep -rq KEY-SECRET-123 /tmp/evil-home 2>/dev/null; then
+    ok "installed invictus-first-boot calls tools by full path: a fake invictus-provider first on PATH gets no key"
+else
+    bad "PATH chose the provider: $(cat /tmp/evilbin/got 2>/dev/null) $(cat /tmp/evil/n2.out)"
+fi
+rm -f /etc/invictus/ai
 
 echo
 if [[ $fail == 0 ]]; then echo "ALL PASSED"; else echo "SOME TESTS FAILED"; fi

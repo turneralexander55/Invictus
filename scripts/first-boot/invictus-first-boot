@@ -68,7 +68,12 @@ def _invictus_env():
         paths = [os.path.join(d, *p, "invictus_env.py") for p in
                  (("lib",), ("..", "lib"), ("..", "scripts", "lib"), ("..", "..", "lib"),
                   ("..", "lib", "invictus", "lib"))]
-    path = next(p for p in paths if os.path.isfile(p))
+    path = next((p for p in paths if os.path.isfile(p)), None)
+    if path is None:
+        sys.stderr.write(f"{os.path.basename(here)}: {paths[0] if here.startswith('/usr/') else 'invictus_env.py'} "
+                         "is missing (invictus-sys 0.2.0-4 or later installs it as "
+                         "/usr/lib/invictus/lib/invictus_env.py)\n")
+        sys.exit(1)
     spec = importlib.util.spec_from_file_location("invictus_env", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -76,6 +81,10 @@ def _invictus_env():
 
 
 ENV = _invictus_env()
+if os.path.realpath(__file__).startswith("/usr/"):
+    # Installed: every tool is called by full path, and the programs they
+    # start (the Claude sign-in) see only the system's (Janus N2).
+    os.environ["PATH"] = "/usr/bin"
 
 REQUEST = "first-start"            # the label invictus-sys writes to Acta
 SNAPSHOT_DESCRIPTION = "First boot done"
@@ -101,7 +110,7 @@ STEPS = [
 ]
 
 LAPTOP_PREFIXES = ("eDP", "LVDS", "DSI")
-HOST_RE = re.compile(r"(https?://)?[A-Za-z0-9]([A-Za-z0-9.-]{0,252})(:[0-9]{1,5})?(/[A-Za-z0-9._~/-]*)?")  # fullmatch only
+HOST_RE = re.compile(r"\A(https?://)?[A-Za-z0-9]([A-Za-z0-9.-]{0,252})(:[0-9]{1,5})?(/[A-Za-z0-9._~/-]*)?\Z")  # and fullmatch
 
 
 class Fail(Exception):
@@ -227,7 +236,7 @@ def ai_state():
 
 def sys_call(*args):
     """invictus-sys as this person; returns (exit code, RESULT word, snapshot)."""
-    rc, so = run([tool("INVICTUS_SYS_CMD", "invictus-sys"), "--request", REQUEST, *args])
+    rc, so = run([tool("INVICTUS_SYS_CMD", "/usr/bin/invictus-sys"), "--request", REQUEST, *args])
     result, snap = None, None
     for line in so.splitlines():
         m = re.match(r"^invictus-sys: (.+?) snapshot=(\S+)\s*$", line)
@@ -258,7 +267,7 @@ def backup_path(name):
 
 
 def read_monitors():
-    rc, so = run([tool("INVICTUS_HYPRCTL", "hyprctl"), "monitors", "-j"])
+    rc, so = run([tool("INVICTUS_HYPRCTL", "/usr/bin/hyprctl"), "monitors", "-j"])
     if rc != 0:
         raise Fail("hyprctl monitors failed (is Hyprland running?)")
     try:
@@ -418,7 +427,7 @@ def cmd_monitors_write(args):
 
     # design.md A6: every edit is followed by the config check; a failed check
     # puts the old file back before Hyprland reloads.
-    doctor = tool("INVICTUS_DOCTOR_CMD", "invictus-doctor")
+    doctor = tool("INVICTUS_DOCTOR_CMD", "/usr/bin/invictus-doctor")
     checked = None
     if have(doctor):
         rc, _ = run([doctor, "--hypr"], timeout=60)
@@ -432,7 +441,7 @@ def cmd_monitors_write(args):
                 msg = "the config check failed; no monitors.lua was written"
             out({"ok": False, "error": msg, "backup": str(backup) if backup else None})
             return 1
-    run([tool("INVICTUS_HYPRCTL", "hyprctl"), "reload"])
+    run([tool("INVICTUS_HYPRCTL", "/usr/bin/hyprctl"), "reload"])
     update_record(main_screen=main["name"])
     out({"ok": True, "main": main["name"], "file": str(dest),
          "backup": str(backup) if backup else None, "checked": checked})
@@ -442,7 +451,7 @@ def cmd_monitors_write(args):
 # ---------------------------------------------------------------- look
 
 def themes(with_swatches=False):
-    rc, so = run([tool("INVICTUS_THEME_CMD", "invictus-theme"), "list"])
+    rc, so = run([tool("INVICTUS_THEME_CMD", "/usr/bin/invictus-theme"), "list"])
     found = []
     for line in so.splitlines() if rc == 0 else []:
         m = re.match(r"^([* ]) (\S+) (.+)$", line)
@@ -450,7 +459,7 @@ def themes(with_swatches=False):
             found.append({"id": m.group(2), "name": m.group(3).strip(), "current": m.group(1) == "*"})
     if with_swatches:
         # the picker's swatches (look.md, The switcher), drawn by invictus-theme
-        rc, so = run([tool("INVICTUS_THEME_CMD", "invictus-theme"), "swatches"])
+        rc, so = run([tool("INVICTUS_THEME_CMD", "/usr/bin/invictus-theme"), "swatches"])
         paths = dict(line.split(" ", 1) for line in so.splitlines() if rc == 0 and " " in line)
         for t in found:
             t["swatch"] = paths.get(t["id"], "")
@@ -458,7 +467,7 @@ def themes(with_swatches=False):
 
 
 def color_scheme():
-    rc, so = run([tool("INVICTUS_GSETTINGS", "gsettings"), "get", "org.gnome.desktop.interface", "color-scheme"])
+    rc, so = run([tool("INVICTUS_GSETTINGS", "/usr/bin/gsettings"), "get", "org.gnome.desktop.interface", "color-scheme"])
     return "light" if rc == 0 and "light" in so else "dark"
 
 
@@ -481,9 +490,9 @@ def cmd_look(args):
 def apply_look(theme, motion, apps):
     """Theme, motion level, light or dark apps; returns the parts that failed."""
     steps = {
-        "theme": run([tool("INVICTUS_THEME_CMD", "invictus-theme"), "apply", theme])[0],
-        "motion": run([tool("INVICTUS_MOTION_CMD", "invictus-motion"), "set", motion])[0],
-        "apps": run([tool("INVICTUS_GSETTINGS", "gsettings"), "set", "org.gnome.desktop.interface",
+        "theme": run([tool("INVICTUS_THEME_CMD", "/usr/bin/invictus-theme"), "apply", theme])[0],
+        "motion": run([tool("INVICTUS_MOTION_CMD", "/usr/bin/invictus-motion"), "set", motion])[0],
+        "apps": run([tool("INVICTUS_GSETTINGS", "/usr/bin/gsettings"), "set", "org.gnome.desktop.interface",
                      "color-scheme", "prefer-" + apps])[0],
     }
     update_record(look={"theme": theme, "motion": motion, "apps": apps})
@@ -499,11 +508,12 @@ def apply_look(theme, motion, apps):
 # --endpoint URL`; `key set openai-compatible` with the key on stdin. Exit
 # codes: 0 done, 1 failed (the keyring), 2 bad arguments, 3 refused.
 
+PENDING_TRIES = 5        # apply-pending gives up after this many failures
 HOME_AI_PORT = "11434"   # a bare home host name means an ollama-style server
 
 
 def provider_cmd():
-    return tool("INVICTUS_PROVIDER_CMD", "invictus-provider")
+    return tool("INVICTUS_PROVIDER_CMD", "/usr/bin/invictus-provider")
 
 
 def endpoint_for(choice, address):
@@ -639,8 +649,17 @@ def cmd_apply_pending(args=(), quiet=False):
     else:
         choice, endpoint = kept_choice(rec)
         result = apply_provider(choice, endpoint, None)
+        tries = rec.get("provider_tries") if isinstance(rec.get("provider_tries"), int) else 0
+        tries += 1
         if result in ("ok", "provider-refused"):
-            update_record(provider_pending=False, provider_result=result)
+            update_record(provider_pending=False, provider_result=result, provider_tries=tries)
+        elif tries >= PENDING_TRIES:
+            # the keyring or something else keeps failing: stop after a few
+            # sessions; Settings > Moneta can still set it up
+            result = f"dropped: failed {tries} times"
+            update_record(provider_pending=False, provider_result=result, provider_tries=tries)
+        else:
+            update_record(provider_tries=tries)
     if not quiet:
         out({"result": result})
     return 0
@@ -671,7 +690,7 @@ def cmd_signin(args):
     if argv:
         # Claude Code's own sign-in, in a terminal as the contract says (it
         # opens the browser); we only wait for the window to close.
-        run([tool("INVICTUS_TERMINAL", "kitty"), "--class", "invictus-signin",
+        run([tool("INVICTUS_TERMINAL", "/usr/bin/kitty"), "--class", "invictus-signin",
              "--title", "Sign in to Claude", *argv], timeout=1800)
     signed = credentials_file().is_file()
     update_record(signed_in=signed)
@@ -682,7 +701,7 @@ def cmd_signin(args):
 # ---------------------------------------------------------------- state
 
 def online():
-    rc, so = run([tool("INVICTUS_NMCLI", "nmcli"), "-t", "networking", "connectivity"], timeout=10)
+    rc, so = run([tool("INVICTUS_NMCLI", "/usr/bin/nmcli"), "-t", "networking", "connectivity"], timeout=10)
     if rc == 127:
         return None
     return rc == 0 and so.strip() == "full"
@@ -713,7 +732,7 @@ def tokens():
 
 
 def motion():
-    rc, so = run([tool("INVICTUS_MOTION_CMD", "invictus-motion"), "get"])
+    rc, so = run([tool("INVICTUS_MOTION_CMD", "/usr/bin/invictus-motion"), "get"])
     v = so.strip()
     return v if rc == 0 and v in MOTIONS else "showcase"
 
@@ -807,7 +826,7 @@ def cmd_start(args):
         out({"started": False, "why": "already open"})
         return 0
     env = dict(os.environ, INVICTUS_FIRSTBOOT_CMD=os.path.abspath(sys.argv[0]))
-    qs = tool("INVICTUS_QUICKSHELL", "quickshell")
+    qs = tool("INVICTUS_QUICKSHELL", "/usr/bin/quickshell")
     try:
         rc = subprocess.call([qs, "-p", str(qml_dir())], env=env)
     except FileNotFoundError:

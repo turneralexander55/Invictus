@@ -422,20 +422,36 @@ assert m.for_script("/home/p/checkout/scripts/x")("INVICTUS_SHARE", "d") == "d"
 EOF
 then ok "L1: invictus_env.for_script: an installed script (under /usr/) gets the default whatever INVICTUS_* says; a checkout gets the override"
 else bad "L1: scripts/lib/invictus_env.py missing or wrong"; fi
-# L1: every Python script we ship that reads INVICTUS_* does it through the helper
-# (a runtime label that is not an override is marked "# not an override").
-offenders=""
+# L1, N2, N3: the override rule on the syntax tree (tests/pkgs/lib/env-ast.py):
+# no INVICTUS_* read but through the helper, no environment read with a
+# computed name, every tool() default an absolute path.
+py=()
 while IFS= read -r f; do
+    [[ -f "$REPO/$f" ]] || continue
     head -1 "$REPO/$f" | grep -q python || [[ "$f" == *.py ]] || continue
     [[ "$f" == scripts/lib/invictus_env.py ]] && continue
-    if grep -nE "(os\.environ(\.get)?[[(]|os\.getenv\(|environ\.get\()[\"']INVICTUS_" "$REPO/$f" | grep -v "# not an override" | grep -q .; then
-        offenders+=" $f"
-    elif grep -q "INVICTUS_" "$REPO/$f" && ! grep -q "invictus_env" "$REPO/$f"; then
-        offenders+=" $f(no helper)"
-    fi
-done < <(cd "$REPO" && git ls-files 'scripts/**' 'theme/*' 2>/dev/null | grep -v '^scripts/dev/' || find scripts theme -type f)
-[[ -z "$offenders" ]] && ok "L1: every shipped Python script reads INVICTUS_* only through scripts/lib/invictus_env.py" \
-    || bad "L1: INVICTUS_* read directly in:$offenders"
+    py+=("$REPO/$f")
+done < <(cd "$REPO" && { git ls-files 'scripts/**' 'theme/*' 2>/dev/null || find scripts theme -type f; } | grep -v '^scripts/dev/')
+if (( ${#py[@]} >= 2 )) && python3 "$HERE/lib/env-ast.py" "${py[@]}" > "$TMP/envast.out"; then
+    ok "N3: every shipped Python script (${#py[@]}) reads INVICTUS_* only through invictus_env, no computed names, absolute tool() defaults"
+else
+    bad "N3: $(head -5 "$TMP/envast.out")"
+fi
+# the checker itself: Janus's two shapes, a direct read, a bare default
+cat > "$TMP/envast-bad.py" <<'EOF'
+import os
+def _invictus_env(): pass
+a = os.environ.get(
+    "INVICTUS_STATE")
+def tool(env, d):
+    return os.environ.get(env) or d
+b = os.environ["INVICTUS_SHARE"]
+c = tool("INVICTUS_X", "invictus-provider")
+d = os.environ.get("INVICTUS_THREAD", "")  # not an override
+EOF
+n_bad="$(python3 "$HERE/lib/env-ast.py" "$TMP/envast-bad.py" | wc -l)"
+[[ "$n_bad" == 4 ]] && ok "N3: the check catches a split call, a computed name, a subscript and a bare tool() default (4 of 4; the marked label passes)" \
+    || bad "N3: the checker found $n_bad of 4 planted reads"
 grep -q "invictus_env.py" "$REPO/pkgs/own/invictus-sys/PKGBUILD" && [[ -f "$ALL/usr/lib/invictus/lib/invictus_env.py" ]] \
     && ok "L1: invictus-sys installs the helper as /usr/lib/invictus/lib/invictus_env.py" || bad "L1: the helper is not packaged"
 
@@ -506,6 +522,41 @@ if [[ -n "$LUA" ]] && stub_check "$H/.config/hypr/monitors.lua" && MON_LUA="$H/.
 else
     bad "I1: monitors.lua with U+202E: $(cat "$H/err" "$TMP/fbcheck.log" 2>/dev/null | head -3)"
 fi
+
+# ---- Janus's re-check (2026-10-01) ----------------------------------------------------
+# N4: invictus-tools needs the invictus-sys that ships the helper
+sysv="$(bash -c 'source "$1"; echo "$pkgver-$pkgrel"' _ "$REPO/pkgs/own/invictus-sys/PKGBUILD")"
+toolsdeps="$(bash -c 'source "$1"; printf "%s\n" "${depends[@]}"' _ "$REPO/pkgs/own/invictus-tools/PKGBUILD")"
+toolsrel="$(bash -c 'source "$1"; echo "$pkgrel"' _ "$REPO/pkgs/own/invictus-tools/PKGBUILD")"
+grep -qx "invictus-sys>=$sysv" <<< "$toolsdeps" && (( toolsrel >= 7 )) \
+    && ok "N4: invictus-tools (pkgrel $toolsrel) depends on invictus-sys>=$sysv, the one with the helper" \
+    || bad "N4: invictus-tools depends: $(grep invictus-sys <<< "$toolsdeps"), pkgrel $toolsrel"
+# N4: without the helper the scripts say so, no traceback
+mkdir -p "$TMP/nohelper/bin"
+cp "$FB" "$TMP/nohelper/bin/invictus-first-boot"
+cp "$REPO/theme/invictus-theme" "$TMP/nohelper/bin/invictus-theme"
+n4=""
+for s in invictus-first-boot invictus-theme; do
+    python3 "$TMP/nohelper/bin/$s" state > /dev/null 2> "$TMP/nohelper/$s.err"; rc=$?
+    if [[ $rc == 0 ]] || grep -q Traceback "$TMP/nohelper/$s.err" || ! grep -q "invictus_env.py" "$TMP/nohelper/$s.err"; then
+        n4+=" $s(rc $rc: $(tail -1 "$TMP/nohelper/$s.err"))"
+    fi
+done
+[[ -z "$n4" ]] && ok "N4: with the helper missing, both scripts stop with a line naming invictus_env.py, no traceback" || bad "N4:$n4"
+# Info: a provider-failed kept choice stops after five tries
+new_home cap atrium
+FAKE_SYS_RESULT=pending fb assistant claude
+for _ in 1 2 3 4 5 6 7; do FAKE_PROVIDER_RC=1 fb start --if-pending; done
+n_set="$(grep -c "invictus-provider set" "$H/log")"
+[[ "$n_set" == 5 ]] && python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert not d['provider_pending'] and d['provider_result'].startswith('dropped')" "$H/.local/state/invictus/first-boot.json" \
+    && ok "a kept choice that keeps failing (exit 1) is tried five times, then dropped" || bad "provider-failed cap: $n_set set calls"
+# Info: HOST_RE keeps its anchors, so a later .match() cannot take a prefix
+python3 - "$FB" <<'EOF' && ok "HOST_RE is anchored (\A...\Z) as well as fullmatched" || bad "HOST_RE has no anchors"
+import re, sys
+src = open(sys.argv[1]).read()
+m = re.search(r'HOST_RE = re\.compile\(r"(.*)"\)', src)
+assert m and m.group(1).startswith(r"\A") and m.group(1).endswith(r"\Z"), m and m.group(1)
+EOF
 
 # ---- static rules ---------------------------------------------------------------------------
 # Every step the command lists either has its screen or is a later release.

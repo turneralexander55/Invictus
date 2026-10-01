@@ -16,7 +16,8 @@ read with os.environ directly and marked "# not an override";
 tests/pkgs/firstboot.sh fails on any other direct INVICTUS_* read in a
 shipped Python script.
 
-Load it from a script with load(), copied as is:
+Load it from a script with this block, copied as is (the script must find
+the helper before it knows whether it is installed):
 
     def _invictus_env():
         import importlib.util
@@ -28,7 +29,12 @@ Load it from a script with load(), copied as is:
             paths = [os.path.join(d, *p, "invictus_env.py") for p in
                      (("lib",), ("..", "lib"), ("..", "scripts", "lib"), ("..", "..", "lib"),
                       ("..", "lib", "invictus", "lib"))]
-        path = next(p for p in paths if os.path.isfile(p))
+        path = next((p for p in paths if os.path.isfile(p)), None)
+        if path is None:
+            sys.stderr.write(f"{os.path.basename(here)}: {paths[0] if here.startswith('/usr/') else 'invictus_env.py'} "
+                             "is missing (invictus-sys 0.2.0-4 or later installs it as "
+                             "/usr/lib/invictus/lib/invictus_env.py)\n")
+            sys.exit(1)
         spec = importlib.util.spec_from_file_location("invictus_env", path)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
