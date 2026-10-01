@@ -198,6 +198,20 @@ Each screen: `night` background with the Sol wallpaper faint behind, one centred
 
 Before: Calamares' default Welcome, Location, Keyboard, Partitions, Users, Summary, Install, Finish = 8 screens, about 14 decisions, 6 jargon words. After: 4 screens (3 on an empty disk), 3 decisions (language, tick the box, name and password), no jargon.
 
+### 3.1.1 The Extras page (Venus, 2026-10-01)
+
+Built by Vulcan (design.md 11, "Small ISO"): Calamares' `netinstall` page, plain path after Keyboard, Advanced after Guard rails. Reviewed as a design call:
+
+- **Place.** Kept as its own page on both paths. Hiding it on the plain path would leave a friend no way to get Steam until Settings can add extras, and Alex asked for the packages in the wizard. It cannot share a page with another step (netinstall draws its own page) and it has one job. Before the account and disk pages so the last page is still the "I've saved my files" tick.
+- **Rows.** Plain: `Documents` (ticked), `Games`, `Chinese, Japanese and Korean text`: three rows, nothing to scroll. Advanced adds `Programming`. Names are the Start tile names (2.4), so what was ticked is what appears in Start.
+- **Defaults.** Documents ticked on every path and flavor: a flavor says how windows behave, not what the person needs (1), and an unticked box costs one click to undo where a missing office suite costs a search. Nothing else ticked. When the language picked is Chinese, Japanese or Korean the fonts are added whether or not the box was ticked (`invictusextras`); netinstall cannot tick the box from the language.
+- **Words (Clio, 2026-10-01).** Sidebar `Extras`. Title `Tick any you want. They download during the install, or the first time you're online.` (the boxes are ticks, so the title says tick). Descriptions, 72 characters or fewer: Documents `Letters, budgets and slides. Opens Word, Excel and PowerPoint files.` (Microsoft names only for file compatibility); Games, plain `Steam, set up to play Windows games as well.`; Games, Advanced `Steam and Proton for Windows games. Lutris for GOG and Epic.`; Programming `VS Code, Zed, Git, Node.js, Python and containers.`; `Chinese, Japanese and Korean text`: `Shows these languages on web pages and in documents.` Install-step line: `Adding the extras you picked`. Row names stay `Documents` and `Games` to match Start.
+- **No package names.** Each row keeps its packages in a hidden, selected subgroup, so the row has no expand arrow showing `invictus-office`.
+- **One-line title.** Calamares' title label does not wrap, so the line stays under 100 characters. The descriptions stay short because the Description column sizes to its text.
+- **Ticks in parchment** (stylesheet.qss): the one gold on the page is Next.
+
+Taps on the plain path: before 6 pages, now 7, so one more Next. The new decision has its likely answer preselected: Next alone keeps Documents, and each other row is one click. Calamares still shows a `Name | Description` header over the rows; hiding it needs a patch to the module.
+
 ### 3.2 First start: 2 to 4 screens
 
 Replaces Minerva's seven-step first-boot wizard for a Atrium user (design.md 2.3). Tessera users still get the full wizard. For Atrium, everything with a safe default is decided for them and changeable later in Settings:

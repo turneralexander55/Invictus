@@ -68,3 +68,32 @@ QProgressBar {
 QProgressBar::chunk { background-color: #F0C274; border-radius: 4px; }
 #diskCheckTitle { font-size: 20pt; font-weight: 500; }
 #diskCheckWarning { color: #BDB4A3; }
+/* The Extras page (netinstall's tree). Rows tall enough to hit, the
+   "Name / Description" header quiet, and ticks in parchment so the one
+   gold on the page stays the Next button (look.md gold rule). Every state
+   of the indicator is drawn, as for QCheckBox above. */
+QTreeView { padding: 4px; outline: none; }
+QTreeView::item { padding: 10px 6px; border: none; }
+QTreeView::item:selected { background-color: #3A352D; color: #ECE6DA; }
+QTreeView::indicator {
+    width: 20px;
+    height: 20px;
+    background-color: #27241F;
+    border: 2px solid #968E7F;
+    border-radius: 4px;
+}
+QTreeView::indicator:hover { border-color: #ECE6DA; }
+QTreeView::indicator:checked {
+    background-color: #BDB4A3;
+    border-color: #BDB4A3;
+    /* Without a mark a filled parchment box reads as greyed out. */
+    image: url(/usr/share/calamares/branding/invictus/tick.svg);
+}
+QTreeView::indicator:indeterminate { background-color: #3A352D; border-color: #BDB4A3; }
+QHeaderView::section {
+    background-color: #27241F;
+    color: #968E7F;
+    border: none;
+    border-bottom: 1px solid #3A352D;
+    padding: 6px;
+}

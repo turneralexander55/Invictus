@@ -7,7 +7,13 @@ maps). shellprocess cannot read that: it expands text and maps from
 global storage, not lists (Calamares 3.4.2, CommandList.cpp). So this job
 reads the list and runs /usr/lib/invictus/installer/extras.sh ROOT NAMES,
 which does the work and decides what happens without internet
-(installer/jobs/extras.sh). Nothing else happens here.
+(installer/jobs/extras.sh).
+
+One inference (Venus, 2026-10-01): when the language picked on the
+Location page is Chinese, Japanese or Korean, the CJK fonts are added
+whether or not their box was ticked. Without them that person's own
+desktop shows empty boxes. netinstall cannot tick the box from the
+language, so the job does it.
 """
 import subprocess
 
@@ -34,12 +40,33 @@ def chosen(operations):
     return names
 
 
+CJK_FONTS = "noto-fonts-cjk"
+CJK_LANGUAGES = ("zh", "ja", "ko")
+
+
+def needs_cjk(locale, locale_conf):
+    """True when the chosen language is Chinese, Japanese or Korean.
+
+    locale is the BCP 47 tag the locale page stores ("ja-JP"); locale_conf
+    its map of LANG and LC_* values ("ja_JP.UTF-8"). Either may be missing.
+    """
+    tags = [locale] if isinstance(locale, str) else []
+    if isinstance(locale_conf, dict):
+        tags.append(locale_conf.get("LANG"))
+    for tag in tags:
+        if isinstance(tag, str) and tag.replace("_", "-").split("-")[0].split(".")[0].lower() in CJK_LANGUAGES:
+            return True
+    return False
+
+
 def run():
     gs = libcalamares.globalstorage
     root = gs.value("rootMountPoint")
     if not root:
         return ("No target system", "The extras job has no root mount point.")
     names = chosen(gs.value("packageOperations"))
+    if needs_cjk(gs.value("locale"), gs.value("localeConf")) and CJK_FONTS not in names:
+        names.append(CJK_FONTS)
     libcalamares.utils.debug("invictusextras: picked {}".format(names or "nothing"))
     # A list of arguments, no shell. extras.sh checks every name against
     # the target's /usr/share/invictus/extras.list.

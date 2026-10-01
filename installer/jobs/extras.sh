@@ -3,7 +3,7 @@
 # invictus-extras ROOT [PACKAGE...]
 #
 # Installs the extras picked on the Extras page (Calamares netinstall,
-# installer/calamares/common/modules/netinstall.conf, handed over by
+# installer/calamares/{plain,advanced}/modules/netinstall.conf, handed over by
 # installer/modules/invictusextras) into the target, from our signed repo:
 # pacman runs inside the target with the target's pacman.conf, so every
 # package is checked against invictus-keyring and Arch's keyring
