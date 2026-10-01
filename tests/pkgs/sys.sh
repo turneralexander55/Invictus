@@ -391,12 +391,11 @@ rm -rf "$TMP/etc-once"
 rm -f "$D"; grd apply --check
 [[ $rc == 1 ]] && grep -q "would change: write $D" "$TMP/grd.out" && ok "SM24: a removed derived file shows up in apply --check (exit 1)" || gbad "check after tamper: rc $rc"
 grd apply
-if command -v visudo >/dev/null && [[ $EUID -eq 0 || -r /etc/sudoers ]]; then
+# The real visudo (as any user: with -f it checks syntax, not ownership).
+if command -v visudo >/dev/null; then
     visudo -cqf "$D" >/dev/null 2>&1 && ok "the sudoers drop-in passes the real visudo" || gbad "real visudo rejects the drop-in"
 else
-    sudo_v="$(command -v visudo || true)"
-    if [[ -n "$sudo_v" ]]; then visudo -cqf "$D" >/dev/null 2>&1 && ok "the sudoers drop-in passes the real visudo" || gbad "real visudo rejects the drop-in"
-    else echo "note  visudo not installed here: the drop-in's syntax is checked in CI"; fi
+    gbad "visudo is not installed, so the sudoers drop-in is unchecked (install sudo)"
 fi
 # Missing guardrails file reads as custodia and is written.
 rm -f "$R/etc/invictus/guardrails"; grd apply
@@ -484,6 +483,18 @@ echo libertas > "$R/etc/invictus/guardrails"; printf 'until = %s\n' "$date_end" 
 [[ "$(INVICTUS_SYS_ROOT=$R bash -c '. "$1"; gr_effective_rails' _ "$REPO/scripts/lib/guardrails-state.sh")" == custodia ]] \
     && ok "SM25: every reader treats a Libertas past its end as Custodia" || gbad "gr_effective_rails"
 
+# set-config never writes the rails, AI, assistant or helper files: those
+# have their own verbs (or none), with their own prompts.
+new_root keys libertas; export_env
+for k in guardrails guardrails-until ai assistant helper.conf nets "nets.x" "../etc/shadow" "assistant.full-access=on"; do
+    : > "$TMP/sys.log"; isys set-config "$k" on
+    if [[ $rc != 2 ]] || logged pkexec; then gbad "set-config $k was accepted (rc $rc)"; fi
+    rc=0; bash "$SYS/invictus-sys-root.sh" set-config "$k" on > "$TMP/sys.out" 2>&1 || rc=$?
+    [[ $rc == 2 ]] || gbad "the root half accepted set-config $k (rc $rc)"
+done
+[[ "$(cat "$R/etc/invictus/guardrails")" == libertas && ! -e "$R/etc/invictus/ai" ]] || gbad "set-config changed a file it must not"
+[[ $g_fail == 0 ]] && ok "set-config refuses the guard-rails, AI, assistant and helper files and any key off its list, in both halves"
+
 # Nets: Libertas only, Custodia ignores the file and re-arms everything.
 new_root nets custodia; export_env; grd apply
 isys set-config nets.pre-admin-snapshot off
@@ -499,9 +510,10 @@ if [[ $rc == 0 ]] && grep -qx 'pre-admin-snapshot = off' "$R/etc/invictus/nets" 
 else gbad "nets under libertas: rc $rc $(cat "$TMP/sys.out")"; fi
 
 # SM26: full access.
-new_root full custodia; export_env; grd apply
+new_root full custodia; export_env; grd apply; echo on > "$R/etc/invictus/ai"
 isys set-config assistant.full-access on
-[[ $rc == 3 ]] || gbad "full access under Custodia: rc $rc"
+[[ $rc == 3 ]] && grep -q 'Custodia' "$TMP/sys.out" || gbad "full access under Custodia: rc $rc"
+rm -f "$R/etc/invictus/ai"
 echo libertas > "$R/etc/invictus/guardrails"; grd apply
 isys set-config assistant.full-access on
 [[ $rc == 3 ]] && grep -q 'No AI' "$TMP/sys.out" || gbad "full access with AI off: rc $rc"

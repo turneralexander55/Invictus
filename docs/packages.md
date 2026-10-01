@@ -19,12 +19,12 @@ What each meta package is for, what is in it and why. Audit of Alex's old lists 
 
 Rules the tests hold (`tests/pkgs/run.sh`, group "package sets"):
 - One package, one set. The only intended overlap is `podman podman-compose crun` in dev and windows, so each works alone. A set may depend on another set: tessera, atrium, gaming, windows, voice and moneta depend on `invictus-desktop`.
-- No AI outside the AI set (design-no-ai.md N5): the AI set is `claude-code`, `invictus-moneta`, `invictus-voice`, `whisper-cpp`, `ggml-vulkan`, `invictus-collegium` and any local model package (`tests/pkgs/lib/ai-set.sh`). No other set or own package depends on it or suggests it, directly or through other sets. `tests/pkgs/run.sh` checks the PKGBUILDs; `tests/pkgs/no-ai-in-base.sh` (CI `no-ai-in-base`, NA3) checks the built repo with pacman's resolver before every publish, and `e2e-arch.sh` runs it too. When `invictus-guardrails` and `invictus-sys` exist they depend on nothing in the AI set.
+- No AI outside the AI set (design-no-ai.md N5): the AI set is `claude-code`, `invictus-moneta`, `invictus-voice`, `whisper-cpp`, `ggml-vulkan`, `invictus-collegium` and any local model package (`tests/pkgs/lib/ai-set.sh`). No other set or own package depends on it or suggests it, directly or through other sets. `tests/pkgs/run.sh` checks the PKGBUILDs; `tests/pkgs/no-ai-in-base.sh` (CI `no-ai-in-base`, NA3) checks the built repo with pacman's resolver before every publish, and `e2e-arch.sh` runs it too. `invictus-guardrails` and `invictus-sys` depend on nothing in the AI set.
 - `invictus-desktop` never relies on `invictus-base` (adopt installs it without base), so anything the shipped config or our scripts run comes from desktop, a flavour, our own packages or Arch's `base`.
 - A set names what we run or rely on directly, not the hard dependencies of what it names (`hyprland` already pulls `xorg-xwayland` and `mesa`'s VA-API driver comes with `mesa`).
 - `pkgs/meta/sources.txt` says where every name comes from (`core`, `extra`, `multilib`, `aur` built from `pkgs/aur`, `aur-paru`, `invictus`). `tests/pkgs/live-arch.sh` rechecks it against Arch and the AUR, checks each command in `tests/pkgs/fixtures/commands.txt` is a file of its package, and resolves every set in one transaction: no conflicts, and Steam gets `vulkan-radeon`/`lib32-vulkan-radeon`, never another driver.
 
-For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera invictus-atrium pipewire-jack` (`pipewire-jack` as a target so `jack` resolves to it, see desktop below; plus `invictus-guardrails` once it exists, design-simple-mode 6.1); office, gaming, dev and the CJK fonts are installer extras (see "Extras" below), windows is opt-in; moneta and voice (the AI set) are never on the ISO's install list, first start or Settings adds them. `calamares`, `limine-mkinitcpio-hook` and `limine-snapper-sync` are in `pkgs/aur` now (same names as `iso/aur-needed`, which can go). Installer jobs these sets need: enable `NetworkManager`, `bluetooth`, `sddm`, `power-profiles-daemon`, `cups.socket`, `avahi-daemon`, `paccache.timer`; add `mdns_minimal [NOTFOUND=return]` before `resolve` on the `hosts` line of `/etc/nsswitch.conf`; nothing for the keyring: Arch's `/etc/pam.d/sddm` already unlocks and starts gnome-keyring at login (`pam_gnome_keyring.so` in auth, password and session, checked in the sddm package).
+For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera invictus-atrium pipewire-jack` (`pipewire-jack` as a target so `jack` resolves to it, see desktop below; `invictus-guardrails` comes with `invictus-base`, design-simple-mode 6.1); office, gaming, dev and the CJK fonts are installer extras (see "Extras" below), windows is opt-in; moneta and voice (the AI set) are never on the ISO's install list, first start or Settings adds them. `calamares`, `limine-mkinitcpio-hook` and `limine-snapper-sync` are in `pkgs/aur` now (same names as `iso/aur-needed`, which can go). Installer jobs these sets need: enable `NetworkManager`, `bluetooth`, `sddm`, `power-profiles-daemon`, `cups.socket`, `avahi-daemon`, `paccache.timer`; add `mdns_minimal [NOTFOUND=return]` before `resolve` on the `hosts` line of `/etc/nsswitch.conf`; nothing for the keyring: Arch's `/etc/pam.d/sddm` already unlocks and starts gnome-keyring at login (`pam_gnome_keyring.so` in auth, password and session, checked in the sddm package).
 
 ## invictus-base
 
@@ -45,6 +45,7 @@ For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera
 | `openssh` | ssh and git over ssh (sshd stays off) | people, dev |
 | `polkit` | `invictus-sys` authorises through it | assistant, guard rails |
 | `pacman-contrib` | `paccache` cleanup | `paccache.timer` |
+| `invictus-guardrails` | The guard rails, on every installed machine (design-simple-mode 6.1); brings `invictus-sys`, the only door to root (design 4.1, `docs/invictus-sys.md`). Neither has a desktop dependency | installer, Settings, Moneta |
 | `sudo nano less tree man-db man-pages` | Everyday command line and manuals | people |
 | `unzip zip 7zip rsync usbutils lm_sensors` | Archives, copies, `lsusb`, temperatures | people, Desk later |
 
@@ -52,7 +53,7 @@ For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera
 
 | Package | Why | Used by |
 |---|---|---|
-| `invictus-tools`, `invictus-branding` | Our commands, wallpapers, logo | binds, waybar, first login |
+| `invictus-tools`, `invictus-branding` | Our commands, wallpapers, logo; `invictus-tools` brings `invictus-sys` (adopted machines get it too, without the guard rails) | binds, waybar, first login |
 | `mesa`, `vulkan-radeon` | AMD OpenGL, Vulkan, VA-API video decode | Hyprland, Zed, games, browsers |
 | `hyprland hyprpaper hypridle hyprlock hyprpolkitagent` | Compositor, wallpaper, idle, lock, password prompts (pinned set) | autostart, binds |
 | `hyprshutdown` | Closes apps cleanly on log out (now pinned) | Super+Delete |

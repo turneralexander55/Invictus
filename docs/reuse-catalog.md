@@ -47,6 +47,17 @@ Each entry: what it is, where it lives, how to reuse it, and its tests.
 | Heavy-pin stand-ins | `tests/pkgs/lib/aur-heavy.sh` (`stand_in_heavy_aur`) | An e2e test that builds the repo but does not need the real big AUR packages | `e2e-arch.sh`, `e2e-adopt.sh` |
 | Pinned CI tools | `.github/workflows/checks.yml` | Actions pinned by commit, binaries by checksum. Copy the gitleaks install step for any new downloaded tool | CI |
 
+## System access and guard rails
+
+| Piece | Where | Reuse it for | Tests |
+|---|---|---|---|
+| invictus-sys | `scripts/sys/` (`/usr/bin/invictus-sys`, root half `/usr/lib/invictus/invictus-sys`, `org.invictus.sys.policy`), reference `docs/invictus-sys.md` | Anything that changes the system from Settings, Help, the Desk or Moneta: call a verb, read the last line and the exit code. A new root action is a new verb in `scripts/lib/sys-verbs.sh`, a policy action with `exec.argv1`, a test, and a line in the reference; never a second root helper or a sudo rule | `tests/pkgs/sys.sh` group 14 |
+| Package names and the one install path | `scripts/lib/pacman.sh` (`valid_package_name`, `pacman_install_needed`) | Any script that installs packages: `pacman -Syu --needed --noconfirm --` under a shutdown inhibitor, names checked the same way (`pending-extras` and `invictus-sys install` both use it) | `tests/pkgs/run.sh` groups 13, 14 |
+| Acta | `scripts/lib/acta.sh` (`acta "message" KEY=value...`) | Recording any root action in the journal under `invictus-sys` with structured fields; the Desk's Acta card reads `journalctl -t invictus-sys -o json` | group 14 |
+| Guard-rails readers | `scripts/lib/guardrails-state.sh` (`gr_rails`, `gr_effective_rails`, `gr_net_on`, `gr_full_access`, `gr_ai`, `kv_get`) | Anything that behaves differently under Custodia or Libertas, or reads a safety net (the updater's gate, the boot guard, home snapshots, the polkit agent's scam line): never read `/etc/invictus/guardrails` or `nets` by hand | group 16 |
+| Guard-rails switch and derived files | `scripts/guardrails/guardrails.sh` (`/usr/lib/invictus/guardrails`) | Switching, applying, timed Libertas, the assistant restart signal; `guardrails status` for any screen that shows the state | group 16 |
+| Polkit rules harness | `tests/pkgs/polkit-rules.js` | Testing any polkit `.rules` file against a `.policy` without polkitd | group 15 |
+
 ## ISO and installer (Phase 3)
 
 | Piece | Where | Reuse it for | Tests |

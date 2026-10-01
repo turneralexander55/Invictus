@@ -246,6 +246,7 @@ case "$VERB" in
             flavor.lock)
                 mkdir -p "$ETC"
                 with_pair write_flavor_lock "$val" || rc=$? ;;
+            *) refuse "set-config cannot change $key" ;;
         esac
         done_rc ;;
 

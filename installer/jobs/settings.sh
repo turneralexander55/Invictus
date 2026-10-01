@@ -46,8 +46,8 @@ else
     say "no $iso_release on the live system: /etc/invictus/release not written"
 fi
 # design-simple-mode 1.3: the installer runs `invictus-sys guardrails apply`
-# once so the derived files match. invictus-guardrails and invictus-sys do
-# not exist yet (Phase 2a); until they do, only the file is written.
+# once so the derived files match (invictus-guardrails, from invictus-base).
+# An image without invictus-sys gets the file only.
 if in_target sh -c 'command -v invictus-sys' >/dev/null 2>&1; then
     in_target invictus-sys guardrails apply || die "invictus-sys guardrails apply failed"
     say "guard rails applied"
