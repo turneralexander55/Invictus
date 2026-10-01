@@ -41,8 +41,8 @@ applies the theme in use (Dusk on a new home), Calm and light apps.
 
 - **Never sees or stores a token.** Claude's sign-in is Claude Code's own:
   the `login` argv of the shipped `/usr/share/invictus/providers/claude-code/provider.toml`
-  (a file in the home is never read for it, and the program must be under
-  `/usr/bin`), run in a terminal. The command then only asks whether
+  (a file in the home is never read for it, and the program must be a plain
+  `/usr/bin/NAME`: no `..`, `.` or `//`), run in a terminal. The command then only asks whether
   `~/.claude/.credentials.json` exists. A key for another AI service is read
   from stdin and passed on stdin to `invictus-provider key set`, which keeps
   it in the keyring; it is never on a command line or in a file we write.
@@ -56,6 +56,17 @@ applies the theme in use (Dusk on a new home), Calm and light apps.
   scale, transform), a catch-all for screens plugged in later, and workspace
   1 on the main screen.
 
+- **Test overrides only from a checkout.** The `INVICTUS_*` variables the
+  tests use (`INVICTUS_SHARE`, `INVICTUS_TERMINAL`, ...) are read through
+  `scripts/lib/invictus_env.py`; an installed copy (under `/usr/`) ignores
+  them, and the installed screens always call `/usr/bin/invictus-first-boot`.
+  So nothing in a session's environment chooses the provider file, the
+  terminal, or the program a key goes to.
+- **monitors.lua backups** get a folder of their own each time (two writes in
+  one second keep both). Writing the same text again changes nothing and
+  runs no check. A `monitors.lua` that is a symlink (a dotfiles repo) is
+  replaced by a plain file when the layout changes; the old target is in the
+  backup.
 - **Wi-Fi passwords are the one exception** (Alex, 2026-10-01,
   `team/decisions.md`): NetworkManager keeps them in its system-owned,
   root-only connection files, so the computer joins Wi-Fi before anyone logs
@@ -90,7 +101,10 @@ the package's wrapper (the panel's side); first start sets nothing for it.
 `invictus-first-boot start --if-pending` from Hyprland's autostart, and
 `start` first runs `apply-pending`: once `invictus-provider` is installed
 and AI still reads on, it makes the same `set` call and clears the flag (if
-AI was turned off meanwhile, the choice is dropped). A key for another
+AI was turned off meanwhile, the choice is dropped). A choice
+`invictus-provider` refuses (exit 2 or 3) is tried once and then dropped,
+with `provider_result` recorded; a kept record that is not well formed is
+dropped too, and nothing in this step can stop the wizard from opening. A key for another
 service is never kept, so that person adds it in Settings > Moneta, which
 shows the Not signed in card; a Claude person signs in from Help's card
 (no-ai.md 2.3). No change to the panel is needed.
