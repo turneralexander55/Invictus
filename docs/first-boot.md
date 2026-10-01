@@ -80,8 +80,9 @@ applies the theme in use (Dusk on a new home), Calm and light apps.
 - **Wi-Fi passwords are the one exception** (Alex, 2026-10-01,
   `team/decisions.md`): NetworkManager keeps them in its system-owned,
   root-only connection files, so the computer joins Wi-Fi before anyone logs
-  in. Every other secret stays in the person's keyring. (The Wi-Fi screen
-  itself is a later release.)
+  in. Every other secret stays in the person's keyring. Who can read it and
+  the 802.1X exclusion: design.md S2. (The Wi-Fi screen itself is a later
+  release.)
 
 ## The provider layer
 
