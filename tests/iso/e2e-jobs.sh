@@ -41,7 +41,10 @@ img="$W/disk.img"
 truncate -s 16G "$img"
 # GPT like Calamares makes it; each partition gets its own loop device at
 # its offset (containers have no udev to create loopNpM nodes).
-sgdisk -q -n1:0:+1G -t1:ef00 -n2:0:0 -t2:8300 "$img"
+# No -q: in quiet mode sgdisk 1.0.x writes nothing to a blank image, so
+# both "partitions" became offset 0 (CI run 36866977803). -o starts a GPT.
+sgdisk -o -n1:0:+1G -t1:ef00 -n2:0:0 -t2:8300 "$img" >/dev/null
+[[ "$(sgdisk -i 2 "$img" | awk '/^First sector/ { print $3 }')" =~ ^[0-9]+$ ]] || { echo "e2e-jobs: sgdisk wrote no partition table" >&2; exit 1; }
 part_loop() {
     local start size
     read -r start size < <(sgdisk -i "$1" "$img" | awk '/^First sector/ { s = $3 } /^Last sector/ { e = $3 } END { print s, e - s + 1 }')
@@ -61,7 +64,9 @@ cleanup() {
 }
 trap cleanup EXIT
 mkfs.fat -F 32 -n EFI "$esp" >/dev/null
+[[ "$(blkid -o value -s TYPE "$esp")" == vfat ]] || { echo "e2e-jobs: the ESP is not FAT after mkfs.fat" >&2; exit 1; }
 mkfs.btrfs -q -f "$rootdev"
+[[ "$(blkid -o value -s TYPE "$esp")" == vfat ]] || { echo "e2e-jobs: mkfs.btrfs on root overwrote the ESP" >&2; exit 1; }
 
 # mount.conf's subvolumes and options.
 mkdir -p "$T"
