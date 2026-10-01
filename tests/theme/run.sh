@@ -132,6 +132,13 @@ import sys; s=open(sys.argv[1]).read(); assert s.count('{')==s.count('}') and s.
     for f in waybar-colors.css swaync-colors.css gtk-colors.css gtk-colors-light.css; do
         expect "$t: $f defines end in ;" bash -c "! grep '@define-color' '$out/$f' | grep -qv ';\$'"
     done
+    expect "$t: qml-tokens.json parses with all 25 tokens" python3 -c "
+import json, re, sys
+d = json.load(open(sys.argv[1]))
+toks = [k for k in d if k not in ('theme', 'wallpaper')]
+assert d['wallpaper'].endswith('.png'), d['wallpaper']
+assert len(toks) == 25, len(toks)
+assert all(re.fullmatch(r'#[0-9A-Fa-f]{6}', d[k]) for k in toks), d" "$out/qml-tokens.json"
     expect "$t: kitty has 16 colours" test "$(grep -c '^color[0-9]* #' "$out/kitty-colors.conf")" -eq 16
     expect "$t: btop theme lines" bash -c "grep -q '^theme\[hi_fg\]=\"#' '$out/btop.theme'"
     expect "$t: qt has three palettes of 21" python3 -c "
