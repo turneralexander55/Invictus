@@ -789,7 +789,7 @@ n_mark="$(find "$R/var/lib/invictus/ai-off-pending" -mindepth 1 | wc -l)"
 isys ai on
 [[ $rc == 0 && $n_mark -ge 2 && -d "$R/var/lib/invictus/ai-off-pending" && -z "$(find "$R/var/lib/invictus/ai-off-pending" -mindepth 1)" ]] \
     && ok "G1-ai-on-clears-markers: ai off then ai on leaves no ai-off-pending marker ($n_mark removed)" \
-    || gbad "G1-ai-on-clears-markers: rc $rc, left: $(ls -A "$R/var/lib/invictus/ai-off-pending" | paste -sd' ')"
+    || gbad "G1-ai-on-clears-markers: rc $rc, left: $(find "$R/var/lib/invictus/ai-off-pending" -mindepth 1 -printf '%f ')"
 # A browser policy file that is not ours is never overwritten or removed.
 new_root aipol libertas; export_env; grd apply; echo on > "$R/etc/invictus/ai"
 mkdir -p "$(dirname "$POL")"; echo '{"policies": {"DisableTelemetry": true}}' > "$POL"

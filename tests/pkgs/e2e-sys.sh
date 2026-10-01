@@ -211,6 +211,7 @@ else bad "L1 real setpriv: tribune got '$(cat /tmp/tribune.got 2>/dev/null)'"; f
 # run here (it failed, so before this stub pacman never ran in these
 # checks): a pass-through stand-in, like the snapper stub.
 mv /usr/bin/systemd-inhibit /usr/bin/systemd-inhibit.real
+# shellcheck disable=SC2016 # the stand-in's own text
 printf '#!/bin/bash\nwhile [[ "$1" == --* ]]; do shift; done\nexec "$@"\n' > /usr/bin/systemd-inhibit
 chmod 755 /usr/bin/systemd-inhibit
 # The AI set is in no configured repo here: that is not a download
@@ -227,6 +228,7 @@ fi
 # No mirror answers (connection refused): pacman 7's own lines must read as
 # a download failure, so ai on waits for the connection.
 cp /etc/pacman.d/mirrorlist "$WORK/mirrorlist"
+# shellcheck disable=SC2016 # pacman expands $repo and $arch
 echo 'Server = http://127.0.0.1:9/$repo/os/$arch' > /etc/pacman.d/mirrorlist
 rc=0; invictus-sys ai on > "$WORK/aion2.out" 2>&1 || rc=$?
 if [[ $rc == 0 && -f /var/lib/invictus/ai-install-pending ]] && grep -q 'invictus-sys: pending' "$WORK/aion2.out" \
@@ -236,12 +238,12 @@ else
     bad "ai on offline: rc $rc: $(tail -4 "$WORK/aion2.out")"
 fi
 rc=0; /usr/lib/invictus/ai-pending > "$WORK/pend1.out" 2>&1 || rc=$?
-[[ $rc == 1 && -f /var/lib/invictus/ai-install-pending ]] && ok "ai-pending with no mirror reachable: exit 1 (the unit tries again), marker kept" \
-    || bad "ai-pending offline: rc $rc: $(tail -3 "$WORK/pend1.out")"
+if [[ $rc == 1 && -f /var/lib/invictus/ai-install-pending ]]; then ok "ai-pending with no mirror reachable: exit 1 (the unit tries again), marker kept"
+else bad "ai-pending offline: rc $rc: $(tail -3 "$WORK/pend1.out")"; fi
 cp "$WORK/mirrorlist" /etc/pacman.d/mirrorlist
 rc=0; /usr/lib/invictus/ai-pending > "$WORK/pend2.out" 2>&1 || rc=$?
-[[ $rc == 2 ]] && ok "ai-pending online with the AI set in no repo: exit 2 (RestartPreventExitStatus, no retry loop)" \
-    || bad "ai-pending, not a download failure: rc $rc: $(tail -3 "$WORK/pend2.out")"
+if [[ $rc == 2 ]]; then ok "ai-pending online with the AI set in no repo: exit 2 (RestartPreventExitStatus, no retry loop)"
+else bad "ai-pending, not a download failure: rc $rc: $(tail -3 "$WORK/pend2.out")"; fi
 mv -f /usr/bin/systemd-inhibit.real /usr/bin/systemd-inhibit
 
 # 8. Removing the guard rails leaves nothing pointing at removed files.

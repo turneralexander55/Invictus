@@ -42,6 +42,7 @@ pacman_install_needed() {
 # failure. Nothing else counts as a download failure, and there is no
 # separate `pacman -Sy` probe (MUST A4).
 PACMAN_DOWNLOAD_FAILED='failed to synchronize all databases|failed to retrieve some files|download library error'
+# shellcheck disable=SC2034 # PACMAN_FAILURE is read by the callers
 pacman_install_classified() {
     local err rc=0
     PACMAN_FAILURE=""
