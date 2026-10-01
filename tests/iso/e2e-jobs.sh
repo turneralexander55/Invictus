@@ -47,8 +47,13 @@ part_loop() {
     read -r start size < <(sgdisk -i "$1" "$img" | awk '/^First sector/ { s = $3 } /^Last sector/ { e = $3 } END { print s, e - s + 1 }')
     losetup -f --show -o $((start * 512)) --sizelimit $((size * 512)) "$img"
 }
+# A privileged container sees only the loop nodes that existed when it
+# started; make the next few so `losetup -f` hands out a usable node.
+for i in $(seq 0 63); do [[ -e /dev/loop$i ]] || mknod -m 0660 "/dev/loop$i" b 7 "$i" 2>/dev/null || true; done
 esp="$(part_loop 1)"
 rootdev="$(part_loop 2)"
+echo "e2e-jobs: ESP on $esp, root on $rootdev"
+[[ -n "$esp" && -n "$rootdev" && "$esp" != "$rootdev" ]] || { echo "e2e-jobs: the two partitions did not get two loop devices" >&2; exit 1; }
 cleanup() {
     umount -R "$T" 2>/dev/null || true
     losetup -d "$esp" "$rootdev" 2>/dev/null || true
@@ -78,7 +83,8 @@ done <<'EOF'
 /var/lib/invictus/vm /@vm
 EOF
 mkdir -p "$T/boot"
-mount -o umask=0077 "$esp" "$T/boot"
+blkid "$esp" "$rootdev" || true
+mount -t vfat -o umask=0077 "$esp" "$T/boot"
 
 # A small system from Arch plus our repo (unsigned local repo, like a dev ISO).
 cat >"$W/pacman.conf" <<EOF

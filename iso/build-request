@@ -3,3 +3,4 @@ Bump this file to start a dev ISO build (iso.yml).
 2026-10-01 small ISO (linux-cachyos, Extras page) and non-root iso tests, 1eabe69
 2026-10-01 rerun after allowing user namespaces on the runner (run 36859245081 failed: unshare -r blocked by AppArmor)
 2026-10-01 rerun with docker (run 36860208195: rootless podman could not mount /dev for mkarchiso)
+2026-10-01 rerun: ISO built (1,888,145,408 bytes) but e2e-jobs mounted btrfs at /boot (run 36862067887); loop nodes + distinct-device check
