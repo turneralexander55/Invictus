@@ -6,3 +6,4 @@ Bump this file to start a dev ISO build (iso.yml).
 2026-10-01 rerun: ISO built (1,888,145,408 bytes) but e2e-jobs mounted btrfs at /boot (run 36862067887); loop nodes + distinct-device check
 2026-10-01 rerun: sgdisk -q wrote no GPT in the e2e image (run 36866977803); fixed
 2026-10-01 rerun: e2e ran for the first time (21 ok, 5 FAIL); the 5 were test bugs (snapper table format, lsinitcpio outside the target)
+2026-10-01 rerun: e2e 26/26 passed (run 36878228916); cleanup's busy rm failed the step

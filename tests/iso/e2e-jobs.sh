@@ -58,9 +58,11 @@ rootdev="$(part_loop 2)"
 echo "e2e-jobs: ESP on $esp, root on $rootdev"
 [[ -n "$esp" && -n "$rootdev" && "$esp" != "$rootdev" ]] || { echo "e2e-jobs: the two partitions did not get two loop devices" >&2; exit 1; }
 cleanup() {
-    umount -R "$T" 2>/dev/null || true
+    # The rbind mounts of /dev, /proc, /sys and /run can stay busy for a
+    # moment; detach them lazily so cleanup never decides the result.
+    umount -R "$T" 2>/dev/null || umount -R -l "$T" 2>/dev/null || true
     losetup -d "$esp" "$rootdev" 2>/dev/null || true
-    rm -rf "$W"
+    rm -rf "$W" 2>/dev/null || true
 }
 trap cleanup EXIT
 mkfs.fat -F 32 -n EFI "$esp" >/dev/null
