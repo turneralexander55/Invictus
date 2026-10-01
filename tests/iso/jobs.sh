@@ -111,6 +111,8 @@ run_job settings.sh "$ROOTDIR" maria atrium custodia --hostname-from-user; rc=$?
 check "settings: plain path exits 0" test "$rc" -eq 0
 check "settings: guard rails file says custodia" test "$(cat "$ROOTDIR/etc/invictus/guardrails")" = custodia
 check "settings: guard rails file is 644" test "$(stat -c %a "$ROOTDIR/etc/invictus/guardrails")" = 644
+check "settings: AI file says off (NA1: AI is chosen at first start)" test "$(cat "$ROOTDIR/etc/invictus/ai")" = off
+check "settings: AI file is 644" test "$(stat -c %a "$ROOTDIR/etc/invictus/ai")" = 644
 check "settings: flavor file says atrium" test "$(cat "$ROOTDIR/home/maria/.config/invictus/flavor")" = atrium
 if [[ $EUID -eq 0 ]]; then
     check "settings: flavor file owned by the user" test "$(stat -c %u:%g "$ROOTDIR/home/maria/.config/invictus/flavor")" = 1000:1000

@@ -115,6 +115,33 @@
     <annotate key="org.freedesktop.policykit.exec.argv1">assistant-full-access</annotate>
   </action>
 
+  <!-- design-no-ai.md N1: on is a password every time, under both guard rails, in no
+       YES rule and outside the help unlock; off is YES from your own active desktop
+       (40-invictus-guardrails.rules), a password from anywhere else. -->
+  <action id="org.invictus.sys.ai-on">
+    <description>Add an AI assistant to this computer</description>
+    <message>Type your password to add Moneta, an AI assistant, to this computer. It asks before it changes anything. Undo: Settings &gt; AI &gt; No AI.</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/invictus/invictus-sys</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">ai-on</annotate>
+  </action>
+
+  <action id="org.invictus.sys.ai-off">
+    <description>Remove AI from this computer (No AI)</description>
+    <message>Type your password to remove AI from this computer and sign everyone out of it.</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/invictus/invictus-sys</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">ai-off</annotate>
+  </action>
+
   <action id="org.invictus.sys.report-collect">
     <description>Collect system logs for a problem report</description>
     <message>Type your password to collect this boot&apos;s error log for a problem report. Nothing is sent.</message>

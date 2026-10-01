@@ -15,6 +15,8 @@ org.invictus.sys.rollback	Type your password to put the computer back to safety 
 org.invictus.sys.service	Type your password to change a system service: {args}.
 org.invictus.sys.set-config	Type your password to change a setting: {args}.
 org.invictus.sys.assistant-full-access	Type your password to change whether Moneta may use the terminal and every tool: {args}.
+org.invictus.sys.ai-on	Type your password to add Moneta, an AI assistant, to this computer. It asks before it changes anything. Undo: Settings > AI > No AI.
+org.invictus.sys.ai-off	Type your password to remove AI from this computer and sign everyone out of it.
 org.invictus.sys.report-collect	Type your password to collect this computer's error log for a problem report. Nothing is sent.
 org.invictus.sys.guardrails-libertas	Switch to Libertas? Nothing will pause or warn you before something is erased, and Help will be able to do more on its own. Safety copies stay on unless you turn them off. Type your password if you're sure.
 org.invictus.sys.guardrails-custodia	Type your password to switch the guard rails back on.

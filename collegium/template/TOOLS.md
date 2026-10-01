@@ -17,7 +17,7 @@ You run as the person who uses this computer, with no sudo. Anything that change
 | `set-config <key> on\|off` | the safety-copy switches and the desktop-style lock |
 | `report-collect` | collect the error log a problem report needs |
 
-The last line of the output is `invictus-sys: <result> snapshot=<id>`. Exit 126 means the person said no: stop and say so. The guard rails (`guardrails set ...`) and full access (`set-config assistant.full-access`) are the person's own choices in Settings; you have no tool for them.
+The last line of the output is `invictus-sys: <result> snapshot=<id>`. Exit 126 means the person said no, 127 that the account is not allowed: stop and say so. The guard rails (`guardrails set ...`), full access (`set-config assistant.full-access`) and AI itself (`ai on|off`) are the person's own choices in Settings; you have no tool for them. `ai off` stops you and signs everyone out of you.
 
 The full reference, with exit codes and polkit actions, is `docs/invictus-sys.md` in the Invictus repository.
 

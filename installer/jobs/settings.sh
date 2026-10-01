@@ -6,6 +6,8 @@
 # switchable later on the running system (design-simple-mode 1.3, 1.6, SM24):
 #   flavor      atrium | tessera     per user: ~USER/.config/invictus/flavor
 #   guard rails custodia | libertas  machine:  /etc/invictus/guardrails
+# and /etc/invictus/ai = off: AI is chosen at first start, and only
+# `invictus-sys ai on` (a password) turns it on (design-no-ai.md N1).
 # The plain install path passes "atrium custodia"; the Advanced path passes
 # what the person picked (Calamares packagechooser@flavor and
 # packagechooser@guardrails).
@@ -36,6 +38,8 @@ read -r uid gid <<<"$ids"
 # ---- machine: guard rails and release -----------------------------------------
 printf '%s\n' "$GUARDRAILS" | write_file "$INVICTUS_GUARDRAILS_FILE" 644
 say "guard rails: $GUARDRAILS"
+printf 'off\n' | write_file /etc/invictus/ai 644
+say "AI: off until first start"
 # The ISO's own release file (written by scripts/build-iso.sh) is read from
 # the live system; the target's copy was removed with the live-only files.
 iso_release="${INVICTUS_ISO_RELEASE:-/etc/invictus/iso-release}"

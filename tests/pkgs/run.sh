@@ -159,8 +159,8 @@ done
 # metas may pull one; every other set and own package, followed through
 # the invictus-* packages it depends on, must not. The built repo gets the
 # same check with pacman's resolver (tests/pkgs/no-ai-in-base.sh).
-# shellcheck source=tests/pkgs/lib/ai-set.sh
-. "$HERE/lib/ai-set.sh"
+# shellcheck source=scripts/lib/ai-set.sh
+. "$HERE/../../scripts/lib/ai-set.sh"
 AI_SETS="$AI_METAS"
 pb_of() { local d; for d in meta own; do [[ -f "$REPO/pkgs/$d/$1/PKGBUILD" ]] && { echo "$REPO/pkgs/$d/$1/PKGBUILD"; return; }; done; }
 closure() {

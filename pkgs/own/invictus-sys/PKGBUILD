@@ -13,6 +13,10 @@
 #                                              (pending-extras uses it too)
 #   /usr/lib/invictus/lib/acta.sh              the Acta journal entry
 #   /usr/lib/invictus/lib/guardrails-state.sh  how every guard reads the rails
+#   /usr/lib/invictus/lib/ai-set.sh            the AI set (ai on|off and the tests)
+#   /usr/lib/invictus/ai-signout               ai off's per-person part, run as each person
+#   /usr/lib/invictus/ai-pending               ai on's install when it ran offline,
+#                                              run by invictus-ai-pending.service
 #   /usr/share/polkit-1/actions/org.invictus.sys.policy   one action per verb
 #   /usr/share/invictus/sys/services.allow     units the service verb may change
 #   /usr/share/invictus/sys/protected-packages never removed; Custodia's HoldPkg
@@ -43,7 +47,12 @@ package() {
   install -Dm755 "$root/scripts/sys/invictus-sys.sh" "$pkgdir/usr/bin/invictus-sys"
   install -Dm755 "$root/scripts/sys/invictus-sys-root.sh" "$lib/invictus-sys"
   install -Dm644 -t "$lib/lib" "$root/scripts/lib/sys-verbs.sh" "$root/scripts/lib/pacman.sh" \
-    "$root/scripts/lib/acta.sh" "$root/scripts/lib/guardrails-state.sh"
+    "$root/scripts/lib/acta.sh" "$root/scripts/lib/guardrails-state.sh" "$root/scripts/lib/ai-set.sh"
+  install -Dm755 "$root/scripts/sys/ai-signout.sh" "$lib/ai-signout"
+  install -Dm755 "$root/scripts/sys/ai-pending.sh" "$lib/ai-pending"
+  # Not enabled here: ai on enables it when the install has to wait.
+  install -Dm644 "$root/scripts/systemd/invictus-ai-pending.service" \
+    "$pkgdir/usr/lib/systemd/system/invictus-ai-pending.service"
   install -Dm644 "$root/scripts/sys/org.invictus.sys.policy" \
     "$pkgdir/usr/share/polkit-1/actions/org.invictus.sys.policy"
   install -Dm644 -t "$pkgdir/usr/share/invictus/sys" \

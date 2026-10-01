@@ -18,6 +18,10 @@
 #   6. HoldPkg under Custodia stops `pacman -R --noconfirm` of a held
 #      package; after `guardrails set libertas` it goes through
 #   7. Acta lands in the journal with its fields (when journald runs here)
+#   7b. ai off as root signs a real user out through setpriv (their files,
+#      their process), writes the browser policy; the panel's socket is
+#      reached as its folder's owner (L1); ai on goes pending when no repo
+#      has the AI set
 #   8. removing invictus-guardrails takes the derived files and lines away
 #      and pacman still works
 # Not here (no logind session in a container): subject.local/active, so
@@ -170,6 +174,44 @@ if [[ -S /run/systemd/journal/socket ]]; then
     fi
 else
     echo "note  journald does not run in this container: Acta's journal fields are checked on a VM"
+fi
+
+# 7b. ai on|off (design-no-ai.md N1, N3) with the real passwd, setpriv and
+# pacman. pkaction first, then the verbs as root (no logind session here).
+if [[ "$(pa ai-on)" == auth_admin && "$(pa ai-off)" == auth_admin ]]; then
+    ok "polkitd: org.invictus.sys.ai-on and ai-off are auth_admin with no keep (ai-off's YES at your own desktop is the rules file's)"
+else
+    bad "pkaction ai-on '$(pa ai-on)', ai-off '$(pa ai-off)'"
+fi
+th="$(getent passwd tester | cut -d: -f6)"; tu="$(id -u tester)"
+sudo -u tester mkdir -p "$th/.claude/projects/p"
+sudo -u tester sh -c 'echo "{}" > ~/.claude/.credentials.json; echo "{\"numStartups\": 2, \"oauthAccount\": {\"e\": 1}}" > ~/.claude.json; echo m > ~/.claude/projects/p/c'
+# L1: the panel's socket in tester's /run/user folder; root connects as tester.
+mkdir -p "/run/user/$tu/invictus"; chown -R tester "/run/user/$tu"
+sudo -u tester python3 -c '
+import socket, struct, sys, os
+s = socket.socket(socket.AF_UNIX); s.bind(sys.argv[1]); s.listen(1); s.settimeout(20)
+if os.fork() == 0:
+    c, _ = s.accept(); uid = struct.unpack("3i", c.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12))[1]
+    open("/tmp/tribune.got", "w").write("%s uid=%d" % (c.recv(100).decode().strip(), uid)); os._exit(0)
+' "/run/user/$tu/invictus/tribune.sock"
+rc=0; invictus-sys ai off > "$WORK/aioff.out" 2>&1 || rc=$?
+sleep 0.5
+if [[ $rc == 0 && "$(cat /etc/invictus/ai)" == off && ! -e "$th/.claude/.credentials.json" && -f "$th/.claude/projects/p/c" ]] \
+   && [[ "$(stat -c %U "$th/.claude.json")" == tester ]] && ! grep -q oauthAccount "$th/.claude.json" && grep -q numStartups "$th/.claude.json" \
+   && [[ -f /etc/firefox/policies/policies.json && -f "/var/lib/invictus/ai-off-pending/$tu" ]]; then
+    ok "ai off as root: tester's credential file and account block removed by a process running as tester (real setpriv), memory kept, browser policy and pending marker written"
+else
+    bad "ai off: rc $rc: $(cat "$WORK/aioff.out"); $(find "$th" -maxdepth 2 -printf '%u %p\n' 2>&1 | paste -sd' ')"
+fi
+if [[ "$(cat /tmp/tribune.got 2>/dev/null)" == "stop uid=$tu" ]]; then ok "L1: root reached the panel's socket as its folder's owner (uid $tu), with stop"
+else bad "L1 real setpriv: tribune got '$(cat /tmp/tribune.got 2>/dev/null)'"; fi
+rc=0; invictus-sys ai on > "$WORK/aion.out" 2>&1 || rc=$?
+if [[ $rc == 0 && "$(cat /etc/invictus/ai)" == on && -f /var/lib/invictus/ai-install-pending && ! -e /etc/firefox/policies/policies.json ]] \
+   && grep -q 'invictus-sys: pending' "$WORK/aion.out"; then
+    ok "ai on with the AI set in no configured repo: AI reads on, the install waits (pending marker), our browser policy is gone"
+else
+    bad "ai on: rc $rc: $(tail -3 "$WORK/aion.out")"
 fi
 
 # 8. Removing the guard rails leaves nothing pointing at removed files.

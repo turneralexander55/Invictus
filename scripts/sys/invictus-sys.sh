@@ -19,6 +19,9 @@
 #   set-config KEY on|off          nets.pre-admin-snapshot, nets.auto-update,
 #                                  nets.boot-guard, nets.home-snapshots,
 #                                  flavor.lock, assistant.full-access
+#   ai on|off                      AI on this computer, or No AI (design-no-ai.md
+#                                  N1, N3): on asks for your password every time;
+#                                  off signs everyone out and removes the AI set
 #   report-collect                 collect the logs a problem report needs root for
 #   vm start|stop                  the Windows VM (runs as you; not set up yet)
 #   guardrails status              key=value lines (no password)
@@ -30,7 +33,7 @@
 #
 # --request ID labels the call in Acta (the Moneta thread that asked).
 # Exit: 0 ok; 1 the change failed; 2 bad arguments; 3 refused; 4 busy;
-# 126 no password given or not allowed (pkexec); 127 pkexec failed.
+# 126 the password prompt was cancelled; 127 not allowed, or pkexec failed.
 # Env (tests): INVICTUS_LIB, INVICTUS_PKEXEC, INVICTUS_SYS_HELPER,
 #   INVICTUS_GUARDRAILS, INVICTUS_SYS_ROOT, INVICTUS_DOCTOR
 # ------------------------------------------------------------
@@ -46,7 +49,7 @@ PKEXEC="${INVICTUS_PKEXEC:-pkexec}"
 GUARDRAILS="${INVICTUS_GUARDRAILS:-/usr/lib/invictus/guardrails}"
 DOCTOR="${INVICTUS_DOCTOR:-invictus-doctor}"
 
-usage() { sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,38p' "$0" | sed 's/^# \{0,1\}//'; }
 
 if [[ "${1:-}" == --request ]]; then
     [[ "${2:-}" =~ ^[A-Za-z0-9._:-]{1,64}$ ]] || { sys_err "--request takes an id of letters, digits and ._:-"; exit 2; }
@@ -63,7 +66,7 @@ run_root() {  # run_root ROOTVERB ARGS...: check, then pkexec (or run, as root);
     else "$PKEXEC" "$HELPER" "$@" || rc=$?; fi
     case "$rc" in
         126) sys_err "not done: no password was given, or this account may not do that" ;;
-        127) sys_err "not done: pkexec could not run (is polkit running?)" ;;
+        127) sys_err "not done: this account is not allowed to do that, or pkexec could not run" ;;
     esac
 }
 as_root() { run_root "$@"; exit "$rc"; }
@@ -92,6 +95,11 @@ case "$verb" in
     set-config)
         if [[ "${1:-}" == assistant.full-access ]]; then as_root assistant-full-access "${@:2}"
         else as_root set-config "$@"; fi ;;
+    ai)
+        # Two actions, two answers (N1): ai-on is a password every time,
+        # ai-off is instant from your own desktop (it only removes).
+        [[ $# -eq 1 && "$1" =~ ^(on|off)$ ]] || { sys_err "ai on|off"; exit 2; }
+        as_root "ai-$1" ;;
     vm)
         # Listed here so there is one entry point (design 4.1); it needs no
         # root. The Windows module (0.4.0) fills it in.

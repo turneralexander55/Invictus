@@ -238,9 +238,11 @@ if [[ $rc == 0 ]] && ! grep -q 'FAIL  hypr' "$TMP/doc.log" && grep -q '^note  pe
 else bad "H1-doctor-root: rc $rc: $(grep -E 'FAIL|per-user' "$TMP/doc.log" | head -3)"; fi
 if [[ $EUID -eq 0 ]]; then
     rc=0; DOC_AS_ROOT="" doctor "$E" > "$TMP/doc.log" 2>&1 || rc=$?
-    [[ $rc == 0 ]] && grep -q '^note  per-user checks skipped as root' "$TMP/doc.log" && ok "H1-doctor-root: the same when really run as root" || bad "H1-doctor-root (real root): rc $rc"
+    if [[ $rc == 0 ]] && grep -q '^note  per-user checks skipped as root' "$TMP/doc.log"; then ok "H1-doctor-root: the same when really run as root"
+    else bad "H1-doctor-root (real root): rc $rc"; fi
     rc=0; DOC_AS_ROOT="" doctor "$E" --hypr > "$TMP/doc.log" 2>&1 || rc=$?
-    [[ $rc == 2 ]] && ok "H1-doctor-root: --hypr as root is refused (run it as yourself)" || bad "H1-doctor-root: --hypr as root ran (rc $rc)"
+    if [[ $rc == 2 ]]; then ok "H1-doctor-root: --hypr as root is refused (run it as yourself)"
+    else bad "H1-doctor-root: --hypr as root ran (rc $rc)"; fi
 fi
 echo
 
@@ -283,7 +285,8 @@ if [[ $rc == 0 && "$(cat "$TMP/upd.log")" == "$(printf -- '-Syu --noconfirm\ndoc
     ok "H1-update-system: invictus-update --system runs -Syu, then the doctor's system checks, and leaves the home alone"
 else bad "H1-update-system: rc $rc: $(paste -sd'|' "$TMP/upd.log" 2>/dev/null)"; fi
 rc=0; update --system --aur || rc=$?
-[[ $rc == 2 ]] && ok "H1-update-system: --aur is refused with --system (AUR builds are per person)" || bad "H1: --system --aur ran (rc $rc)"
+if [[ $rc == 2 ]]; then ok "H1-update-system: --aur is refused with --system (AUR builds are per person)"
+else bad "H1: --system --aur ran (rc $rc)"; fi
 if grep -qE '\bgit\b|stash' <(grep -v '^#' "$UPD"); then bad "invictus-update mentions git or stash"
 else ok "invictus-update has no git and no stash"; fi
 # No shipped or dev script may run pacman -Sy without u (partial upgrade),

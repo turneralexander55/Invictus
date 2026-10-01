@@ -16,6 +16,8 @@
 #   invictus-sys service enable|disable|restart UNIT   (services.allow)
 #   invictus-sys set-config KEY on|off   nets.<net>, flavor.lock
 #   invictus-sys assistant-full-access on|off
+#   invictus-sys ai-on                   AI on: /etc/invictus/ai, the AI set
+#   invictus-sys ai-off                  No AI: everyone signed out, the AI set gone
 #   invictus-sys report-collect
 #   invictus-sys guardrails-libertas [--for DURATION]
 #   invictus-sys guardrails-custodia
@@ -50,6 +52,8 @@ LIB="${INVICTUS_LIB:-/usr/lib/invictus}"
 . "$LIB/lib/guardrails-state.sh"
 # shellcheck source=scripts/lib/acta.sh
 . "$LIB/lib/acta.sh"
+# shellcheck source=scripts/lib/ai-set.sh
+. "$LIB/lib/ai-set.sh"
 
 R="${INVICTUS_SYS_ROOT:-}"
 PROC="${INVICTUS_PROC:-/proc}"
@@ -60,6 +64,11 @@ JOURNALCTL="${INVICTUS_JOURNALCTL:-journalctl}"
 UPDATE="${INVICTUS_UPDATE:-/usr/bin/invictus-update}"
 GUARDRAILS="${INVICTUS_GUARDRAILS:-/usr/lib/invictus/guardrails}"
 RESTORE="${INVICTUS_RESTORE:-limine-snapper-restore}"
+AI_SIGNOUT="${INVICTUS_AI_SIGNOUT:-/usr/lib/invictus/ai-signout}"
+CLAUDE_CMD="${INVICTUS_CLAUDE:-claude}"
+# The people whose homes ai-off signs out: name:uid:gid:home lines. From
+# the passwd database (UID_MIN to UID_MAX of login.defs); tests give a file.
+PEOPLE="${INVICTUS_PEOPLE:-}"
 if [[ -n "${INVICTUS_INHIBIT+x}" ]]; then read -ra INHIBIT <<< "$INVICTUS_INHIBIT"
 else INHIBIT=(systemd-inhibit --what=shutdown:sleep --who="Invictus" --why="Changing software" --mode=block); fi
 ETC="$R/etc/invictus"
@@ -169,6 +178,102 @@ write_full_access() {  # on | off, then the profile link and the panel (12.3)
     "$GUARDRAILS" apply >/dev/null && "$GUARDRAILS" signal
 }
 
+# ---- AI on and off (design-no-ai.md N1, N3, N4.3, N7) ---------------------------------------
+AI_FILE="$ETC/ai"
+AI_PENDING="$R/var/lib/invictus/ai-install-pending"
+AI_OFF_PENDING="$R/var/lib/invictus/ai-off-pending"
+BROWSER_POLICY="$R/etc/firefox/policies/policies.json"
+OUR_POLICY='{"policies": {"GenerativeAI": {"Enabled": false, "Locked": true}}}'
+
+# shellcheck disable=SC2329 # these run inside ai_turn_on and ai_turn_off, through with_pair
+write_ai() {  # on | off, root 0644, rename
+    echo "$1" > "$AI_FILE.new"; chmod 644 "$AI_FILE.new"; mv -f "$AI_FILE.new" "$AI_FILE"
+}
+# The browser policy (N7): ours holds exactly one block. A policies.json
+# that is not ours is never overwritten or removed; ai-off says so.
+# shellcheck disable=SC2329
+browser_policy_ours() { [[ -f "$BROWSER_POLICY" && ! -L "$BROWSER_POLICY" && "$(cat "$BROWSER_POLICY")" == "$OUR_POLICY" ]]; }
+# shellcheck disable=SC2329
+write_browser_policy() {
+    if [[ -e "$BROWSER_POLICY" || -L "$BROWSER_POLICY" ]] && ! browser_policy_ours; then
+        say "kept $BROWSER_POLICY (not written by Invictus), so the browser's AI features are not locked off"
+        return 0
+    fi
+    mkdir -p "$(dirname "$BROWSER_POLICY")"
+    printf '%s\n' "$OUR_POLICY" > "$BROWSER_POLICY.new"; chmod 644 "$BROWSER_POLICY.new"; mv -f "$BROWSER_POLICY.new" "$BROWSER_POLICY"
+}
+# shellcheck disable=SC2329
+people() {
+    if [[ -n "$PEOPLE" ]]; then cat -- "$PEOPLE"; return; fi
+    local lo hi
+    lo="$(awk '$1 == "UID_MIN" { print $2 }' /etc/login.defs 2>/dev/null)"; hi="$(awk '$1 == "UID_MAX" { print $2 }' /etc/login.defs 2>/dev/null)"
+    getent passwd | awk -F: -v lo="${lo:-1000}" -v hi="${hi:-60000}" '$3 >= lo && $3 <= hi { print $1 ":" $3 ":" $4 ":" $6 }'
+}
+# sign_out_everyone: N3 steps 2 and 3 in every home, each run as that
+# person (ai-signout), never as root; the logout for the caller only.
+# shellcheck disable=SC2329
+sign_out_everyone() {
+    local name uid gid home
+    local -a as args
+    mkdir -p "$AI_OFF_PENDING"; chmod 755 "$AI_OFF_PENDING"
+    while IFS=: read -r name uid gid home; do
+        [[ "$uid" =~ ^[0-9]+$ && "$gid" =~ ^[0-9]+$ && "$home" == /* ]] || continue
+        # Provider keys in the keyring: invictus-session clears them at
+        # that person's next login.
+        : > "$AI_OFF_PENDING/$uid"; chmod 644 "$AI_OFF_PENDING/$uid"
+        # A home that is not its owner's own is left alone.
+        [[ -d "$home" && "$(stat -c %u -- "$home")" == "$uid" ]] || { say "skipped $name: $home is not theirs"; continue; }
+        if [[ "$uid" == "$EUID" ]]; then as=()
+        elif [[ $EUID -eq 0 ]]; then as=(setpriv --reuid="$uid" --regid="$gid" --clear-groups)
+        else say "skipped $name: not root (a test run)"; continue; fi
+        args=(); [[ "$uid" == "$CALLER_UID" ]] && args=(--logout)
+        timeout 30 "${as[@]}" env -i HOME="$home" USER="$name" PATH=/usr/bin LC_ALL=C CLAUDE="$CLAUDE_CMD" \
+            "$BASH" "$AI_SIGNOUT" "${args[@]}" 2>&1 | sed "s/^ai-signout:/  $name:/" || say "could not finish signing $name out"
+    done < <(people)
+}
+# shellcheck disable=SC2329 # called through with_pair
+ai_turn_on() {  # returns 5 when the packages wait for a connection
+    local rc=0
+    local -a names
+    write_ai on
+    if browser_policy_ours; then rm -f "$BROWSER_POLICY"; fi
+    read -ra names <<< "$AI_ON_INSTALL"
+    pacman_install_needed "${names[@]}" || rc=$?
+    if ((rc == 0)); then
+        rm -f "$AI_PENDING"; "$SYSTEMCTL" disable invictus-ai-pending.service >/dev/null 2>&1 || true
+        return 0
+    fi
+    mkdir -p "$(dirname "$AI_PENDING")"
+    printf 'by = %s\nat = %s\n' "$CALLER" "$(date --iso-8601=seconds)" > "$AI_PENDING"
+    "$SYSTEMCTL" enable --now --no-block invictus-ai-pending.service >/dev/null 2>&1 || true
+    say "AI is on. Its programs could not be downloaded now (no connection?); they install when the internet is back."
+    return 5
+}
+# shellcheck disable=SC2329 # called through with_pair
+ai_turn_off() {
+    local rc=0 have
+    # The setting first: whatever fails below, every reader sees No AI.
+    write_ai off
+    rm -f "$AI_PENDING"; "$SYSTEMCTL" disable --now invictus-ai-pending.service >/dev/null 2>&1 || true
+    # N4.3: full access goes with it, the profile follows, Moneta stops (N3 step 1).
+    echo "full-access = off" > "$ETC/assistant.new"; chmod 644 "$ETC/assistant.new"; mv -f "$ETC/assistant.new" "$ETC/assistant"
+    if [[ -x "$GUARDRAILS" ]]; then
+        "$GUARDRAILS" apply >/dev/null || say "guardrails apply failed; run invictus-sys guardrails check"
+        "$GUARDRAILS" signal stop || true
+    fi
+    write_browser_policy
+    sign_out_everyone
+    # N3 step 4: the AI set, whichever of it is installed.
+    # shellcheck disable=SC2086 # AI_PKGS is a word list
+    have="$("$PACMAN" -Qq -- $AI_PKGS 2>/dev/null || true)"
+    if [[ -n "$have" ]]; then
+        local -a rm_list
+        mapfile -t rm_list <<< "$have"
+        "${INHIBIT[@]}" "$PACMAN" -Rs --noconfirm -- "${rm_list[@]}" || { rc=$?; say "could not remove ${rm_list[*]} (another package needs them?)"; }
+    fi
+    return "$rc"
+}
+
 # ---- verbs -----------------------------------------------------------------------------------
 rc=0
 case "$VERB" in
@@ -262,6 +367,16 @@ case "$VERB" in
         [[ "$val" == off || "$(gr_ai)" == on ]] || refuse "there is no AI on this computer (No AI)"
         mkdir -p "$ETC"
         with_pair write_full_access "$val" || rc=$?
+        done_rc ;;
+
+    ai-on)
+        mkdir -p "$ETC"
+        with_pair ai_turn_on || rc=$?
+        case "$rc" in 0) finish ok 0 ;; 5) finish pending 0 ;; *) finish failed 1 ;; esac ;;
+
+    ai-off)
+        mkdir -p "$ETC"
+        with_pair ai_turn_off || rc=$?
         done_rc ;;
 
     report-collect)

@@ -20,7 +20,7 @@
 SYS_SHARE="${INVICTUS_SYS_ROOT:-}/usr/share/invictus/sys"
 
 # Every root verb, in the order `invictus-sys help` lists them.
-SYS_ROOT_VERBS="update install remove snapshot rollback service set-config assistant-full-access report-collect guardrails-libertas guardrails-custodia"
+SYS_ROOT_VERBS="update install remove snapshot rollback service set-config assistant-full-access ai-on ai-off report-collect guardrails-libertas guardrails-custodia"
 
 # The keys set-config accepts. Anything else, and in particular the
 # guard-rails, ai, assistant and helper files, has its own verb or none.
@@ -58,7 +58,7 @@ duration_seconds() {
 sys_validate() {
     local verb="${1:-}" a; shift || true
     case "$verb" in
-        update|report-collect|guardrails-custodia)
+        update|report-collect|guardrails-custodia|ai-on|ai-off)
             (($# == 0)) || { sys_err "$verb takes no arguments"; return 2; } ;;
         install|remove)
             (($# >= 1 && $# <= 64)) || { sys_err "$verb needs 1 to 64 package names"; return 2; }

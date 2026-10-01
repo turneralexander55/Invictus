@@ -58,6 +58,8 @@ echo "pacman $*" >> "$FAKE_LOG"
 echo "pacman-env LC_ALL=${LC_ALL-unset}" >> "$FAKE_LOG"
 case "$1" in
   -Q) [[ "$2" == snap-pac && "${FAKE_SNAP_PAC:-1}" == 1 ]]; exit ;;
+  -Qq) shift; [[ "${1:-}" == -- ]] && shift; r=1
+       for p in "$@"; do [[ " ${FAKE_INSTALLED:-} " == *" $p "* ]] && { echo "$p"; r=0; }; done; exit "$r" ;;
   -Rsp) shift 3; [[ "$1" == -- ]] && shift; printf '%s\n' "$@"; [[ -n "${FAKE_REMOVE_EXTRA:-}" ]] && echo "$FAKE_REMOVE_EXTRA"; exit 0 ;;
 esac
 # a transaction: snap-pac's pre/post pair
@@ -105,6 +107,10 @@ echo "pkexec action=$action message=$msg" >> "$FAKE_LOG"
 [[ "${FAKE_DENY:-0}" == 1 ]] && exit 126
 PKEXEC_UID="$(id -u)" exec "$helper" "$@"
 EOF
+cat > "$F/claude" <<'EOF'
+#!/bin/bash
+echo "claude $* uid=$(id -u)" > "$HOME/claude-called"
+EOF
 chmod +x "$F"/*
 for c in systemctl systemd-run pkcheck journalctl visudo update restore; do ln -sf rec "$F/$c"; done
 
@@ -119,7 +125,7 @@ new_root() {
     printf '#%%PAM-1.0\nauth\t\tinclude\t\tsystem-auth\naccount\t\tinclude\t\tsystem-auth\nsession\t\tinclude\t\tsystem-auth\nsession\t\toptional\tpam_systemd.so class=none\n' > "$R/etc/pam.d/sudo"
     printf '[options]\nHoldPkg     = pacman glibc\nArchitecture = auto\n\n[core]\nInclude = /etc/pacman.d/mirrorlist\n' > "$R/etc/pacman.conf"
     echo "${2:-custodia}" > "$R/etc/invictus/guardrails"
-    D="$R/etc/sudoers.d/40-invictus-guardrails"
+    D="$R/etc/sudoers.d/40-invictus-guardrails"; POL="$R/etc/firefox/policies/policies.json"
     : > "$TMP/sys.log"; : > "$TMP/acta.log"
 }
 # Environment for every script under test.
@@ -130,7 +136,7 @@ export_env() {
         INVICTUS_SYSTEMD_RUN="$F/systemd-run" INVICTUS_PKCHECK="$F/pkcheck" INVICTUS_JOURNALCTL="$F/journalctl" \
         INVICTUS_VISUDO="$F/visudo" INVICTUS_UPDATE="$F/update" INVICTUS_RESTORE="$F/restore" INVICTUS_INHIBIT="$F/inhibit" \
         INVICTUS_PKEXEC="$F/pkexec" INVICTUS_SYS_HELPER="$SYS/invictus-sys-root.sh" INVICTUS_GUARDRAILS="$GRD/guardrails.sh" \
-        INVICTUS_PROC="$TMP/proc"
+        INVICTUS_PROC="$TMP/proc" INVICTUS_AI_SIGNOUT="$SYS/ai-signout.sh" INVICTUS_CLAUDE="$F/claude"
 }
 # isys ARGS: the user-facing command, as the person (not root: the fake
 # pkexec runs the helper). Output in $TMP/sys.out, exit code in $rc.
@@ -152,7 +158,7 @@ sfail() { bad "$1"; s_fail=1; }
 pol_check="$(python3 - "$SYS/org.invictus.sys.policy" "$SYS_ROOT_VERBS" <<'PY'
 import sys, xml.etree.ElementTree as ET
 pol, verbs = sys.argv[1], sys.argv[2].split()
-nokeep = {"assistant-full-access", "guardrails-libertas", "guardrails-custodia"}
+nokeep = {"assistant-full-access", "guardrails-libertas", "guardrails-custodia", "ai-on", "ai-off"}
 seen = []
 for a in ET.parse(pol).getroot().iter("action"):
     i = a.get("id"); v = i.removeprefix("org.invictus.sys."); seen.append(v)
@@ -214,7 +220,7 @@ declare -A want_action=(
     ["service restart cups.service"]=service ["set-config nets.auto-update off"]=set-config
     ["set-config assistant.full-access on"]=assistant-full-access ["report-collect"]=report-collect
     ["guardrails set libertas --for 1h"]=guardrails-libertas ["guardrails set custodia"]=guardrails-custodia
-    ["remove vlc"]=remove)
+    ["remove vlc"]=remove ["ai on"]=ai-on ["ai off"]=ai-off)
 for call in "${!want_action[@]}"; do
     : > "$TMP/sys.log"; read -ra words <<< "$call"; FAKE_DENY=1 isys "${words[@]}"
     grep -q "pkexec action=org.invictus.sys.${want_action[$call]} " "$TMP/sys.log" || sfail "A10: '$call' did not use org.invictus.sys.${want_action[$call]}: $(cat "$TMP/sys.log")"
@@ -351,18 +357,21 @@ grep -q "case \"\$(readlink -f -- \"\$0\")\" in" "$px" && grep -q 'export PATH=/
     && ok "L3-extras-guard: pending-extras drops INVICTUS_* overrides and sets PATH when installed" || sfail "L3-extras-guard: pending-extras has no /usr/* override guard"
 
 # Every root script drops test overrides when installed (/usr/...).
-for f in "$SYS/invictus-sys-root.sh" "$GRD/guardrails.sh" "$GRD/pre-admin-snapshot.sh"; do
+for f in "$SYS/invictus-sys-root.sh" "$GRD/guardrails.sh" "$GRD/pre-admin-snapshot.sh" "$SYS/ai-pending.sh"; do
     grep -q "case \"\$(readlink -f -- \"\$0\")\" in" "$f" && grep -q 'export PATH=/usr/bin' "$f" \
         && head -1 "$f" | grep -qx '#!/usr/bin/bash' || sfail "$(basename "$f"): no override drop for the installed copy, or not #!/usr/bin/bash"
 done
-[[ $s_fail == 0 ]] && ok "the three root scripts start with #!/usr/bin/bash, set PATH and drop every INVICTUS_*/ACTA_* override when installed"
+[[ $s_fail == 0 ]] && ok "the four root scripts start with #!/usr/bin/bash, set PATH and drop every INVICTUS_*/ACTA_* override when installed"
 
 # Packages: the trees from group 4.
 if [[ -x "$ALL/usr/bin/invictus-sys" && -x "$ALL/usr/lib/invictus/invictus-sys" && -f "$ALL/usr/share/polkit-1/actions/org.invictus.sys.policy" \
       && -x "$ALL/usr/lib/invictus/guardrails" && -x "$ALL/usr/lib/invictus/pre-admin-snapshot" \
       && -f "$ALL/usr/share/polkit-1/rules.d/40-invictus-guardrails.rules" && ! -e "$ALL/etc/polkit-1/rules.d/40-invictus-custodia.rules" \
       && -L "$ALL/usr/lib/systemd/system/multi-user.target.wants/invictus-guardrails.service" \
-      && -f "$ALL/etc/pam.d/polkit-1" && -f "$ALL/usr/lib/invictus/lib/acta.sh" ]]; then
+      && -f "$ALL/etc/pam.d/polkit-1" && -f "$ALL/usr/lib/invictus/lib/acta.sh" && -f "$ALL/usr/lib/invictus/lib/ai-set.sh" \
+      && -x "$ALL/usr/lib/invictus/ai-signout" && -x "$ALL/usr/lib/invictus/ai-pending" \
+      && -f "$ALL/usr/lib/systemd/system/invictus-ai-pending.service" \
+      && ! -e "$ALL/usr/lib/systemd/system/multi-user.target.wants/invictus-ai-pending.service" ]]; then
     if grep -q '^\[Install\]' "$ALL/usr/lib/systemd/system/invictus-guardrails.service"; then sfail "invictus-guardrails.service has an [Install] section"
     else ok "invictus-sys and invictus-guardrails install their files; the boot service is static and always wanted; the tier 1 rule is not packaged in /etc"; fi
 else sfail "package trees incomplete"; fi
@@ -404,16 +413,16 @@ else
         while read -r id l a g res; do
             v="${id#org.invictus.sys.}"
             if [[ "$id" == org.freedesktop.policykit.exec ]]; then want=no-such-action
-            elif [[ "$v" == guardrails-custodia && $l == 1 && $a == 1 ]]; then want=yes
+            elif [[ "$v" =~ ^(guardrails-custodia|ai-off)$ && $l == 1 && $a == 1 ]]; then want=yes
             elif [[ "$1" == custodia && " $TIER1 " == *" $v "* && $l == 1 && $a == 1 && $g == wheel ]]; then want=yes
             elif [[ $l == 1 && $a == 1 ]]; then
-                case "$v" in assistant-full-access|guardrails-libertas|guardrails-custodia) want=auth_admin ;; *) want=auth_admin_keep ;; esac
+                case "$v" in assistant-full-access|guardrails-libertas|guardrails-custodia|ai-on|ai-off) want=auth_admin ;; *) want=auth_admin_keep ;; esac
             else want=auth_admin; fi
             [[ "$res" == "$want" ]] || pbad "$1: $id local=$l active=$a $g -> $res, want $want"
         done < <(paste -d' ' <(queries | cut -d' ' -f1-4) <(queries | q | cut -d' ' -f2))
     }
     expect libertas
-    [[ $p_fail == 0 ]] && ok "Libertas: every verb asks for a password (auth_admin_keep; no keep for full access and the rails), except guard rails on from your own desktop"
+    [[ $p_fail == 0 ]] && ok "Libertas: every verb asks for a password (auth_admin_keep; no keep for full access, the rails and AI), except guard rails on and No AI from your own desktop"
     cp "$GRD/40-invictus-custodia.rules" "$RD/etc/"
     expect custodia
     [[ $p_fail == 0 ]] && ok "Custodia: tier 1 (update, snapshot, report-collect) is YES only for wheel at a local active desktop; tier 2 keeps its password; nothing grants pkexec itself"
@@ -634,6 +643,127 @@ else gbad "full access on: rc $rc: $(cat "$TMP/sys.out")"; fi
 python3 -c 'import json,sys; f=json.load(open(sys.argv[1])); d=f["permissions"]["deny"]; assert "Bash" in d and "Edit" in d and "Write" in d; g=json.load(open(sys.argv[2]))["permissions"]["deny"]; assert "Bash" not in g and "Bash(sudo *)" in g and "Bash(pacman *)" in g' \
     "$GRD/claude/fixed.json" "$GRD/claude/full.json" && ok "A7/4.3: the fixed profile denies Bash, Edit and Write; the full one keeps Bash under A7's deny rules" || gbad "managed profiles"
 
+# ---- ai on|off (design-no-ai.md N1, N3, N4.3, N7; NA1, NA2, NA5, NA6) ----
+
+OURPOL='{"policies": {"GenerativeAI": {"Enabled": false, "Locked": true}}}'
+# The user half: on or off, nothing else, before any prompt.
+new_root aiargs custodia; export_env
+for a in "" "maybe" "on now" "--on"; do
+    : > "$TMP/sys.log"; read -ra words <<< "$a"; isys ai "${words[@]}"
+    if [[ $rc != 2 ]] || logged pkexec; then gbad "ai '$a' accepted (rc $rc)"; fi
+done
+[[ $g_fail == 0 ]] && ok "ai: only 'ai on' or 'ai off', refused before any prompt otherwise"
+
+# NA6: ai on (Custodia too): the setting, our browser policy gone, the AI set
+# installed in one -Syu --needed, a pre/post pair, Acta.
+new_root aion custodia; export_env; grd apply
+echo off > "$R/etc/invictus/ai"; mkdir -p "$(dirname "$POL")"; printf '%s\n' "$OURPOL" > "$POL"
+: > "$TMP/sys.log"; isys ai on
+if [[ $rc == 0 && "$(cat "$R/etc/invictus/ai")" == on && "$(stat -c %a "$R/etc/invictus/ai")" == 644 && ! -e "$POL" ]] \
+   && grep -q 'pkexec action=org.invictus.sys.ai-on ' "$TMP/sys.log" \
+   && logged "pacman -Syu --needed --noconfirm -- invictus-moneta" && logged inhibit \
+   && [[ "$(snaps | head -1 | cut -d, -f2-3)" == "pre,invictus-sys ai-on " ]] \
+   && acta_has "INVICTUS_VERB=ai-on" && acta_has "INVICTUS_RESULT=ok" && grep -q 'invictus-sys: ok snapshot=1' "$TMP/sys.out"; then
+    ok "NA6: ai on (org.invictus.sys.ai-on): /etc/invictus/ai on (0644), our browser policy removed, invictus-moneta in one -Syu --needed, pre/post pair, Acta"
+else gbad "ai on: rc $rc: $(paste -sd'|' "$TMP/sys.log") out: $(cat "$TMP/sys.out")"; fi
+# Offline: the choice stands, the install waits for the connection.
+new_root aioff1 custodia; export_env; grd apply; echo off > "$R/etc/invictus/ai"
+: > "$TMP/sys.log"; FAKE_PACMAN_RC=1 isys ai on
+if [[ $rc == 0 && "$(cat "$R/etc/invictus/ai")" == on && -f "$R/var/lib/invictus/ai-install-pending" ]] \
+   && grep -q 'invictus-sys: pending' "$TMP/sys.out" && logged "systemctl enable --now --no-block invictus-ai-pending.service" && acta_has "INVICTUS_RESULT=pending"; then
+    ok "N1: ai on with no connection: AI reads on, the pending marker is written and invictus-ai-pending.service enabled"
+else gbad "ai on offline: rc $rc: $(cat "$TMP/sys.out")"; fi
+# ai-pending: installs only while the marker exists and AI still reads on.
+PEND() { rc=0; bash "$SYS/ai-pending.sh" > "$TMP/pend.out" 2>&1 || rc=$?; }
+: > "$TMP/sys.log"; FAKE_PACMAN_RC=1 PEND
+[[ $rc == 1 && -f "$R/var/lib/invictus/ai-install-pending" ]] || gbad "ai-pending: a failed install should keep the marker and fail (rc $rc)"
+: > "$TMP/sys.log"; PEND
+if [[ $rc == 0 && ! -e "$R/var/lib/invictus/ai-install-pending" ]] && logged "pacman -Syu --needed --noconfirm -- invictus-moneta" \
+   && logged "systemctl disable invictus-ai-pending.service" && acta_has "INVICTUS_ARGS=pending"; then :
+else gbad "ai-pending install: rc $rc $(cat "$TMP/pend.out")"; fi
+printf 'by = x\n' > "$R/var/lib/invictus/ai-install-pending"; echo off > "$R/etc/invictus/ai"
+: > "$TMP/sys.log"; PEND
+[[ $rc == 0 && ! -e "$R/var/lib/invictus/ai-install-pending" ]] && ! logged "pacman -Syu" || gbad "ai-pending installed after AI was turned off"
+[[ $g_fail == 0 ]] && ok "N1: ai-pending installs at the next connection, keeps trying on failure, and installs nothing if AI was turned off since"
+# No safety copy, no change.
+new_root aisnap custodia; export_env; echo off > "$R/etc/invictus/ai"
+FAKE_SNAPPER_FAIL=1 isys ai on
+[[ $rc == 3 && "$(cat "$R/etc/invictus/ai")" == off ]] && ! logged "pacman -Syu" && ok "A5: ai on with no safety copy possible changes nothing (exit 3)" || gbad "ai on without snapshot: rc $rc"
+
+# NA2: ai off. One person who asked (the caller), one other person (root
+# run only), and a home that is not its owner's.
+new_root aioff libertas; export_env
+echo on > "$R/etc/invictus/ai"; echo "full-access = on" > "$R/etc/invictus/assistant"; grd apply
+printf 'by = x\n' > "$R/var/lib/invictus/ai-install-pending" 2>/dev/null || { mkdir -p "$R/var/lib/invictus"; printf 'by = x\n' > "$R/var/lib/invictus/ai-install-pending"; }
+me="$(id -u)"; mg="$(id -g)"
+chmod 711 "$TMP"
+mkhome() {  # mkhome DIR: a signed-in Claude home
+    mkdir -p "$1/.claude/projects/p1" "$1/.local/state/invictus/collegium"
+    echo '{"token":"x"}' > "$1/.claude/.credentials.json"; chmod 600 "$1/.claude/.credentials.json"
+    echo '{"numStartups": 3, "oauthAccount": {"emailAddress": "a@example.org"}}' > "$1/.claude.json"; chmod 600 "$1/.claude.json"
+    echo memory > "$1/.claude/projects/p1/chat.jsonl"
+}
+HA="$R/home/alice"; HE="$R/home/eve"; HB="$R/home/bob"
+mkhome "$HA"; mkhome "$HE"
+printf 'alice:%s:%s:%s\neve:4242:4242:%s\n' "$me" "$mg" "$HA" "$HE" > "$TMP/people"
+if [[ $EUID -eq 0 ]]; then
+    mkhome "$HB"
+    # The attacker's links: ~/.claude points at a folder of root's, and
+    # ~/.claude.json at a file of root's. Root must touch neither.
+    mkdir -p "$TMP/vdir"; echo '{"root":"secret"}' > "$TMP/vdir/.credentials.json"
+    echo '{"oauthAccount": {"root": 1}}' > "$TMP/victim.json"; chmod 644 "$TMP/victim.json"
+    rm -rf "$HB/.claude" "$HB/.claude.json"; ln -s "$TMP/vdir" "$HB/.claude"; ln -s "$TMP/victim.json" "$HB/.claude.json"
+    chown -R 65534:65534 "$HB"; chown -h 65534:65534 "$HB/.claude" "$HB/.claude.json"
+    echo "bob:65534:65534:$HB" >> "$TMP/people"
+    HC="$R/home/carol"; mkhome "$HC"; chown -R 65533:65533 "$HC"
+    echo "carol:65533:65533:$HC" >> "$TMP/people"
+fi
+mkdir -p "$R/run/user/$me/invictus"; listen_tribune "$R/run/user/$me/invictus/tribune.sock" "$TMP/tribune-ai.got"
+: > "$TMP/sys.log"
+INVICTUS_PEOPLE="$TMP/people" FAKE_INSTALLED="claude-code invictus-moneta" isys ai off
+sleep 0.3
+if [[ $rc == 0 && "$(cat "$R/etc/invictus/ai")" == off && "$(stat -c %a "$R/etc/invictus/ai")" == 644 ]] \
+   && grep -q 'pkexec action=org.invictus.sys.ai-off ' "$TMP/sys.log" \
+   && grep -qx 'full-access = off' "$R/etc/invictus/assistant" && [[ "$(readlink "$R/etc/claude-code/managed-settings.json")" == */fixed.json ]] \
+   && [[ ! -e "$R/var/lib/invictus/ai-install-pending" ]] && logged "systemctl disable --now invictus-ai-pending.service" \
+   && logged "pacman -Rs --noconfirm -- claude-code invictus-moneta" \
+   && [[ "$(snaps | head -1 | cut -d, -f2-3)" == "pre,invictus-sys ai-off " ]] && acta_has "INVICTUS_VERB=ai-off" && acta_has "INVICTUS_RESULT=ok"; then
+    ok "NA2: ai off (org.invictus.sys.ai-off): /etc/invictus/ai off (0644), full access off and the fixed profile, the pending install cancelled, the installed AI set removed, pre/post pair, Acta"
+else gbad "ai off: rc $rc: $(paste -sd'|' "$TMP/sys.log") out: $(cat "$TMP/sys.out")"; fi
+[[ "$(cat "$TMP/tribune-ai.got" 2>/dev/null)" == "stop uid=$me" ]] && ok "N3 step 1: ai off tells the Moneta panel to stop" || gbad "ai off: tribune got '$(cat "$TMP/tribune-ai.got" 2>/dev/null)'"
+if python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d == {"policies": {"GenerativeAI": {"Enabled": False, "Locked": True}}}' "$POL" 2>/dev/null \
+   && [[ "$(stat -c %a "$POL")" == 644 ]]; then ok "N7/NA4: ai off writes the browser policy, root 0644, exactly policies.GenerativeAI off and locked"
+else gbad "browser policy: $(cat "$POL" 2>/dev/null)"; fi
+if [[ ! -e "$HA/.claude/.credentials.json" && -f "$HA/.claude/projects/p1/chat.jsonl" ]] \
+   && python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert "oauthAccount" not in d and d["numStartups"] == 3' "$HA/.claude.json" \
+   && [[ "$(stat -c %a "$HA/.claude.json")" == 600 ]] && grep -q "^claude auth logout uid=$me" "$HA/claude-called" 2>/dev/null; then
+    ok "N3/N6: the person who asked: claude auth logout, the credential file deleted, the account block gone from ~/.claude.json (the rest and its 0600 kept), the memory kept"
+else gbad "ai off caller's home: $(find "$HA" -maxdepth 2 | paste -sd' ') claude: $(cat "$HA/claude-called" 2>/dev/null)"; fi
+[[ -f "$HE/.claude/.credentials.json" && ! -e "$HE/claude-called" ]] && ok "N3: a home not owned by the person it belongs to is left alone" || gbad "ai off touched a home that is not its owner's"
+[[ -f "$R/var/lib/invictus/ai-off-pending/$me" && -f "$R/var/lib/invictus/ai-off-pending/4242" ]] \
+    && ok "N3: every person gets an ai-off-pending marker, so their next login clears the provider keys" || gbad "ai-off-pending markers missing"
+if [[ $EUID -eq 0 ]]; then
+    if [[ -f "$TMP/vdir/.credentials.json" && "$(cat "$TMP/victim.json")" == '{"oauthAccount": {"root": 1}}' && ! -e "$HB/claude-called" ]] \
+       && [[ -L "$HB/.claude" ]]; then
+        ok "ai-off-as-person: links in a person's home reach none of root's files (the clean-up runs as that person); no logout for someone who did not ask"
+    else gbad "ai-off-as-person: root followed a person's link: vdir $(ls -A "$TMP/vdir") victim $(cat "$TMP/victim.json")"; fi
+    if [[ ! -e "$HC/.claude/.credentials.json" && "$(stat -c %u "$HC/.claude.json")" == 65533 && ! -e "$HC/claude-called" ]] \
+       && ! grep -q oauthAccount "$HC/.claude.json" && [[ -f "$HC/.claude/projects/p1/chat.jsonl" ]]; then
+        ok "N3: another person's credential file and account block are removed by a process running as them (the rewritten file is theirs), memory kept, no logout run for them"
+    else gbad "ai off, other person: $(find "$HC" -maxdepth 2 -printf '%u %p\n' | paste -sd' ')"; fi
+fi
+chmod 700 "$TMP"
+grd apply --check; [[ $rc == 0 ]] || gbad "NA5: after ai off, guardrails check is not consistent: $(cat "$TMP/grd.out")"
+isys set-config assistant.full-access on
+[[ $rc == 3 ]] && grep -q 'No AI' "$TMP/sys.out" && ok "NA2/NA5: after ai off the rails stay consistent and full access is refused (No AI)" || gbad "full access after ai off: rc $rc"
+# A browser policy file that is not ours is never overwritten or removed.
+new_root aipol libertas; export_env; grd apply; echo on > "$R/etc/invictus/ai"
+mkdir -p "$(dirname "$POL")"; echo '{"policies": {"DisableTelemetry": true}}' > "$POL"
+: > "$TMP/people"; INVICTUS_PEOPLE="$TMP/people" isys ai off
+k1="$(cat "$POL")"; isys ai on; k2="$(cat "$POL")"
+[[ "$k1" == '{"policies": {"DisableTelemetry": true}}' && "$k2" == "$k1" ]] && grep -q 'not locked off' <(INVICTUS_PEOPLE="$TMP/people" bash "$SYS/invictus-sys.sh" ai off 2>&1) \
+    && ok "N7: someone else's policies.json is kept by ai off and ai on, and ai off says AI features are not locked" || gbad "foreign browser policy: '$k1' '$k2'"
+
 # SM17 / G2: pre-admin-snapshot.
 new_root g2 custodia; export_env
 pas() { PAM_TYPE="${PAM_TYPE:-auth}" PAM_SERVICE="${1:-sudo}" PAM_USER=alex bash "$GRD/pre-admin-snapshot.sh"; }
@@ -706,5 +836,5 @@ grep -q 'in_target invictus-sys guardrails apply' "$REPO/installer/jobs/settings
 echo
 unset INVICTUS_SYS_ROOT INVICTUS_LIB FAKE_STATE FAKE_LOG FAKE_DIR ACTA_LOGGER ACTA_LOG FAKE_POLICY INVICTUS_SNAPPER INVICTUS_PACMAN \
     INVICTUS_SYSTEMCTL INVICTUS_SYSTEMD_RUN INVICTUS_PKCHECK INVICTUS_JOURNALCTL INVICTUS_VISUDO INVICTUS_UPDATE INVICTUS_RESTORE \
-    INVICTUS_INHIBIT INVICTUS_PKEXEC INVICTUS_SYS_HELPER INVICTUS_GUARDRAILS INVICTUS_PROC
+    INVICTUS_INHIBIT INVICTUS_PKEXEC INVICTUS_SYS_HELPER INVICTUS_GUARDRAILS INVICTUS_PROC INVICTUS_AI_SIGNOUT INVICTUS_CLAUDE
 set -e
