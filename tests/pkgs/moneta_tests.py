@@ -238,6 +238,21 @@ provider("key", "clear")
 check(read(f"{LOG}.secret").strip() == "clear invictus-namespace invictus/provider",
       "NA2: `key clear` removes every Moneta key by the namespace", f"key clear: {read(f'{LOG}.secret')!r}")
 
+# Janus L1: a home provider's label and model reach the terminal through
+# `list`, `get` and `set`; escape sequences and direction overrides must not.
+os.makedirs(os.path.join(CONF, "invictus/providers/evil"))
+with open(os.path.join(CONF, "invictus/providers/evil/provider.toml"), "w") as f:
+    f.write('name = "evil"\nkind = "api"\nendpoint = "http://127.0.0.1:9/v1"\nmodel = "m\\u001b]52;c;eA==\\u0007"\n'
+            'label = "Home \\u001b[2J\\u001b]0;pwned\\u0007 AI \\u202eIA"\n')
+state("libertas", "off")
+outs = [provider("set", "evil"), provider("list"), provider("get")]
+raw = "".join(r.stdout + r.stderr for r in outs)
+check(all(r.returncode == 0 for r in outs) and "Home" in raw and "\x1b" not in raw and "\x07" not in raw
+      and "\u202e" not in raw,
+      "L1: a provider's label and model print with no escape sequences or direction overrides (list, get, set)",
+      f"hostile label: {[r.returncode for r in outs]} {raw!r}")
+shutil.rmtree(os.path.join(CONF, "invictus/providers/evil"))
+
 # ---- the panel ---------------------------------------------------------------------------
 print("== Moneta: the panel (tribune)", flush=True)
 SOCK = os.path.join(RUN, "invictus/tribune.sock")

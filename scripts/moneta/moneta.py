@@ -104,6 +104,14 @@ def clean(text, keep_newlines=True):
                    else "?" for c in text)
 
 
+def ext(value):
+    """Every piece of text from outside this file that goes to a terminal
+    (a provider's label or model, an error naming a path or argument, a
+    model's reply) goes through here: one line, no control bytes, no
+    direction overrides. Group 17 greps the prints for it (Janus L1)."""
+    return clean(str(value), keep_newlines=False)
+
+
 # Direction overrides and isolates: they can make a line read differently
 # from what it holds (a button that shows one command and runs another).
 BIDI = set("\u061c\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069")
@@ -318,10 +326,10 @@ def provider_cli(argv):
     try:
         return _provider_cli(argv)
     except BadArgs as e:
-        print(f"invictus-provider: {e}", file=sys.stderr)
+        print(f"invictus-provider: {ext(e)}", file=sys.stderr)
         return EXIT_BAD
     except Refused as e:
-        print(f"invictus-provider: {e}", file=sys.stderr)
+        print(f"invictus-provider: {ext(e)}", file=sys.stderr)
         return EXIT_REFUSED
 
 
@@ -345,7 +353,7 @@ def _provider_cli(argv):
         else:
             for r in rows:
                 if r["offered"]:
-                    print(f"{'*' if r['selected'] else ' '} {r['name']:<20} {r['kind']:<4} {r['label']}")
+                    print(f"{'*' if r['selected'] else ' '} {r['name']:<20} {r['kind']:<4} {ext(r['label'])}")
         return EXIT_OK
     if cmd in ("get", "check"):
         p = selected()
@@ -354,7 +362,7 @@ def _provider_cli(argv):
             info = {"name": p["name"], "kind": p["kind"], "label": p["label"], "permitted": ok, "why": why}
             if p["kind"] == "api":
                 info.update({"endpoint": p.get("endpoint", ""), "model": p.get("model", "")})
-            print(json.dumps(info) if rest == ["--json"] else "\n".join(f"{k}={v}" for k, v in info.items()))
+            print(json.dumps(info) if rest == ["--json"] else "\n".join(f"{k}={ext(v)}" for k, v in info.items()))
             return EXIT_OK
         if not ok:
             print(why)
@@ -406,7 +414,7 @@ def _provider_set(rest, state):
     if own:
         s[name] = own
     write_settings(s)
-    print(f"Moneta now answers with {p['label']}.")
+    print(f"Moneta now answers with {ext(p['label'])}.")
     return EXIT_OK
 
 
@@ -492,7 +500,7 @@ def acta_cli(argv):
         print("Acta is in the system log, which only an administrator account can read.")
         return EXIT_FAILED
     print("Acta: what invictus-sys changed, newest last")
-    print("\n".join(rows) if rows else "(nothing yet)")
+    print("\n".join(ext(r) for r in rows) if rows else "(nothing yet)")
     return EXIT_OK
 
 
@@ -583,7 +591,7 @@ def run_proposal(argv, thread):
     try:
         rc = subprocess.run([INVICTUS_SYS, "--request", thread, *argv], check=False).returncode
     except OSError as e:
-        print(f"Could not run invictus-sys: {e}")
+        print(f"Could not run invictus-sys: {ext(e)}")
         return 127
     meaning = {0: "Done.", 1: "It did not work; the message above says why.", 2: "invictus-sys did not accept that.",
                3: "Refused by the guard rails or because it protects the system.", 4: "Another change is running; try again shortly.",
@@ -604,7 +612,7 @@ def chat_cli(argv):
     try:
         check_endpoint(p["endpoint"])
     except BadArgs as e:
-        print(f"Moneta will not use this endpoint: {e}")
+        print(f"Moneta will not use this endpoint: {ext(e)}")
         return EXIT_REFUSED
     key = key_lookup(p["name"], p["endpoint"])
     thread = os.environ.get("INVICTUS_THREAD", "")
@@ -612,7 +620,7 @@ def chat_cli(argv):
         thread = new_thread_id()
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     buttons = []
-    print(f"Moneta, through {clean(p['label'], False)} ({clean(p.get('model', ''), False)}). Chat only: it can propose, you decide.")
+    print(f"Moneta, through {ext(p['label'])} ({ext(p.get('model', ''))}). Chat only: it can propose, you decide.")
     print("Type and press Enter. A number runs a proposed action. /quit ends.\n")
     while True:
         try:
@@ -637,7 +645,7 @@ def chat_cli(argv):
         try:
             reply = stream_reply(p, key, messages)
         except (urllib.error.URLError, OSError, ValueError, KeyError, IndexError, TypeError) as e:
-            print(f"\n(no answer: {clean(str(e), False)[:200]})")
+            print(f"\n(no answer: {ext(e)[:200]})")
             messages.pop()
             continue
         print()
@@ -783,7 +791,7 @@ class Panel:
         try:
             self.child = subprocess.Popen(argv, env=child_env, preexec_fn=pre, close_fds=True)
         except OSError as e:
-            print(f"Could not start {clean(p['label'], False)}: {e}")
+            print(f"Could not start {ext(p['label'])}: {ext(e)}")
             self.child = None
             return False
         print(f"[tribune] started {p['name']} pid={self.child.pid} thread={thread}", flush=True)
@@ -861,7 +869,7 @@ class Panel:
         print("Moneta. Super+A shows and hides this panel. What invictus-sys changed: tribune acta")
         rows = acta_lines(3)
         if rows:
-            print("Last changes:\n  " + "\n  ".join(rows))
+            print("Last changes:\n  " + "\n  ".join(ext(r) for r in rows))
 
     def loop(self):
         self.header()

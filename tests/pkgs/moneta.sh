@@ -92,6 +92,51 @@ PY
 then ok "A7/A8: both profiles carry every A7 deny rule, bypass and auto mode off, updates off and the A6 guard; only documented keys"
 else bad "A7/A8: the managed profiles (see the assertion above)"; fi
 
+# Janus L1: every print or write in the panel that interpolates a value goes
+# through ext() (one line, no control bytes, no direction overrides), except
+# values this file made itself or checked to be plain names and numbers.
+if python3 - "$REPO/scripts/moneta/moneta.py" <<'PY'
+import re, sys
+SAFE = {"'*' if r['selected'] else ' '", "r['name']:<20", "r['kind']:<4", "p['name']", "self.child.pid", "thread",
+        "rc", "n", "k", "' '.join(shlex.quote(a) for a in argv)"}
+SAFE_ARGS = re.compile(r"^(\"[^\"{}]*\"|PROVIDER_HELP|why|why or \"[^\"]*\"|json\.dumps\(\w+\)|clean\(\w+\)|"
+                       r"meaning\.get\(rc, f\"Finished with code \{rc\}\.\"\)|"
+                       r"(\"[^\"{}]*\" \+ )?\"[^\"{}]*\"\.join\(ext\(\w+\) for \w+ in \w+\)( if \w+ else \"[^\"{}]*\")?|)$")
+bad = []
+for no, line in enumerate(open(sys.argv[1]), 1):
+    m = re.search(r"(?:\bprint|sys\.std(?:out|err)\.write)\((.*)\)", line)
+    if not m:
+        continue
+    arg = re.sub(r",\s*(file|flush)=[^,)]*", "", m.group(1)).strip()
+    arg = re.sub(r"\)\s*;\s*sys\.stdout\.flush\(.*$", "", arg)
+    if "f\"" in arg or "f'" in arg:
+        for field in re.findall(r"\{([^{}]+)\}", arg):
+            if not field.startswith("ext(") and field not in SAFE:
+                bad.append(f"{no}: {{{field}}}")
+    elif not SAFE_ARGS.match(arg):
+        bad.append(f"{no}: {arg}")
+if bad:
+    print("prints of outside text not through ext(): " + "; ".join(bad))
+    sys.exit(1)
+PY
+then ok "L1: every print in the panel and provider tools that carries outside text goes through ext()"
+else bad "L1: a print bypasses ext() (see the line above)"; fi
+
+# Janus L2: Claude Code lets a tool call go ahead when a hook times out, so
+# the guard's hooks carry short timeouts, and the guard's own doctor run ends
+# before the post hook's does (a slow check still restores).
+if python3 - "$REPO/scripts/guardrails/claude/fixed.json" "$REPO/scripts/guardrails/claude/full.json" "$REPO/scripts/guardrails/claude/config-guard.py" <<'PY'
+import json, re, sys
+dt = int(re.search(r"^DOCTOR_TIMEOUT = (\d+)$", open(sys.argv[3]).read(), re.M).group(1))
+for path in sys.argv[1:3]:
+    h = json.load(open(path))["hooks"]
+    pre, post = h["PreToolUse"][0]["hooks"][0], h["PostToolUse"][0]["hooks"][0]
+    assert isinstance(pre.get("timeout"), int) and 1 <= pre["timeout"] <= 15, (path, pre)
+    assert isinstance(post.get("timeout"), int) and dt + 5 <= post["timeout"] <= 120, (path, post, dt)
+PY
+then ok "L2: the guard's hooks have short timeouts (pre <= 15 s), and its doctor run ends before the post hook's"
+else bad "L2: hook timeouts (see the assertion above)"; fi
+
 # A9: no tool of ours names the Windows VM's or the work profile's files, except
 # the deny rules that keep Moneta out of them.
 hits="$(grep -rnE '/var/lib/invictus/vm|invictus/windows|winapps' "$REPO/scripts" "$REPO/config" \

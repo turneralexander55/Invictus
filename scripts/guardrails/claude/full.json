@@ -37,7 +37,7 @@
       {
         "matcher": "Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
-          { "type": "command", "command": "/usr/lib/invictus/claude-config-guard pre full" }
+          { "type": "command", "command": "/usr/lib/invictus/claude-config-guard pre full", "timeout": 10 }
         ]
       }
     ],
@@ -45,7 +45,7 @@
       {
         "matcher": "Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
-          { "type": "command", "command": "/usr/lib/invictus/claude-config-guard post" }
+          { "type": "command", "command": "/usr/lib/invictus/claude-config-guard post", "timeout": 60 }
         ]
       }
     ]

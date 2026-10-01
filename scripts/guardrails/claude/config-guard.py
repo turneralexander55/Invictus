@@ -23,6 +23,12 @@
 #      fails, the backup goes back (or the new file is removed) and Moneta is
 #      told why.
 # Any error in pre blocks the edit (exit 2): a broken guard fails closed.
+# A hook that times out does not: Claude Code lets the tool call go ahead
+# (hooks docs, PreToolUse timeouts), so the profiles give pre 10 s and post
+# 60 s, and on a timeout what still holds is the managed deny rules
+# (/etc, /usr, /boot, the who-answers files, ~/.claude settings) and, under
+# the fixed profile, no shell. post's doctor gets DOCTOR_TIMEOUT, under the
+# hook's 60 s, so a slow check still ends in a restore, not a kill.
 # Env (tests, honoured only from a checkout): INVICTUS_DOCTOR, HOME_OVERRIDE.
 # ------------------------------------------------------------
 import hashlib
@@ -42,6 +48,7 @@ def env(name, default):
 
 
 DOCTOR = env("INVICTUS_DOCTOR", "/usr/bin/invictus-doctor")
+DOCTOR_TIMEOUT = 45
 HOME = os.path.realpath(env("HOME_OVERRIDE", "") or pwd.getpwuid(os.getuid()).pw_dir)
 STATE = os.path.join(HOME, ".local/state/invictus/backups")
 
@@ -142,7 +149,7 @@ def post():
     if rel is None or not under(rel, ".config/hypr"):
         return 0
     try:
-        r = subprocess.run([DOCTOR, "--hypr"], capture_output=True, text=True, timeout=120, stdin=subprocess.DEVNULL)
+        r = subprocess.run([DOCTOR, "--hypr"], capture_output=True, text=True, timeout=DOCTOR_TIMEOUT, stdin=subprocess.DEVNULL)
         ok, out = r.returncode == 0, (r.stdout + r.stderr)[-1500:]
     except (OSError, subprocess.TimeoutExpired) as e:
         ok, out = False, str(e)
