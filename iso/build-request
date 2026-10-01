@@ -1,2 +1,3 @@
 Bump this file to start a dev ISO build (iso.yml).
 2026-09-30 first request (Alex: "give me the download")
+2026-10-01 small ISO (linux-cachyos, Extras page) and non-root iso tests, 1eabe69
