@@ -56,6 +56,27 @@ import sys
 import tempfile
 from pathlib import Path
 
+
+def _invictus_env():
+    # INVICTUS_* overrides work only from a checkout: scripts/lib/invictus_env.py
+    import importlib.util
+    here = os.path.realpath(__file__)
+    if here.startswith("/usr/"):
+        paths = ["/usr/lib/invictus/lib/invictus_env.py"]
+    else:  # a checkout, or a test's install tree
+        d = os.path.dirname(here)
+        paths = [os.path.join(d, *p, "invictus_env.py") for p in
+                 (("lib",), ("..", "lib"), ("..", "scripts", "lib"), ("..", "..", "lib"),
+                  ("..", "lib", "invictus", "lib"))]
+    path = next(p for p in paths if os.path.isfile(p))
+    spec = importlib.util.spec_from_file_location("invictus_env", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.for_script(here)
+
+
+ENV = _invictus_env()
+
 REQUEST = "first-start"            # the label invictus-sys writes to Acta
 SNAPSHOT_DESCRIPTION = "First boot done"
 THEMES_FALLBACK = ["dusk"]
@@ -80,7 +101,7 @@ STEPS = [
 ]
 
 LAPTOP_PREFIXES = ("eDP", "LVDS", "DSI")
-HOST_RE = re.compile(r"^(https?://)?[A-Za-z0-9]([A-Za-z0-9.-]{0,252})(:[0-9]{1,5})?(/[A-Za-z0-9._~/-]*)?$")
+HOST_RE = re.compile(r"(https?://)?[A-Za-z0-9]([A-Za-z0-9.-]{0,252})(:[0-9]{1,5})?(/[A-Za-z0-9._~/-]*)?")  # fullmatch only
 
 
 class Fail(Exception):
@@ -101,14 +122,14 @@ def cfg_dir():
 
 def state_dir():
     # Same rule as scripts/lib/defaults.sh invictus_state_dir.
-    env = os.environ.get("INVICTUS_STATE")
+    env = ENV("INVICTUS_STATE")
     if env:
         return Path(env)
     return Path(os.environ.get("XDG_STATE_HOME") or home() / ".local" / "state") / "invictus"
 
 
 def share_dir():
-    return Path(os.environ.get("INVICTUS_SHARE") or "/usr/share/invictus")
+    return Path(ENV("INVICTUS_SHARE", "/usr/share/invictus"))
 
 
 def qml_dir():
@@ -133,7 +154,7 @@ def credentials_file():
 
 
 def tool(env, default):
-    return os.environ.get(env) or default
+    return ENV(env, default)
 
 
 # ---------------------------------------------------------------- helpers
@@ -174,9 +195,10 @@ def write_atomic(path, text, mode=0o644):
 
 def read_record():
     try:
-        return json.loads(record_file().read_text())
+        rec = json.loads(record_file().read_text())
     except (OSError, ValueError):
         return {}
+    return rec if isinstance(rec, dict) else {}
 
 
 def update_record(**kv):
@@ -197,7 +219,7 @@ def flavor():
 
 def ai_state():
     try:
-        v = Path(os.environ.get("INVICTUS_AI_FILE") or "/etc/invictus/ai").read_text().strip()
+        v = Path(ENV("INVICTUS_AI_FILE", "/etc/invictus/ai")).read_text().strip()
     except OSError:
         return "off"    # a missing file reads as off everywhere (no-ai.md 1)
     return "on" if v == "on" else "off"
@@ -218,6 +240,22 @@ SYS_OUTCOME = {0: "ok", 1: "failed", 2: "failed", 3: "refused", 4: "busy", 126: 
 
 
 # ---------------------------------------------------------------- monitors
+
+def backup_path(name):
+    """A new folder under backups/ for each backup (A6), never shared: two
+    writes in the same second keep both (Janus L3)."""
+    base = state_dir() / "backups"
+    base.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    for n in range(1000):
+        d = base / (stamp if n == 0 else f"{stamp}-{n}")
+        try:
+            d.mkdir()
+        except FileExistsError:
+            continue
+        return d / name
+    raise Fail("cannot make a backup folder")
+
 
 def read_monitors():
     rc, so = run([tool("INVICTUS_HYPRCTL", "hyprctl"), "monitors", "-j"])
@@ -266,9 +304,18 @@ def logical_width(m):
 
 
 def lua_str(s):
-    return '"' + "".join(
-        c if c.isprintable() and c not in '"\\' else ("\\" + c if c in '"\\' else "\\%03d" % ord(c))
-        for c in s) + '"'
+    """A Lua string literal: printable characters as they are, quotes and
+    backslashes escaped, anything else as its UTF-8 bytes in \\ddd escapes
+    (Lua reads those back as the same bytes; Janus I1)."""
+    out = []
+    for c in s:
+        if c in '"\\':
+            out.append("\\" + c)
+        elif c.isprintable():
+            out.append(c)
+        else:
+            out.append("".join("\\%03d" % b for b in c.encode("utf-8")))
+    return '"' + "".join(out) + '"'
 
 
 def plain(s):
@@ -357,11 +404,15 @@ def cmd_monitors_write(args):
     text = monitors_lua(mons, main, positions)
 
     dest = cfg_dir() / "hypr" / "monitors.lua"
-    backup = None
-    if dest.exists() and dest.read_text(errors="replace") != text:
-        stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup = state_dir() / "backups" / stamp / "monitors.lua"
-        backup.parent.mkdir(parents=True, exist_ok=True)
+    existed = dest.exists() or dest.is_symlink()
+    if existed and dest.is_file() and dest.read_text(errors="replace") == text:
+        # Nothing to write, so nothing to check or reload (Janus L2: a failed
+        # check here used to delete the person's file).
+        update_record(main_screen=main["name"])
+        out({"ok": True, "main": main["name"], "file": str(dest), "backup": None, "unchanged": True})
+        return 0
+    backup = backup_path("monitors.lua") if existed else None
+    if backup:
         shutil.copy2(dest, backup)
     write_atomic(dest, text)
 
@@ -375,10 +426,11 @@ def cmd_monitors_write(args):
         if not checked:
             if backup:
                 shutil.copy2(backup, dest)
+                msg = "the config check failed; your old monitors.lua is back"
             else:
                 dest.unlink()
-            out({"ok": False, "error": "the config check failed; your old monitors.lua is back",
-                 "backup": str(backup) if backup else None})
+                msg = "the config check failed; no monitors.lua was written"
+            out({"ok": False, "error": msg, "backup": str(backup) if backup else None})
             return 1
     run([tool("INVICTUS_HYPRCTL", "hyprctl"), "reload"])
     update_record(main_screen=main["name"])
@@ -497,7 +549,7 @@ def cmd_assistant(args):
             address, rest = rest[1], rest[2:]
         else:
             raise Fail(f"unknown argument {rest[0]!r}", 2)
-    if address is not None and not HOST_RE.match(address):
+    if address is not None and not HOST_RE.fullmatch(address):
         raise Fail("the address must be a host name, like atlas.local, or an http(s) address", 2)
     if choice in ("home", "other") and not address:
         raise Fail(f"{choice} needs --address", 2)
@@ -550,26 +602,45 @@ def cmd_assistant(args):
     return 0
 
 
+def kept_choice(rec):
+    """The choice kept while `ai on` was pending, if it is well formed:
+    a known choice, and for home and other an endpoint that passes HOST_RE."""
+    prov = rec.get("provider") if isinstance(rec, dict) else None
+    if not isinstance(prov, dict) or prov.get("choice") not in ("claude", "home", "other"):
+        return None
+    endpoint = prov.get("endpoint")
+    if prov["choice"] == "claude":
+        return "claude", None
+    if isinstance(endpoint, str) and HOST_RE.fullmatch(endpoint):
+        return prov["choice"], endpoint
+    return None
+
+
 def cmd_apply_pending(args=(), quiet=False):
     """A choice made while `ai on` was pending: set it up once invictus-provider
     is installed. Run by every `start` (Hyprland's autostart), so it happens at
-    the first session after the packages arrived. A key for another service is
-    never kept: Settings > Moneta asks for it (the Not signed in state)."""
+    the first session after the packages arrived. Tried until it is set, or
+    once when invictus-provider refuses it (that will not change; Janus L4).
+    A key for another service is never kept: Settings > Moneta asks for it
+    (the Not signed in state)."""
     if args:
         raise Fail("usage: apply-pending", 2)
     rec = read_record()
-    prov = rec.get("provider") or {}
-    if not rec.get("provider_pending") or not prov.get("choice"):
+    if not rec.get("provider_pending"):
         result = "nothing pending"
+    elif kept_choice(rec) is None:
+        update_record(provider_pending=False, provider_result="dropped: not a choice")
+        result = "dropped: not a choice"
     elif ai_state() != "on":
-        update_record(provider_pending=False)
+        update_record(provider_pending=False, provider_result="dropped: AI is off")
         result = "dropped: AI is off"
     elif not have(provider_cmd()):
         result = "waiting for the packages"
     else:
-        result = apply_provider(prov["choice"], prov.get("endpoint"), None)
-        if result == "ok":
-            update_record(provider_pending=False)
+        choice, endpoint = kept_choice(rec)
+        result = apply_provider(choice, endpoint, None)
+        if result in ("ok", "provider-refused"):
+            update_record(provider_pending=False, provider_result=result)
     if not quiet:
         out({"result": result})
     return 0
@@ -584,8 +655,11 @@ def claude_login_argv():
             argv = tomllib.load(f).get("login")
     except (OSError, ValueError):
         return None
-    if not (isinstance(argv, list) and argv and all(isinstance(a, str) for a in argv)
-            and argv[0].startswith("/usr/bin/")):
+    if not (isinstance(argv, list) and argv and all(isinstance(a, str) for a in argv)):
+        return None
+    # a plain /usr/bin/NAME: no "..", "." or "//" (Janus L1)
+    prog = argv[0]
+    if os.path.normpath(prog) != prog or os.path.dirname(prog) != "/usr/bin":
         return None
     return argv
 
@@ -712,8 +786,12 @@ def cmd_start(args):
     if mode not in (None, "--if-pending", "--again") or len(args) > 1:
         raise Fail("usage: start [--if-pending | --again]", 2)
     # Every session start: a choice made offline is set up once its packages
-    # are in (no window; it does nothing when nothing is pending).
-    cmd_apply_pending(quiet=True)
+    # are in (no window; it does nothing when nothing is pending). Nothing in
+    # it may stop the wizard from opening (Janus L4).
+    try:
+        cmd_apply_pending(quiet=True)
+    except Exception as e:  # noqa: BLE001, the wizard must still open
+        sys.stderr.write(f"invictus-first-boot: apply-pending: {e}\n")
     if mode == "--if-pending" and (not pending_file().exists() or done_file().exists()):
         out({"started": False, "why": "not pending"})
         return 0

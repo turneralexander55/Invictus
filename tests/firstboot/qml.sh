@@ -115,6 +115,8 @@ echo "$*" >> "$FAKE_LOG"
 case "$1" in
     state) python3 -c "import json,sys; print(json.dumps(json.load(open(sys.argv[1]))))" "$FAKE_STATE" ;;
     monitors-write) echo '{"ok": true, "main": "HEADLESS-1"}' ;;
+    # cat ends only at EOF: the marker proves the screens closed stdin
+    stdin-probe) cat > "$FAKE_STDIN"; touch "$FAKE_STDIN.eof"; echo '{"ok": true}' ;;
     *) echo '{"ok": true, "result": "ok"}' ;;
 esac
 EOF
@@ -146,12 +148,15 @@ render() {  # render NAME FLAVOR NMON STEPS PRESET
     local name="$1"
     state_json "$2" "$3" "$4" "${5:-}" > "$W/state.json"
     : > "$W/calls"
-    FAKE_STATE="$W/state.json" FAKE_LOG="$W/calls" INVICTUS_FIRSTBOOT_CMD="$W/fake" \
+    FAKE_STATE="$W/state.json" FAKE_LOG="$W/calls" FAKE_STDIN="$W/stdin" INVICTUS_FIRSTBOOT_CMD="$W/fake" \
         QT_QPA_PLATFORM=wayland QT_QUICK_BACKEND=software quickshell -p "$QML" >"$W/$name.log" 2>&1 &
     local qs=$!
     sleep 4
     grim -o HEADLESS-1 "$OUT/$name.png" 2>>"$W/grim.log" || bad "$name: grim failed"
     if (( $3 > 1 )); then grim -o HEADLESS-2 "$OUT/$name-2.png" 2>>"$W/grim.log" || bad "$name: grim on output 2 failed"; fi
+    # the stdin probe: EOF must come while Quickshell still runs (killing it
+    # closes the pipe too, which would prove nothing)
+    if [[ -e "$W/stdin.eof" ]]; then touch "$W/stdin.eof-alive"; fi
     kill "$qs" 2>/dev/null || true
     wait "$qs" 2>/dev/null || true
     # Quickshell's own WARN/ERROR lines (colour codes stripped); the GPU
@@ -222,7 +227,55 @@ expect_pixels "atrium screens, output 1" "$OUT/atrium-2-screens.png" some
 expect_pixels "atrium screens, output 2" "$OUT/atrium-2-screens-2.png" some
 render tessera-1-monitors tessera 2 "$TESSERA"
 expect_pixels "tessera monitors" "$OUT/tessera-1-monitors.png" some
+# ---- 3. stdin is closed after the key is written (the key step cannot hang) ----
+start_sway 1
+rm -f "$W/stdin" "$W/stdin.eof" "$W/stdin.eof-alive"
+render stdin-probe atrium 1 "$ATRIUM_1" '{"step":"assistant","call":{"args":["stdin-probe"],"input":"KEY-7f3a"}}'
+if [[ -e "$W/stdin.eof-alive" && "$(cat "$W/stdin")" == "KEY-7f3a" ]]; then
+    ok "Quickshell: Process.write then stdinEnabled = false closes stdin (the reader got the key and EOF)"
+else
+    bad "stdin not closed while running: eof=$([[ -e "$W/stdin.eof-alive" ]] && echo yes || echo no) got=$(cat "$W/stdin" 2>/dev/null)"
+fi
+
+# ---- 4. installed copies ignore INVICTUS_* (Janus L1) ---------------------------
+# The screens under /usr/share call /usr/bin/invictus-first-boot whatever
+# INVICTUS_FIRSTBOOT_CMD says.
+mkdir -p /usr/share/invictus/first-boot
+cp "$QML"/*.qml /usr/share/invictus/first-boot/
+cat > /usr/bin/invictus-first-boot <<'EOF'
+#!/bin/bash
+echo "$*" >> /tmp/fb-installed.log
+case "$1" in state) python3 -c "import json,sys; print(json.dumps(json.load(open(sys.argv[1]))))" "$FAKE_STATE" ;; *) echo '{"ok": true}' ;; esac
+EOF
+chmod 755 /usr/bin/invictus-first-boot
+: > /tmp/fb-installed.log
+state_json atrium 1 "$ATRIUM_1" "" > "$W/state.json"
+: > "$W/calls"
+FAKE_STATE="$W/state.json" FAKE_LOG="$W/calls" INVICTUS_FIRSTBOOT_CMD="$W/fake" \
+    QT_QPA_PLATFORM=wayland QT_QUICK_BACKEND=software quickshell -p /usr/share/invictus/first-boot >"$W/installed.log" 2>&1 &
+qs=$!
+sleep 4
+kill "$qs" 2>/dev/null || true; wait "$qs" 2>/dev/null || true
+if grep -qx state /tmp/fb-installed.log && [[ ! -s "$W/calls" ]]; then
+    ok "installed screens call /usr/bin/invictus-first-boot and ignore INVICTUS_FIRSTBOOT_CMD"
+else
+    bad "installed screens called: installed=$(cat /tmp/fb-installed.log) fake=$(cat "$W/calls")"
+fi
 stop_sway
+# The installed command ignores INVICTUS_SHARE and INVICTUS_TERMINAL: the
+# sign-in reads only /usr/share/invictus/providers and runs kitty.
+install -Dm755 "$SRC/scripts/first-boot/invictus-first-boot" /usr/bin/invictus-first-boot
+install -Dm644 "$SRC/scripts/lib/invictus_env.py" /usr/lib/invictus/lib/invictus_env.py
+mkdir -p /tmp/evil/providers/claude-code
+echo 'login = ["/usr/bin/touch", "/tmp/evil/login-ran"]' > /tmp/evil/providers/claude-code/provider.toml
+printf '#!/bin/sh\ntouch /tmp/evil/terminal-ran\n' > /tmp/evil/t; chmod 755 /tmp/evil/t
+HOME=/tmp/evil-home INVICTUS_SHARE=/tmp/evil INVICTUS_TERMINAL=/tmp/evil/t INVICTUS_STATE=/tmp/evil/state \
+    /usr/bin/invictus-first-boot signin > /tmp/evil/out 2>&1 || true
+if [[ ! -e /tmp/evil/terminal-ran && ! -e /tmp/evil/login-ran && ! -e /tmp/evil/state ]] && grep -q '"signed_in": false' /tmp/evil/out; then
+    ok "installed invictus-first-boot ignores INVICTUS_SHARE, INVICTUS_TERMINAL and INVICTUS_STATE"
+else
+    bad "installed command honoured an override: $(ls /tmp/evil) $(cat /tmp/evil/out)"
+fi
 
 echo
 if [[ $fail == 0 ]]; then echo "ALL PASSED"; else echo "SOME TESTS FAILED"; fi

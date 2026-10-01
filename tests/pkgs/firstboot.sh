@@ -397,6 +397,116 @@ python3 -c "import json,sys; s=json.load(open(sys.argv[1]))['steps']; assert [x[
     && ok "a hook: dropping in StepCollegium.qml adds step 4 (needs AI, so No AI skips it)" || bad "hook: $(steps)"
 rm "$TMP/fbshare/first-boot/StepCollegium.qml"
 
+# ---- Janus's first-start pen test (2026-10-01), one check per finding ----------------------
+# L1: the login argv must be a normalised path straight in /usr/bin
+mkdir -p "$TMP/fbshare/providers/claude-code"
+new_home l1 atrium
+for argv in '["/usr/bin/../../home/p/payload"]' '["/usr/bin/sub/claude", "auth"]' '["/usr/bin//claude"]' '["/usr/bin/./claude"]'; do
+    echo "login = $argv" > "$TMP/fbshare/providers/claude-code/provider.toml"
+    fb signin
+done
+[[ ! -s "$H/log" ]] && ok "L1: a login program that is not a plain /usr/bin/NAME (.., a subfolder, // or .) is not run" \
+    || bad "L1: odd login argv ran: $(cat "$H/log")"
+rm -rf "$TMP/fbshare/providers"
+# L1: the override rule lives in one helper; installed copies ignore INVICTUS_*
+if python3 - "$REPO/scripts/lib/invictus_env.py" <<'EOF'
+import importlib.util, os, sys
+spec = importlib.util.spec_from_file_location("invictus_env", sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+os.environ["INVICTUS_SHARE"] = "/home/p/x"
+assert m.for_script("/usr/bin/invictus-first-boot")("INVICTUS_SHARE", "/usr/share/invictus") == "/usr/share/invictus"
+assert m.for_script("/usr/lib/invictus/x")("INVICTUS_SHARE", "d") == "d"
+assert m.for_script("/home/p/checkout/scripts/x")("INVICTUS_SHARE", "d") == "/home/p/x"
+os.environ["INVICTUS_SHARE"] = ""
+assert m.for_script("/home/p/checkout/scripts/x")("INVICTUS_SHARE", "d") == "d"
+EOF
+then ok "L1: invictus_env.for_script: an installed script (under /usr/) gets the default whatever INVICTUS_* says; a checkout gets the override"
+else bad "L1: scripts/lib/invictus_env.py missing or wrong"; fi
+# L1: every Python script we ship that reads INVICTUS_* does it through the helper
+# (a runtime label that is not an override is marked "# not an override").
+offenders=""
+while IFS= read -r f; do
+    head -1 "$REPO/$f" | grep -q python || [[ "$f" == *.py ]] || continue
+    [[ "$f" == scripts/lib/invictus_env.py ]] && continue
+    if grep -nE "(os\.environ(\.get)?[[(]|os\.getenv\(|environ\.get\()[\"']INVICTUS_" "$REPO/$f" | grep -v "# not an override" | grep -q .; then
+        offenders+=" $f"
+    elif grep -q "INVICTUS_" "$REPO/$f" && ! grep -q "invictus_env" "$REPO/$f"; then
+        offenders+=" $f(no helper)"
+    fi
+done < <(cd "$REPO" && git ls-files 'scripts/**' 'theme/*' 2>/dev/null | grep -v '^scripts/dev/' || find scripts theme -type f)
+[[ -z "$offenders" ]] && ok "L1: every shipped Python script reads INVICTUS_* only through scripts/lib/invictus_env.py" \
+    || bad "L1: INVICTUS_* read directly in:$offenders"
+grep -q "invictus_env.py" "$REPO/pkgs/own/invictus-sys/PKGBUILD" && [[ -f "$ALL/usr/lib/invictus/lib/invictus_env.py" ]] \
+    && ok "L1: invictus-sys installs the helper as /usr/lib/invictus/lib/invictus_env.py" || bad "L1: the helper is not packaged"
+
+# L2: an unchanged monitors.lua is left alone, even when the check would fail
+new_home l2 atrium
+M="$H/.config/hypr/monitors.lua"
+fb monitors-write auto
+cp "$M" "$H/first"
+: > "$H/log"
+FAKE_DOCTOR_RC=1 fb monitors-write auto; rc=$?
+[[ -f "$M" ]] && cmp -s "$M" "$H/first" && [[ $rc == 0 ]] && ! grep -q "invictus-doctor" "$H/log" \
+    && ok "L2: writing the same monitors.lua again changes nothing, checks nothing, deletes nothing" \
+    || bad "L2: same text, failed check: rc $rc, file $( [[ -f "$M" ]] && echo kept || echo DELETED ), $(cat "$H/out")"
+new_home l2b atrium
+FAKE_DOCTOR_RC=1 fb monitors-write auto
+[[ ! -e "$H/.config/hypr/monitors.lua" ]] && grep -q '"ok": false' "$H/out" \
+    && ok "L2: a new monitors.lua that fails the check is removed (there was none before)" || bad "L2 new file: $(cat "$H/out")"
+
+# L3: two writes in the same second keep two backups
+new_home l3 atrium
+echo "-- hand-tuned" > "$H/.config/hypr/monitors.lua"
+fb monitors-write DP-1; fb monitors-write auto
+n_bk="$(find "$H/.local/state/invictus/backups" -name monitors.lua | wc -l)"
+grep -rq "hand-tuned" "$H/.local/state/invictus/backups" && [[ "$n_bk" == 2 ]] \
+    && ok "L3: back-to-back writes keep every old monitors.lua (unique backup folders)" \
+    || bad "L3: $n_bk backups, hand-tuned file $(grep -rlq hand-tuned "$H/.local/state/invictus/backups" && echo kept || echo LOST)"
+
+# L4: a refused kept endpoint is dropped after one try; a bad record never stops start
+new_home l4 atrium
+FAKE_SYS_RESULT=pending fb assistant home --address atlas.local
+: > "$H/log"
+FAKE_PROVIDER_RC=3 fb start --if-pending; FAKE_PROVIDER_RC=3 fb start --if-pending
+n_set="$(grep -c "invictus-provider set" "$H/log")"
+[[ "$n_set" == 1 ]] && python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert not d['provider_pending'] and d['provider_result']=='provider-refused'" "$H/.local/state/invictus/first-boot.json" \
+    && ok "L4: a kept endpoint invictus-provider refuses is tried once, then dropped (provider_result recorded)" \
+    || bad "L4: $n_set set calls; $(cat "$H/.local/state/invictus/first-boot.json")"
+new_home l4b atrium
+echo on > "$H/ai"; fb mark-pending
+mkdir -p "$H/.local/state/invictus"
+for rec in '{"provider": {"choice": "home"}, "provider_pending": true}' '{"provider": {"choice": "home", "endpoint": 7}, "provider_pending": true}' \
+           '{"provider": {"choice": "rm -rf", "endpoint": "atlas.local"}, "provider_pending": true}' '{"provider": "x", "provider_pending": true}' 'not json'; do
+    echo "$rec" > "$H/.local/state/invictus/first-boot.json"
+    : > "$H/log"
+    fb start --if-pending; rc=$?
+    if [[ $rc != 0 ]] || ! grep -q "^quickshell" "$H/log" || grep -q "invictus-provider" "$H/log" || grep -q Traceback "$H/err"; then
+        bad "L4: record $rec: rc $rc, $(cat "$H/log" "$H/err" | head -3)"; l4bad=1
+    fi
+done
+[[ -z "${l4bad:-}" ]] && ok "L4: a kept choice with no endpoint, a wrong type, an unknown choice or a broken file is dropped; the wizard still opens"
+unset l4bad
+# I2: a trailing newline is not an address
+new_home i2 atrium
+fb assistant home --address "$(printf 'atlas.local\n ')"; rc1=$?
+fb assistant home --address $'atlas.local\n'; rc2=$?
+[[ $rc1 == 2 && $rc2 == 2 && ! -s "$H/log" ]] && ok "I2: an address with a trailing newline is refused" || bad "I2: rc $rc1/$rc2 $(cat "$H/log")"
+# I1: a non-ASCII control character in a description still gives a monitors.lua
+new_home i1 atrium
+python3 - "$H/monitors.json" <<'EOF'
+import json, sys
+d = json.load(open(sys.argv[1])); d[1]["description"] = "BOE ‮ panel é"
+json.dump(d, open(sys.argv[1], "w"))
+EOF
+fb monitors-write auto
+if [[ -n "$LUA" ]] && stub_check "$H/.config/hypr/monitors.lua" && MON_LUA="$H/.config/hypr/monitors.lua" "$LUA" -e '
+  local seen; hl = { monitor = function(t) if t.output:find("BOE") then seen = t.output end end, workspace_rule = function() end }
+  dofile(os.getenv("MON_LUA")); assert(seen == "desc:BOE \226\128\174 panel \195\169", seen)' < /dev/null; then
+    ok "I1: a description with U+202E is written as UTF-8 byte escapes Lua reads back unchanged"
+else
+    bad "I1: monitors.lua with U+202E: $(cat "$H/err" "$TMP/fbcheck.log" 2>/dev/null | head -3)"
+fi
+
 # ---- static rules ---------------------------------------------------------------------------
 # Every step the command lists either has its screen or is a later release.
 missing=""

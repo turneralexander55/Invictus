@@ -19,7 +19,12 @@ import Quickshell.Wayland
 ShellRoot {
     id: root
 
-    readonly property string command: Quickshell.env("INVICTUS_FIRSTBOOT_CMD") || "invictus-first-boot"
+    // The command every call goes to (the key goes on its stdin). Installed
+    // screens (under /usr/) always call the installed command; the variable
+    // is honoured only from a checkout, for the render test (Janus L1).
+    readonly property bool installed: String(Quickshell.shellDir).replace(/^file:\/\//, "").startsWith("/usr/")
+    readonly property string command: installed ? "/usr/bin/invictus-first-boot"
+        : (Quickshell.env("INVICTUS_FIRSTBOOT_CMD") || "invictus-first-boot")
     property var st: null                 // `invictus-first-boot state`
     property int index: 0
     property string choice: ""            // after step 3: "ai" or "none"
@@ -86,6 +91,9 @@ ShellRoot {
                     choice = obj.render_preset.choice || choice
                     const i = obj.steps.findIndex(s => s.id === obj.render_preset.step)
                     if (i >= 0) index = i
+                    // a call with stdin, to prove the input is closed after it
+                    const c = obj.render_preset.call
+                    if (c) call(c.args, c.input, () => {})
                 }
             }
             if (then) then()
