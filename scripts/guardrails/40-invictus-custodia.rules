@@ -1,0 +1,22 @@
+// Invictus Custodia, tier 1 (design-simple-mode.md 4.2, SM9, SM22).
+// The template lives in /usr/share/invictus/guardrails; `guardrails apply`
+// copies it to /etc/polkit-1/rules.d under Custodia and removes it under
+// Libertas. polkitd re-reads rules.d on any change.
+//
+// Tier 1 runs with no password for an administrator (wheel) at their own
+// active desktop: only verbs that are undoable or read-only, send nothing
+// off the machine and take no command, path or URL. Standing rule (Minerva
+// SM22): adding a verb here needs the SM22 list in tests/pkgs/sys.sh
+// changed and Minerva's review. update-undo, help start|stop and doctor
+// join when they are built.
+polkit.addRule(function(action, subject) {
+    var tier1 = [
+        "org.invictus.sys.update",
+        "org.invictus.sys.snapshot",
+        "org.invictus.sys.report-collect"
+    ];
+    if (tier1.indexOf(action.id) >= 0 &&
+        subject.local && subject.active && subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});

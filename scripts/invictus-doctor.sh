@@ -17,6 +17,8 @@
 #   pinned    installed hypr* versions match the tested set
 #   repo      [invictus-testing]/[invictus] comes before [extra]
 #   snapshots btrfs root: snapper has a root config and snap-pac is there
+#   guardrails Custodia or Libertas (since, until), nets that are off, and
+#             whether the derived files match the setting
 #   kernel    each installed kernel has its image, initramfs and a boot
 #             entry; the running kernel's modules still exist
 #   defaults  your copies of the shipped defaults: which changed upstream
@@ -37,6 +39,7 @@ KEYSYMS="${XKB_KEYSYMS_H:-/usr/include/xkbcommon/xkbcommon-keysyms.h}"
 BOOT="${INVICTUS_BOOT:-/boot}"
 MODULES="${INVICTUS_MODULES:-/usr/lib/modules}"
 PACMAN_CONF="${INVICTUS_PACMAN_CONF:-/etc/pacman.conf}"
+GUARDRAILS="${INVICTUS_GUARDRAILS:-/usr/lib/invictus/guardrails}"
 CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 MODE=all
@@ -172,6 +175,26 @@ check_kernel() {
     [[ -d "$MODULES/$running" ]] || warn "kernel: modules for the running kernel $running are gone (updated): reboot soon"
 }
 
+# ---- guard rails -----------------------------------------------------------------
+# design-simple-mode TS11, SM24: say which guard rails are on, since when and
+# until when, which nets are off, and whether the derived files match.
+check_guardrails() {
+    local st rails until by n
+    [[ -x "$GUARDRAILS" ]] || { note "guard rails: invictus-guardrails is not installed"; return; }
+    st="$("$GUARDRAILS" status 2>/dev/null)" || { warn "guard rails: could not read the state"; return; }
+    val() { sed -n "s/^$1=//p" <<< "$st"; }
+    rails="$(val effective)"; until="$(val until)"; by="$(val by)"
+    if [[ "$rails" == custodia ]]; then ok "guard rails: Custodia"
+    elif [[ -n "$until" ]]; then note "guard rails: Libertas until $until${by:+ (by $by)}"
+    else note "guard rails: Libertas"; fi
+    for n in pre-admin-snapshot auto-update boot-guard home-snapshots; do
+        [[ "$(val "net.$n")" == off ]] && note "guard rails: safety net $n is off"
+    done
+    [[ "$(val full-access)" == on ]] && note "guard rails: Moneta has full access (terminal and every tool)"
+    if "$GUARDRAILS" apply --check >/dev/null 2>&1; then ok "guard rails: the derived files match"
+    else warn "guard rails: the derived files do not match (sudo invictus-sys guardrails apply)"; fi
+}
+
 # ---- defaults ------------------------------------------------------------------
 check_defaults() {
     local rel user shipped rec u s n=0 changed=() both=() missing=()
@@ -213,7 +236,7 @@ show_diff() {
 case "$MODE" in
     diff) show_diff "$DIFF_PATH" ;;
     hypr) check_hypr ;;
-    *) check_hypr; check_pinned; check_repo; check_snapshots; check_kernel; check_defaults ;;
+    *) check_hypr; check_pinned; check_repo; check_snapshots; check_guardrails; check_kernel; check_defaults ;;
 esac
 
 echo

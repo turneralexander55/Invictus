@@ -1,0 +1,18 @@
+# Packages that keep the computer working. invictus-sys never removes them
+# (design 4.1, SM9), and under Custodia they are pacman's HoldPkg list
+# (design-simple-mode G4: the terminal asks first, --noconfirm stops).
+# One list for both. The kernel is linux-cachyos (Alex, 2026-09-30), so the
+# design's linux and linux-lts are not here.
+base
+glibc
+pacman
+systemd
+sudo
+polkit
+linux-cachyos
+limine
+invictus-base
+invictus-desktop
+invictus-guardrails
+invictus-sys
+invictus-keyring

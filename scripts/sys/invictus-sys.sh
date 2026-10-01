@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# ------------------------------------------------------------
+# invictus-sys: the only door to root (design 4.1). Installed as
+# /usr/bin/invictus-sys by invictus-sys. Runs as you; every system change
+# goes through pkexec to /usr/lib/invictus/invictus-sys, with one polkit
+# action per verb, so the password prompt names the exact change.
+# Reference for the Moneta panel and other callers: docs/invictus-sys.md.
+#
+#   invictus-sys [--request ID] VERB [ARGS]
+#
+#   update                         update everything (pacman -Syu, then the doctor)
+#   install PKG...                 install from the configured repos (with -Syu)
+#   remove PKG...                  remove (never the packages that keep it working)
+#   snapshot DESCRIPTION...        make a safety copy now
+#   rollback ID                    put the system back to safety copy ID
+#   service enable|disable|restart UNIT
+#   set-config KEY on|off          nets.pre-admin-snapshot, nets.auto-update,
+#                                  nets.boot-guard, nets.home-snapshots,
+#                                  flavor.lock, assistant.full-access
+#   report-collect                 collect the logs a problem report needs root for
+#   vm start|stop                  the Windows VM (runs as you; not set up yet)
+#   guardrails status              key=value lines (no password)
+#   guardrails check               would apply change anything? (exit 1 if so)
+#   guardrails set custodia        guard rails on (instant from your own desktop)
+#   guardrails set libertas [--for 1h]   guard rails off (password; --for ends it)
+#   guardrails apply | expire      root only: installer, package, boot, timer
+#   help                           this list
+#
+# --request ID labels the call in Acta (the Moneta thread that asked).
+# Exit: 0 ok; 1 the change failed; 2 bad arguments; 3 refused; 4 busy;
+# 126 no password given or not allowed (pkexec); 127 pkexec failed.
+# Env (tests): INVICTUS_LIB, INVICTUS_PKEXEC, INVICTUS_SYS_HELPER,
+#   INVICTUS_GUARDRAILS, INVICTUS_SYS_ROOT
+# ------------------------------------------------------------
+set -euo pipefail
+
+LIB="${INVICTUS_LIB:-/usr/lib/invictus}"
+# shellcheck source=scripts/lib/pacman.sh
+. "$LIB/lib/pacman.sh"
+# shellcheck source=scripts/lib/sys-verbs.sh
+. "$LIB/lib/sys-verbs.sh"
+HELPER="${INVICTUS_SYS_HELPER:-/usr/lib/invictus/invictus-sys}"
+PKEXEC="${INVICTUS_PKEXEC:-pkexec}"
+GUARDRAILS="${INVICTUS_GUARDRAILS:-/usr/lib/invictus/guardrails}"
+
+usage() { sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'; }
+
+if [[ "${1:-}" == --request ]]; then
+    [[ "${2:-}" =~ ^[A-Za-z0-9._:-]{1,64}$ ]] || { sys_err "--request takes an id of letters, digits and ._:-"; exit 2; }
+    export INVICTUS_REQUEST="$2"; shift 2
+fi
+verb="${1:-help}"; shift || true
+
+as_root() {  # as_root ROOTVERB ARGS...: check, then pkexec (or run, as root)
+    sys_validate "$@" || exit 2
+    local rc=0
+    # As root (the installer, a root terminal) no prompt is needed; tests
+    # that set INVICTUS_PKEXEC go through the fake pkexec even as root.
+    if [[ $EUID -eq 0 && -z "${INVICTUS_PKEXEC:-}" ]]; then "$HELPER" "$@" || rc=$?
+    else "$PKEXEC" "$HELPER" "$@" || rc=$?; fi
+    case "$rc" in
+        126) sys_err "not done: no password was given, or this account may not do that" ;;
+        127) sys_err "not done: pkexec could not run (is polkit running?)" ;;
+    esac
+    exit "$rc"
+}
+
+case "$verb" in
+    help|-h|--help) usage ;;
+    update|install|remove|rollback|service|report-collect)
+        as_root "$verb" "$@" ;;
+    snapshot)
+        as_root snapshot "$*" ;;
+    set-config)
+        if [[ "${1:-}" == assistant.full-access ]]; then as_root assistant-full-access "${@:2}"
+        else as_root set-config "$@"; fi ;;
+    vm)
+        # Listed here so there is one entry point (design 4.1); it needs no
+        # root. The Windows module (0.4.0) fills it in.
+        [[ "${1:-}" =~ ^(start|stop)$ && $# -eq 1 ]] || { sys_err "vm start|stop"; exit 2; }
+        sys_err "the Windows VM is not set up on this computer yet"
+        exit 3 ;;
+    guardrails)
+        sub="${1:-}"; shift || true
+        case "$sub" in
+            status) exec "$GUARDRAILS" status ;;
+            check) exec "$GUARDRAILS" apply --check ;;
+            set)
+                case "${1:-}" in
+                    custodia) (($# == 1)) || { sys_err "guardrails set custodia takes nothing else"; exit 2; }
+                              as_root guardrails-custodia ;;
+                    libertas) as_root guardrails-libertas "${@:2}" ;;
+                    *) sys_err "guardrails set custodia|libertas"; exit 2 ;;
+                esac ;;
+            apply|expire)
+                [[ $EUID -eq 0 ]] || { sys_err "guardrails $sub is run as root by the installer, the package and the boot service"; exit 2; }
+                exec "$GUARDRAILS" "$sub" "$@" ;;
+            *) sys_err "guardrails status|check|set custodia|set libertas [--for D]"; exit 2 ;;
+        esac ;;
+    *)
+        sys_err "unknown verb '$verb' (invictus-sys help lists them)"
+        exit 2 ;;
+esac

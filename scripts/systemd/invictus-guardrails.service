@@ -1,0 +1,15 @@
+[Unit]
+Description=Invictus: make the guard rails match /etc/invictus/guardrails before anyone logs in
+Documentation=file:///usr/lib/invictus/guardrails
+# design-simple-mode.md 12.1 step 2: a timed Libertas that ended while the
+# computer was off ends here, before the login screen; one still running
+# gets its timer back (transient timers do not survive a reboot).
+# Static: no [Install]; invictus-guardrails ships the multi-user.target.wants
+# link, so `systemctl disable` has nothing to remove (G5a pattern).
+DefaultDependencies=no
+After=local-fs.target
+Before=display-manager.service systemd-user-sessions.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/invictus/guardrails apply --boot

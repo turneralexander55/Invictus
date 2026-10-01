@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!--
+  invictus-sys: one action per verb (design 4.1, MUST A2; design-simple-mode 1.6, 12.3).
+  pkexec picks the action by the helper path plus argv[1] (the root verb), so one
+  password never covers two kinds of change, and $(command_line) puts the exact
+  arguments in the prompt. The Invictus polkit agent (G1) shows plain words from
+  /usr/share/invictus/guardrails/messages.tsv instead; these are the fallback.
+  Tiers: rules in 40-invictus-guardrails.rules (always) and 40-invictus-custodia.rules
+  (Custodia only) return YES for some of these; nothing here does.
+  Wording: Clio polishes (simple-mode.md M1).
+-->
+<policyconfig>
+  <vendor>Invictus</vendor>
+  <vendor_url>https://github.com/turneralexander55/invictus</vendor_url>
+  <icon_name>system-software-update</icon_name>
+
+  <action id="org.invictus.sys.update">
+    <description>Update this computer</description>
+    <message>Type your password to update everything on this computer. A safety copy is made first. ($(command_line))</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/invictus/invictus-sys</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">update</annotate>
+  </action>
+
+  <action id="org.invictus.sys.install">
+    <description>Install software</description>
+    <message>Type your password to install software from the Invictus and Arch repositories, with all updates. A safety copy is made first. ($(command_line))</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/invictus/invictus-sys</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">install</annotate>
+  </action>
+
+  <action id="org.invictus.sys.remove">
+    <description>Remove software</description>
+    <message>Type your password to remove software from this computer. A safety copy is made first. ($(command_line))</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/invictus/invictus-sys</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">remove</annotate>
+  </action>
+
+  <action id="org.invictus.sys.snapshot">
+    <description>Make a safety copy</description>
+    <message>Type your password to make a safety copy of the system now. ($(command_line))</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/invictus/invictus-sys</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">snapshot</annotate>
+  </action>
+
+  <action id="org.invictus.sys.rollback">
+    <description>Put the system back to a safety copy</description>
+    <message>Type your password to put the system back to a safety copy. ($(command_line))</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/invictus/invictus-sys</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">rollback</annotate>
+  </action>
+
+  <action id="org.invictus.sys.service">
+    <description>Turn a system service on, off or restart it</description>
+    <message>Type your password to change a system service. A safety copy is made first. ($(command_line))</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/invictus/invictus-sys</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">service</annotate>
+  </action>
+
+  <action id="org.invictus.sys.set-config">
+    <description>Change a system setting</description>
+    <message>Type your password to change a system setting. A safety copy is made first. ($(command_line))</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/invictus/invictus-sys</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">set-config</annotate>
+  </action>
+
+  <action id="org.invictus.sys.assistant-full-access">
+    <description>Change what Moneta may use</description>
+    <message>Type your password to change whether Moneta may use the terminal and every tool. ($(command_line))</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/invictus/invictus-sys</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">assistant-full-access</annotate>
+  </action>
+
+  <action id="org.invictus.sys.report-collect">
+    <description>Collect system logs for a problem report</description>
+    <message>Type your password to collect this boot&apos;s error log for a problem report. Nothing is sent. ($(command_line))</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/invictus/invictus-sys</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">report-collect</annotate>
+  </action>
+
+  <action id="org.invictus.sys.guardrails-libertas">
+    <description>Switch guard rails off (Libertas)</description>
+    <message>Switch to Libertas? Nothing will pause or warn you before something is erased, and Help will be able to do more on its own. Safety copies stay on unless you turn them off. Type your password if you&apos;re sure. If someone on the phone or a website told you to do this, stop and use Ask Support in Help. ($(command_line))</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/invictus/invictus-sys</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">guardrails-libertas</annotate>
+  </action>
+
+  <action id="org.invictus.sys.guardrails-custodia">
+    <description>Switch guard rails on (Custodia)</description>
+    <message>Type your password to switch the guard rails back on. ($(command_line))</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/invictus/invictus-sys</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">guardrails-custodia</annotate>
+  </action>
+</policyconfig>

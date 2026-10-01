@@ -1,0 +1,14 @@
+// Invictus guard rails, always present (design-simple-mode.md 1.6, 6.1).
+// Shipped by invictus-guardrails in /usr/share/polkit-1/rules.d.
+//
+// Switching the guard rails back on is instant from your own desktop: it
+// only adds friction (SM15, SM22). From anywhere else (an inactive session,
+// ssh, a service) the action's default applies: a password.
+// guardrails-libertas, assistant-full-access and everything else get no
+// rule here.
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.invictus.sys.guardrails-custodia" &&
+        subject.local && subject.active) {
+        return polkit.Result.YES;
+    }
+});

@@ -1,0 +1,70 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# The guard rails, on every machine (design-simple-mode.md 6.1).
+# /etc/invictus/guardrails (custodia or libertas) decides whether they act;
+# nothing is installed or removed at switch time. Files come from this repo
+# (scripts/guardrails, scripts/systemd) at the same commit as this PKGBUILD:
+# bump pkgrel when any of them changes.
+#
+#   /usr/lib/invictus/guardrails               set, apply, expire (invictus-sys calls it)
+#   /usr/lib/invictus/pre-admin-snapshot       G2, run by pam_exec
+#   /usr/share/polkit-1/rules.d/40-invictus-guardrails.rules   always
+#   /usr/share/invictus/guardrails/            the Custodia tier 1 rule template, the
+#                                              sudo lecture, both Claude Code managed
+#                                              profiles, the polkit agent's message table
+#                                              and hold list
+#   /etc/pam.d/polkit-1                        polkit's file plus the G2 line
+#   /etc/pacman.d/invictus-guardrails.conf     HoldPkg under Custodia (apply rewrites it)
+#   /usr/share/libalpm/hooks/40-invictus-hold.hook   G4 warning
+#   invictus-guardrails.service                apply at boot (static, always wanted)
+#
+# Derived by `guardrails apply`, owned by no package: the sudoers drop-in,
+# /etc/claude-code/managed-settings.json, the tier 1 rules file, and one
+# line each in /etc/pacman.conf and /etc/pam.d/sudo.
+#
+# Not here yet (later jobs, design-simple-mode 2, 5, 6.1): the auto-update
+# timer, the boot guard, invictus-session, Flatpak defaults, RustDesk and
+# the help unlock. Their packages' depends (bazaar, rustdesk-bin, ...) join
+# with them.
+
+pkgname=invictus-guardrails
+pkgver=0.2.0
+pkgrel=1
+pkgdesc='Invictus guard rails: Custodia or Libertas, switched live, with the silent safety nets'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=('invictus-sys' 'snapper' 'sudo' 'polkit' 'pacman' 'python' 'util-linux')
+backup=('etc/pam.d/polkit-1' 'etc/pacman.d/invictus-guardrails.conf')
+install=invictus-guardrails.install
+
+package() {
+  local root="$startdir/../../.."
+  local src="$root/scripts/guardrails"
+  local share="$pkgdir/usr/share/invictus/guardrails"
+
+  install -Dm755 "$src/guardrails.sh" "$pkgdir/usr/lib/invictus/guardrails"
+  install -Dm755 "$src/pre-admin-snapshot.sh" "$pkgdir/usr/lib/invictus/pre-admin-snapshot"
+  install -Dm644 "$src/40-invictus-guardrails.rules" \
+    "$pkgdir/usr/share/polkit-1/rules.d/40-invictus-guardrails.rules"
+  install -Dm644 -t "$share" "$src/40-invictus-custodia.rules" "$src/sudo-lecture" \
+    "$src/messages.tsv" "$src/hold-list.txt"
+  install -Dm644 -t "$share/claude" "$src/claude/fixed.json" "$src/claude/full.json"
+  install -Dm644 "$src/polkit-1.pam" "$pkgdir/etc/pam.d/polkit-1"
+  install -d -m755 "$pkgdir/etc/claude-code"
+  printf '# Written by /usr/lib/invictus/guardrails apply. Included by /etc/pacman.conf.\n' \
+    | install -Dm644 /dev/stdin "$pkgdir/etc/pacman.d/invictus-guardrails.conf"
+
+  # G4 hook: one Target line per protected package (one list, two uses).
+  local targets
+  targets="$(awk '!/^[[:space:]]*#/ && NF { print "Target = " $1 }' "$root/scripts/sys/protected-packages")"
+  install -d -m755 "$pkgdir/usr/share/libalpm/hooks"
+  awk -v t="$targets" '$0 == "@TARGETS@" { print t; next } { print }' "$src/40-invictus-hold.hook.in" \
+    > "$pkgdir/usr/share/libalpm/hooks/40-invictus-hold.hook"
+  chmod 644 "$pkgdir/usr/share/libalpm/hooks/40-invictus-hold.hook"
+
+  install -Dm644 "$root/scripts/systemd/invictus-guardrails.service" \
+    "$pkgdir/usr/lib/systemd/system/invictus-guardrails.service"
+  install -d -m755 "$pkgdir/usr/lib/systemd/system/multi-user.target.wants"
+  ln -s ../invictus-guardrails.service "$pkgdir/usr/lib/systemd/system/multi-user.target.wants/invictus-guardrails.service"
+}
