@@ -129,6 +129,7 @@ nss-mdns extra
 ntfs-3g extra
 nwg-look extra
 openssh core
+otf-cormorant extra
 pacman core
 pacman-contrib extra
 papers extra
@@ -150,6 +151,7 @@ python core
 qt6-svg extra
 qt6-wayland extra
 qt6ct extra
+quickshell extra
 ripgrep extra
 rofi extra
 rsync extra

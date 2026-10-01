@@ -1,0 +1,686 @@
+#!/usr/bin/env python3
+"""invictus-first-boot: the first-start wizard (design.md 2.3).
+
+The screens are Quickshell QML in /usr/share/invictus/first-boot/; this
+command does everything else and is the only thing the screens call. Every
+subcommand prints one JSON object on stdout. Installed as
+/usr/bin/invictus-first-boot by invictus-tools. Reference: docs/first-boot.md.
+
+  invictus-first-boot mark-pending        first-login: show the wizard at this
+                                           person's next session (once per person)
+  invictus-first-boot start [--if-pending | --again]
+                                           open the screens; --if-pending only if
+                                           first-login marked this home and it has
+                                           not finished; --again from Settings
+  invictus-first-boot state               what the screens need (flavor, screens,
+                                           steps, AI state, theme tokens)
+  invictus-first-boot monitors-write auto | MAIN [NAME=X,Y ...]
+                                           write ~/.config/hypr/monitors.lua from
+                                           `hyprctl monitors -j` (backup, check,
+                                           restore on a failed check, reload)
+  invictus-first-boot look THEME MOTION light|dark
+  invictus-first-boot assistant claude|home|other|none [--address A | --this-computer]
+                                           step 3 (no-ai.md 2): `invictus-sys ai on`
+                                           (the password) then the provider layer;
+                                           `none` runs `ai off` only if AI is on.
+                                           For `other` the key comes on stdin and
+                                           goes straight to the provider layer
+  invictus-first-boot signin              the provider's own sign-in, then only
+                                           checks ~/.claude/.credentials.json exists
+  invictus-first-boot finish              "First boot done" snapshot through
+                                           invictus-sys, then marks this home done
+
+Never sees or stores a token: the Claude sign-in is Claude Code's own, and a
+key typed for another service is passed on stdin to `invictus-provider`, which
+keeps it in the keyring. Never runs anything as root except through
+invictus-sys.
+
+Env (tests): INVICTUS_STATE, INVICTUS_SHARE, INVICTUS_AI_FILE, and the commands
+INVICTUS_HYPRCTL, INVICTUS_SYS_CMD, INVICTUS_PROVIDER_CMD, INVICTUS_THEME_CMD,
+INVICTUS_MOTION_CMD, INVICTUS_DOCTOR_CMD, INVICTUS_GSETTINGS, INVICTUS_NMCLI,
+INVICTUS_QUICKSHELL.
+"""
+import datetime
+import fcntl
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+REQUEST = "first-start"            # the label invictus-sys writes to Acta
+SNAPSHOT_DESCRIPTION = "First boot done"
+THEMES_FALLBACK = ["dusk"]
+MOTIONS = ("showcase", "calm", "off")
+
+# The wizard's steps, in order (design.md 2.3; simple-mode.md 3.2 for Atrium).
+# A step is shown when its screen file Step<Name>.qml is installed: the later
+# releases (Collegium 4, Windows 5, voice 6, Atrium's Wi-Fi screen) only add
+# their file and, if they need one, a subcommand here. `when` is decided now;
+# `needs_ai` by the screens after step 3.
+STEPS = [
+    # id          flavors                 when             needs_ai
+    ("wifi",      ("atrium",),            "offline",       False),
+    ("screens",   ("atrium",),            "several",       False),
+    ("monitors",  ("tessera",),           "several",       False),
+    ("look",      ("tessera",),           "always",        False),
+    ("assistant", ("atrium", "tessera"),  "always",        False),
+    ("collegium", ("tessera",),           "always",        True),
+    ("windows",   ("tessera",),           "always",        False),
+    ("voice",     ("tessera",),           "always",        True),
+    ("ready",     ("atrium", "tessera"),  "always",        False),
+]
+
+LAPTOP_PREFIXES = ("eDP", "LVDS", "DSI")
+HOST_RE = re.compile(r"^(https?://)?[A-Za-z0-9]([A-Za-z0-9.-]{0,252})(:[0-9]{1,5})?(/[A-Za-z0-9._~/-]*)?$")
+
+
+class Fail(Exception):
+    def __init__(self, msg, code=1):
+        super().__init__(msg)
+        self.code = code
+
+
+# ---------------------------------------------------------------- paths
+
+def home():
+    return Path(os.environ.get("HOME") or Path.home())
+
+
+def cfg_dir():
+    return Path(os.environ.get("XDG_CONFIG_HOME") or home() / ".config")
+
+
+def state_dir():
+    # Same rule as scripts/lib/defaults.sh invictus_state_dir.
+    env = os.environ.get("INVICTUS_STATE")
+    if env:
+        return Path(env)
+    return Path(os.environ.get("XDG_STATE_HOME") or home() / ".local" / "state") / "invictus"
+
+
+def share_dir():
+    return Path(os.environ.get("INVICTUS_SHARE") or "/usr/share/invictus")
+
+
+def qml_dir():
+    return share_dir() / "first-boot"
+
+
+def pending_file():
+    return state_dir() / "first-boot.pending"
+
+
+def done_file():
+    return state_dir() / "first-boot.done"
+
+
+def record_file():
+    return state_dir() / "first-boot.json"
+
+
+def credentials_file():
+    # Checked for existence only, never opened (design.md 2.3).
+    return home() / ".claude" / ".credentials.json"
+
+
+def tool(env, default):
+    return os.environ.get(env) or default
+
+
+# ---------------------------------------------------------------- helpers
+
+def out(obj):
+    print(json.dumps(obj, sort_keys=True))
+
+
+def run(cmd, stdin=None, timeout=None):
+    """Run cmd; return (exit code, stdout). A missing command is 127."""
+    try:
+        p = subprocess.run(cmd, input=stdin, capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        return 127, ""
+    except subprocess.TimeoutExpired:
+        return 124, ""
+    if p.stderr:
+        sys.stderr.write(p.stderr)
+    return p.returncode, p.stdout
+
+
+def have(cmd):
+    return shutil.which(cmd) is not None or os.path.isfile(cmd) and os.access(cmd, os.X_OK)
+
+
+def write_atomic(path, text, mode=0o644):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(text)
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def read_record():
+    try:
+        return json.loads(record_file().read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def update_record(**kv):
+    r = read_record()
+    r.update(kv)
+    write_atomic(record_file(), json.dumps(r, sort_keys=True, indent=1) + "\n", 0o600)
+    return r
+
+
+def flavor():
+    try:
+        v = (cfg_dir() / "invictus" / "flavor").read_text().strip()
+    except OSError:
+        v = ""
+    # No file: a home that never went through the installer (adopt.sh, Alex).
+    return v if v in ("atrium", "tessera") else "tessera"
+
+
+def ai_state():
+    try:
+        v = Path(os.environ.get("INVICTUS_AI_FILE") or "/etc/invictus/ai").read_text().strip()
+    except OSError:
+        return "off"    # a missing file reads as off everywhere (no-ai.md 1)
+    return "on" if v == "on" else "off"
+
+
+def sys_call(*args):
+    """invictus-sys as this person; returns (exit code, RESULT word, snapshot)."""
+    rc, so = run([tool("INVICTUS_SYS_CMD", "invictus-sys"), "--request", REQUEST, *args])
+    result, snap = None, None
+    for line in so.splitlines():
+        m = re.match(r"^invictus-sys: (.+?) snapshot=(\S+)\s*$", line)
+        if m:
+            result, snap = m.group(1), m.group(2)
+    return rc, result, (None if snap in (None, "none") else snap)
+
+
+SYS_OUTCOME = {0: "ok", 1: "failed", 2: "failed", 3: "refused", 4: "busy", 126: "cancelled", 127: "not-allowed"}
+
+
+# ---------------------------------------------------------------- monitors
+
+def read_monitors():
+    rc, so = run([tool("INVICTUS_HYPRCTL", "hyprctl"), "monitors", "-j"])
+    if rc != 0:
+        raise Fail("hyprctl monitors failed (is Hyprland running?)")
+    try:
+        data = json.loads(so)
+    except ValueError:
+        raise Fail("hyprctl monitors -j printed something that is not JSON")
+    mons = []
+    for m in data:
+        if m.get("disabled"):
+            continue
+        name = str(m.get("name") or "")
+        if not name:
+            continue
+        mons.append({
+            "name": name,
+            "description": str(m.get("description") or ""),
+            "width": int(m.get("width") or 0),
+            "height": int(m.get("height") or 0),
+            "refresh": float(m.get("refreshRate") or 60.0),
+            "x": int(m.get("x") or 0),
+            "y": int(m.get("y") or 0),
+            "scale": float(m.get("scale") or 1.0),
+            "transform": int(m.get("transform") or 0),
+            "laptop": name.startswith(LAPTOP_PREFIXES),
+        })
+    return mons
+
+
+def auto_main(mons):
+    """The laptop's own screen, else the largest (simple-mode.md 3.2 screen 2)."""
+    laptops = [m for m in mons if m["laptop"]]
+    if laptops:
+        return sorted(laptops, key=lambda m: m["name"])[0]
+    return sorted(mons, key=lambda m: (-m["width"] * m["height"], m["name"]))[0]
+
+
+def logical_width(m):
+    w = m["height"] if m["transform"] % 2 else m["width"]
+    return int(round(w / (m["scale"] or 1.0)))
+
+
+def lua_str(s):
+    return '"' + "".join(
+        c if c.isprintable() and c not in '"\\' else ("\\" + c if c in '"\\' else "\\%03d" % ord(c))
+        for c in s) + '"'
+
+
+def plain(s):
+    """A screen name for a Lua comment: nothing that could end the comment."""
+    return re.sub(r"[^A-Za-z0-9._-]", "_", s)
+
+
+def selector(m):
+    # desc: survives a cable moved to another port; the port name is the fallback.
+    return f"desc:{m['description']}" if m["description"] else m["name"]
+
+
+def fmt_scale(s):
+    return ("%.2f" % s).rstrip("0").rstrip(".")
+
+
+def monitors_lua(mons, main, positions):
+    today = datetime.date.today().isoformat()
+    lines = [
+        "-- ~/.config/hypr/monitors.lua: your screens, written by first start on " + today + ".",
+        "-- Yours: updates never touch it. Run first start again from Settings to",
+        "-- redo it, or edit it by hand: https://wiki.hypr.land/Configuring/Basics/Monitors/",
+        "-- The main screen (workspace 1: the taskbar or bar, new windows, messages)",
+        "-- is " + plain(main["name"]) + ".",
+        "",
+    ]
+    for m in sorted(mons, key=lambda m: (m is not main, positions[m["name"]])):
+        x, y = positions[m["name"]]
+        lines += [
+            "hl.monitor({",
+            f"    output   = {lua_str(selector(m))}, -- {plain(m['name'])}",
+            f"    mode     = \"{m['width']}x{m['height']}@{m['refresh']:.2f}\",",
+            f"    position = \"{x}x{y}\",",
+            f"    scale    = {fmt_scale(m['scale'])},",
+        ]
+        if m["transform"]:
+            lines.append(f"    transform = {m['transform']},")
+        lines += ["})", ""]
+    lines += [
+        "-- Any other screen plugged in later",
+        'hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })',
+        "",
+        f"hl.workspace_rule({{ workspace = \"1\", monitor = {lua_str(selector(main))}, default = true }})",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def cmd_monitors_write(args):
+    if not args:
+        raise Fail("usage: monitors-write auto | MAIN [NAME=X,Y ...]", 2)
+    mons = read_monitors()
+    if not mons:
+        raise Fail("no screens found")
+    byname = {m["name"]: m for m in mons}
+    if args[0] == "auto":
+        main = auto_main(mons)
+        positions = {m["name"]: (m["x"], m["y"]) for m in mons}
+        if len(mons) == 1:
+            positions[main["name"]] = (0, 0)
+        if len(args) > 1:
+            raise Fail("auto takes no positions", 2)
+    else:
+        if args[0] not in byname:
+            raise Fail(f"no screen called {args[0]!r}", 2)
+        main = byname[args[0]]
+        given = {}
+        for a in args[1:]:
+            m = re.fullmatch(r"([A-Za-z0-9._-]+)=(-?\d{1,6}),(-?\d{1,6})", a)
+            if not m or m.group(1) not in byname:
+                raise Fail(f"bad position {a!r} (NAME=X,Y for a screen hyprctl lists)", 2)
+            given[m.group(1)] = (int(m.group(2)), int(m.group(3)))
+        if given:
+            missing = set(byname) - set(given)
+            if missing:
+                raise Fail("positions given for some screens only: missing " + ", ".join(sorted(missing)), 2)
+            positions = given
+        else:
+            # "Which screen is in front of you?": that one at 0,0, the others to
+            # its right in their current left-to-right order.
+            positions = {main["name"]: (0, 0)}
+            x = logical_width(main)
+            for m in sorted((m for m in mons if m is not main), key=lambda m: (m["x"], m["name"])):
+                positions[m["name"]] = (x, 0)
+                x += logical_width(m)
+    text = monitors_lua(mons, main, positions)
+
+    dest = cfg_dir() / "hypr" / "monitors.lua"
+    backup = None
+    if dest.exists() and dest.read_text(errors="replace") != text:
+        stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup = state_dir() / "backups" / stamp / "monitors.lua"
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(dest, backup)
+    write_atomic(dest, text)
+
+    # design.md A6: every edit is followed by the config check; a failed check
+    # puts the old file back before Hyprland reloads.
+    doctor = tool("INVICTUS_DOCTOR_CMD", "invictus-doctor")
+    checked = None
+    if have(doctor):
+        rc, _ = run([doctor, "--hypr"], timeout=60)
+        checked = rc == 0
+        if not checked:
+            if backup:
+                shutil.copy2(backup, dest)
+            else:
+                dest.unlink()
+            out({"ok": False, "error": "the config check failed; your old monitors.lua is back",
+                 "backup": str(backup) if backup else None})
+            return 1
+    run([tool("INVICTUS_HYPRCTL", "hyprctl"), "reload"])
+    update_record(main_screen=main["name"])
+    out({"ok": True, "main": main["name"], "file": str(dest),
+         "backup": str(backup) if backup else None, "checked": checked})
+    return 0
+
+
+# ---------------------------------------------------------------- look
+
+def themes():
+    rc, so = run([tool("INVICTUS_THEME_CMD", "invictus-theme"), "list"])
+    found = []
+    for line in so.splitlines() if rc == 0 else []:
+        m = re.match(r"^([* ]) (\S+) (.+)$", line)
+        if m:
+            found.append({"id": m.group(2), "name": m.group(3).strip(), "current": m.group(1) == "*"})
+    return found
+
+
+def color_scheme():
+    rc, so = run([tool("INVICTUS_GSETTINGS", "gsettings"), "get", "org.gnome.desktop.interface", "color-scheme"])
+    return "light" if rc == 0 and "light" in so else "dark"
+
+
+def cmd_look(args):
+    if len(args) != 3:
+        raise Fail("usage: look THEME MOTION light|dark", 2)
+    theme, motion, apps = args
+    ids = [t["id"] for t in themes()] or THEMES_FALLBACK
+    if theme not in ids:
+        raise Fail(f"unknown theme {theme!r}", 2)
+    if motion not in MOTIONS:
+        raise Fail("motion must be showcase, calm or off", 2)
+    if apps not in ("light", "dark"):
+        raise Fail("apps must be light or dark", 2)
+    failed = apply_look(theme, motion, apps)
+    out({"ok": not failed, "failed": failed})
+    return 0 if not failed else 1
+
+
+def apply_look(theme, motion, apps):
+    """Theme, motion level, light or dark apps; returns the parts that failed."""
+    steps = {
+        "theme": run([tool("INVICTUS_THEME_CMD", "invictus-theme"), "apply", theme])[0],
+        "motion": run([tool("INVICTUS_MOTION_CMD", "invictus-motion"), "set", motion])[0],
+        "apps": run([tool("INVICTUS_GSETTINGS", "gsettings"), "set", "org.gnome.desktop.interface",
+                     "color-scheme", "prefer-" + apps])[0],
+    }
+    update_record(look={"theme": theme, "motion": motion, "apps": apps})
+    return sorted(k for k, v in steps.items() if v != 0)
+
+
+# ---------------------------------------------------------------- the assistant
+
+PROVIDERS = {
+    # choice -> provider name in the provider layer (design.md 4.2)
+    "claude": "claude-code",
+    "home": "openai-compatible",
+    "other": "openai-compatible",
+}
+
+
+def provider_cmd():
+    return tool("INVICTUS_PROVIDER_CMD", "invictus-provider")
+
+
+def cmd_assistant(args):
+    if not args or args[0] not in ("claude", "home", "other", "none"):
+        raise Fail("usage: assistant claude|home|other|none [--address A | --this-computer]", 2)
+    choice, rest = args[0], args[1:]
+    address, this_computer = None, False
+    while rest:
+        if rest[0] == "--address" and len(rest) > 1:
+            address, rest = rest[1], rest[2:]
+        elif rest[0] == "--this-computer":
+            this_computer, rest = True, rest[1:]
+        else:
+            raise Fail(f"unknown argument {rest[0]!r}", 2)
+    if address is not None and not HOST_RE.match(address):
+        raise Fail("the address must be a host name, like atlas.local, or an http(s) address", 2)
+    if choice == "home" and not (address or this_computer):
+        raise Fail("a home AI system needs --address or --this-computer", 2)
+    if choice != "home" and this_computer:
+        raise Fail("--this-computer is for a home AI system", 2)
+    if choice in ("claude", "none") and address:
+        raise Fail(f"{choice} takes no address", 2)
+
+    if choice == "none":
+        # No AI: nothing to install. If AI is already on (a sign-in given up
+        # on, or first start run again), turn it off: no password from the
+        # person's own desktop (design-no-ai.md N1).
+        result = "ok"
+        if ai_state() == "on":
+            rc, word, _ = sys_call("ai", "off")
+            result = SYS_OUTCOME.get(rc, "failed")
+        update_record(assistant="none", provider=None)
+        out({"result": result, "ai": ai_state()})
+        return 0
+
+    key = None
+    if choice == "other":
+        key = sys.stdin.read().strip()
+        if not key:
+            raise Fail("another AI service needs its key on stdin", 2)
+
+    # 1. The password: add Moneta (org.invictus.sys.ai-on, auth_admin, never
+    #    kept; no-ai.md 2.2 step 1). Cancelled changes nothing.
+    result = "ok"
+    if ai_state() != "on":
+        rc, word, _ = sys_call("ai", "on")
+        result = SYS_OUTCOME.get(rc, "failed")
+        if rc == 0 and word == "pending":
+            result = "pending"
+        if result not in ("ok", "pending"):
+            out({"result": result})
+            return 0
+
+    # 2. The provider layer sets the provider up (Vulcan's invictus-provider,
+    #    docs/first-boot.md "Provider interface"). Offline, the packages and
+    #    the tool come later: keep the choice (never a key) for Settings and
+    #    the Not signed in state.
+    name = "local" if this_computer else PROVIDERS[choice]
+    record = {"name": name, "address": address}
+    if result == "pending" or not have(provider_cmd()):
+        update_record(assistant=choice, provider=record, provider_pending=True)
+        out({"result": "pending", "provider": name})
+        return 0
+    cmd = [provider_cmd(), "use", name]
+    if address:
+        cmd += ["--address", address]
+    if key is not None:
+        cmd += ["--key-stdin"]
+    rc, _ = run(cmd, stdin=key)
+    key = None
+    update_record(assistant=choice, provider=record, provider_pending=rc != 0)
+    out({"result": "ok" if rc == 0 else "provider-failed", "provider": name})
+    return 0
+
+
+def cmd_signin(args):
+    if args:
+        raise Fail("usage: signin", 2)
+    if have(provider_cmd()):
+        # Claude Code's own sign-in (browser); we only wait for it to end.
+        run([provider_cmd(), "login", "claude-code"], timeout=1800)
+    signed = credentials_file().is_file()
+    update_record(signed_in=signed)
+    out({"signed_in": signed})
+    return 0
+
+
+# ---------------------------------------------------------------- state
+
+def online():
+    rc, so = run([tool("INVICTUS_NMCLI", "nmcli"), "-t", "networking", "connectivity"], timeout=10)
+    if rc == 127:
+        return None
+    return rc == 0 and so.strip() == "full"
+
+
+def steps_for(fl, mons, is_online):
+    shown, later = [], []
+    for sid, flavors, when, needs_ai in STEPS:
+        if fl not in flavors:
+            continue
+        qml = f"Step{sid[0].upper()}{sid[1:]}.qml"
+        if not (qml_dir() / qml).is_file():
+            later.append(sid)
+            continue
+        if when == "several" and len(mons) < 2:
+            continue
+        if when == "offline" and is_online is not False:
+            continue
+        shown.append({"id": sid, "qml": qml, "needs_ai": needs_ai})
+    return shown, later
+
+
+def tokens():
+    try:
+        return json.loads((cfg_dir() / "invictus" / "current" / "qml-tokens.json").read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def motion():
+    rc, so = run([tool("INVICTUS_MOTION_CMD", "invictus-motion"), "get"])
+    v = so.strip()
+    return v if rc == 0 and v in MOTIONS else "showcase"
+
+
+def cmd_state(args):
+    if args:
+        raise Fail("usage: state", 2)
+    fl = flavor()
+    try:
+        mons = read_monitors()
+    except Fail:
+        mons = []
+    is_online = online()
+    shown, later = steps_for(fl, mons, is_online)
+    rec = read_record()
+    out({
+        "flavor": fl,
+        "monitors": mons,
+        "auto_main": auto_main(mons)["name"] if mons else None,
+        "online": is_online,
+        "ai": ai_state(),
+        "signed_in": credentials_file().is_file(),
+        "this_computer": (share_dir() / "providers" / "local").is_dir(),
+        "themes": themes() if fl == "tessera" else [],
+        "motion": motion() if fl == "tessera" else None,
+        "apps": color_scheme() if fl == "tessera" else None,
+        "tokens": tokens(),
+        "steps": shown,
+        "later": later,
+        "again": done_file().exists(),
+        "assistant": rec.get("assistant"),
+    })
+    return 0
+
+
+# ---------------------------------------------------------------- run once
+
+def cmd_mark_pending(args):
+    if args:
+        raise Fail("usage: mark-pending", 2)
+    if done_file().exists():
+        out({"pending": False, "why": "done"})
+        return 0
+    write_atomic(pending_file(), datetime.datetime.now().isoformat(timespec="seconds") + "\n")
+    out({"pending": True})
+    return 0
+
+
+def cmd_finish(args):
+    if args:
+        raise Fail("usage: finish", 2)
+    # Atrium asks no look question (simple-mode.md 3.2): its defaults are
+    # the theme in use (Dusk on a new home), Calm motion and light apps.
+    if flavor() == "atrium" and "look" not in read_record():
+        current = next((t["id"] for t in themes() if t["current"]), "dusk")
+        apply_look(current, "calm", "light")
+    rc, word, snap = sys_call("snapshot", SNAPSHOT_DESCRIPTION)
+    snapshot = snap if rc == 0 else None
+    rec = update_record(snapshot=snapshot, snapshot_result=SYS_OUTCOME.get(rc, "failed"))
+    write_atomic(done_file(), json.dumps({
+        "at": datetime.datetime.now().isoformat(timespec="seconds"),
+        "flavor": flavor(), "assistant": rec.get("assistant"), "snapshot": snapshot,
+    }, sort_keys=True) + "\n")
+    pending_file().unlink(missing_ok=True)
+    out({"done": True, "snapshot": snapshot, "snapshot_result": SYS_OUTCOME.get(rc, "failed")})
+    return 0
+
+
+def cmd_start(args):
+    mode = args[0] if args else None
+    if mode not in (None, "--if-pending", "--again") or len(args) > 1:
+        raise Fail("usage: start [--if-pending | --again]", 2)
+    if mode == "--if-pending" and (not pending_file().exists() or done_file().exists()):
+        out({"started": False, "why": "not pending"})
+        return 0
+    if mode is None and done_file().exists():
+        out({"started": False, "why": "done (use --again)"})
+        return 0
+    runtime = Path(os.environ.get("XDG_RUNTIME_DIR") or state_dir())
+    runtime.mkdir(parents=True, exist_ok=True)
+    lock = open(runtime / "invictus-first-boot.lock", "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        out({"started": False, "why": "already open"})
+        return 0
+    env = dict(os.environ, INVICTUS_FIRSTBOOT_CMD=os.path.abspath(sys.argv[0]))
+    qs = tool("INVICTUS_QUICKSHELL", "quickshell")
+    try:
+        rc = subprocess.call([qs, "-p", str(qml_dir())], env=env)
+    except FileNotFoundError:
+        raise Fail("quickshell is not installed")
+    out({"started": True, "exit": rc})
+    return 0 if rc == 0 else 1
+
+
+COMMANDS = {
+    "mark-pending": cmd_mark_pending,
+    "start": cmd_start,
+    "state": cmd_state,
+    "monitors-write": cmd_monitors_write,
+    "look": cmd_look,
+    "assistant": cmd_assistant,
+    "signin": cmd_signin,
+    "finish": cmd_finish,
+}
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help", "help"):
+        print(__doc__)
+        return 0 if argv else 2
+    fn = COMMANDS.get(argv[0])
+    if fn is None:
+        sys.stderr.write(f"invictus-first-boot: unknown command {argv[0]!r}\n")
+        return 2
+    try:
+        return fn(argv[1:])
+    except Fail as e:
+        sys.stderr.write(f"invictus-first-boot: {e}\n")
+        out({"error": str(e)})
+        return e.code
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

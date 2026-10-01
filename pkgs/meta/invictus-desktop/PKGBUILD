@@ -32,7 +32,7 @@
 
 pkgname=invictus-desktop
 pkgver=0.3.0
-pkgrel=3
+pkgrel=4
 pkgdesc='Invictus desktop session shared by Tessera and Atrium, and its config'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
@@ -65,6 +65,10 @@ depends=(
   # notifications, terminal
   'swaync' 'kitty'
 
+  # the shell toolkit: first start (invictus-first-boot) now; the Desk and
+  # the Atrium shell later
+  'quickshell'
+
   # clipboard, screenshots, media and brightness keys
   'wl-clipboard' 'hyprshot' 'brightnessctl' 'playerctl'
 
@@ -90,6 +94,8 @@ depends=(
   # Arial/Times/Courier; fontconfig for fc-cache at first login. Chinese,
   # Japanese and Korean (noto-fonts-cjk, 300 MB) is an installer extra.
   'fontconfig' 'ttf-ibm-plex' 'ttf-nerd-fonts-symbols-mono'
+  # Cormorant SC: the INVICTUS wordmark on the first-start screens (look.md)
+  'otf-cormorant'
   'noto-fonts' 'noto-fonts-emoji' 'ttf-liberation'
 
   # the shipped ~/.zshrc: zsh, its two plugins, the spaceship prompt

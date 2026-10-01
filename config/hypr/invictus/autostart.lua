@@ -42,4 +42,7 @@ hl.on("hyprland.start", function()
     -- the bar reads them; apps have a Dusk fallback, but rofi needs the file.
     -- `;` not `&&`: a failing theme step must not leave the desktop without a bar.
     hl.exec_cmd("invictus-theme apply; waybar")
+
+    -- First start (design.md 2.3): only on a home first-login marked, once.
+    hl.exec_cmd("invictus-first-boot start --if-pending")
 end)
