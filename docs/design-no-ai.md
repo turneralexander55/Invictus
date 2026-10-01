@@ -64,6 +64,10 @@ Two polkit actions, because the two directions need different answers (the same 
 
 Both verbs write `/etc/invictus/ai` (root 0644, `on` or `off`, temp file and `rename(2)`), an Acta line, and a notice on screen. The installer writes `off`; a missing file reads as `off` everywhere. `ai on` with no network writes `on` and a pending marker (`/var/lib/invictus/ai-install-pending`) and returns; `invictus-guardrails.service` and the updater's gate install the packages at the first connection; `ai off` clears the marker. The person's consent is the password at the time of the choice, not at the time of the download.
 
+**Revised 2026-10-01 (Minerva, final review, Janus N-M1):**
+
+> `ai-off` is YES only for an administrator (`wheel`) at a local active session; everyone else gets `auth_admin`. The 2026-09-30 reasoning ("it only removes") held for one person; on a shared machine the AI set is machine-wide, and removing it signs other people out and stops their assistant. That is not friction, so it is not in the `guardrails-custodia` class. A non-admin who wants no AI for themselves needs no root: their own logout, their own files, their own panel (part 6 offers it). NA2's test adds: `ai off` from a non-wheel local active session prompts.
+
 ### N2. Who may turn AI on
 
 The person at their own keyboard, with their password, from a local active session. A script running as the user hits the prompt. During a help session: still the person, at their keyboard, and still allowed. Here I differ from Venus's "never from a help session": RustDesk does not carry local keystrokes out and Alex's remote input cannot reach the polkit field (5.2 step 4, SM13), and the unlock does not cover the action; so what is excluded is Alex doing it, not the person doing it while Alex is on screen, which is exactly when a non-technical friend will ("Alex, set it up for me"). The sign-in that follows needs the person's own Claude account in their own browser, which Alex cannot supply either.

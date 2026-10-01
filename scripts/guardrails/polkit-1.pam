@@ -1,0 +1,13 @@
+#%PAM-1.0
+# /etc/pam.d/polkit-1 from invictus-guardrails: polkit's own file
+# (/usr/lib/pam.d/polkit-1, checked 2026-10-01) plus one line, so a safety
+# copy of the system is made after every good password at a polkit prompt
+# (design-simple-mode G2). system-auth ends a wrong password with
+# [default=die], so the pam_exec line runs only after a good one. If
+# polkit's file changes upstream, follow it (tests/pkgs/sys.sh compares).
+
+auth       include      system-auth
+auth       optional     pam_exec.so quiet type=auth /usr/lib/invictus/pre-admin-snapshot
+account    include      system-auth
+password   include      system-auth
+session    include      system-auth

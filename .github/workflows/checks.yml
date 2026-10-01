@@ -1,5 +1,6 @@
 # Checks on every push and pull request: shell and Lua lint, the config and
-# package tests, the package sets checked against Arch and the AUR,
+# package tests, invictus-sys and the guard rails under a real polkitd, the
+# package sets checked against Arch and the AUR,
 # end-to-end signed-repo tests in Arch (including no-ai-in-base on the
 # built repo, and the one-command container build), and a secrets scan
 # over the full git history.
@@ -64,7 +65,11 @@ jobs:
       - name: Hyprland Lua config tests
         run: LUA=lua5.4 tests/hyprland-lua/run.sh
       - name: Package tests
-        run: tests/pkgs/run.sh
+        # Groups 14-16 (invictus-sys, polkit rules, guard rails) need node,
+        # python3 and visudo; the runner image has all three.
+        run: |
+          node --version && python3 --version && command -v visudo
+          tests/pkgs/run.sh
       - name: Theme tests
         run: tests/theme/run.sh
 
@@ -83,6 +88,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: One command, build in a container, sign on the host
         run: bash tests/pkgs/e2e-container-sign.sh "$GITHUB_WORKSPACE"
+
+  sys-e2e:
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: invictus-sys and the guard rails with real polkitd, pkexec, pacman and visudo
+        run: bash tests/pkgs/e2e-sys.sh "$GITHUB_WORKSPACE"
 
   packages-live:
     runs-on: ubuntu-24.04

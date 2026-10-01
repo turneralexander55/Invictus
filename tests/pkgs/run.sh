@@ -23,8 +23,14 @@
 #    legacy home; its output loads in the stub check.
 # 11. AUR pins: header lines, no SKIP, signers' keys; scripts/dev/bump-aur.sh
 #    against a fake AUR repo.
+# 12, 13. invictus-motion; installer extras (pending-extras).
+# 14. invictus-sys: verbs, the polkit policy, Acta, snapshots (MUSTs A2 to
+#    A5, A10, A11) with pkexec, snapper and pacman faked at the seam.
+# 15. The polkit rules, run in node with polkitd's order and defaults.
+# 16. The guard rails: apply, the live switch both ways, timed Libertas,
+#    nets, full access, pre-admin-snapshot, the pacman hook (SM9 to SM26).
 #
-# Needs lua 5.4+ for groups 7 and 10 (LUA=...).
+# Needs lua 5.4+ for groups 7 and 10 (LUA=...), node and python3 for 14-16.
 # ------------------------------------------------------------
 set -euo pipefail
 
@@ -153,8 +159,8 @@ done
 # metas may pull one; every other set and own package, followed through
 # the invictus-* packages it depends on, must not. The built repo gets the
 # same check with pacman's resolver (tests/pkgs/no-ai-in-base.sh).
-# shellcheck source=tests/pkgs/lib/ai-set.sh
-. "$HERE/lib/ai-set.sh"
+# shellcheck source=scripts/lib/ai-set.sh
+. "$HERE/../../scripts/lib/ai-set.sh"
 AI_SETS="$AI_METAS"
 pb_of() { local d; for d in meta own; do [[ -f "$REPO/pkgs/$d/$1/PKGBUILD" ]] && { echo "$REPO/pkgs/$d/$1/PKGBUILD"; return; }; done; }
 closure() {
@@ -416,6 +422,8 @@ echo
 
 # shellcheck source=tests/pkgs/runtime.sh
 . "$HERE/runtime.sh"
+# shellcheck source=tests/pkgs/sys.sh
+. "$HERE/sys.sh"
 
 if [[ $fail == 0 ]]; then echo "ALL PASSED"; else echo "SOME TESTS FAILED"; fi
 exit $fail

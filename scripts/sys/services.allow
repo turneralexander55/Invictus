@@ -1,0 +1,12 @@
+# Units `invictus-sys service enable|disable|restart` may change (design
+# 4.1). One per line, then why. Things a person or Moneta has a reason to
+# turn on, off or restart; nothing that guards the machine (the update
+# timer, the boot guard, snapper, polkit, sshd) is here. Adding a unit is a
+# line here with a reason; tests/pkgs/sys.sh checks none of the guards is.
+bluetooth.service               Bluetooth on or off
+cups.service                    printing
+avahi-daemon.service            finding printers and scanners on the network
+NetworkManager.service          restart when the network is stuck
+power-profiles-daemon.service   power modes
+fwupd.service                   firmware updates
+invictus-extras.service         retry the extras the installer could not install

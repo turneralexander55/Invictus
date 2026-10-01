@@ -1,0 +1,24 @@
+# Plain words for the Invictus polkit agent (design-simple-mode G1, NA8).
+# action id <TAB> text. {args} is what follows the verb in pkexec's
+# command_line detail. The agent fills {args} only after sys_validate
+# (/usr/lib/invictus/lib/sys-verbs.sh) accepts the verb and arguments, and
+# otherwise shows the line without them: a program can call pkexec directly
+# with arguments nobody has checked (Janus L2). Clio writes the final wording; these are the design's
+# examples so the agent has something to show. Unknown ids get "An app
+# wants to change this computer" plus the vendor message. Under Custodia
+# the agent adds the scam line (G3); the hold list is hold-list.txt (G6).
+org.invictus.sys.update	Type your password to update this computer. Undo: Settings > Updates > Put things back.
+org.invictus.sys.install	Type your password to install {args} on this computer. Undo: Settings > Updates > Put things back.
+org.invictus.sys.remove	Type your password to remove {args} from this computer. Undo: Settings > Updates > Put things back.
+org.invictus.sys.snapshot	Type your password to make a safety copy now.
+org.invictus.sys.rollback	Type your password to put the computer back to safety copy {args}.
+org.invictus.sys.service	Type your password to change a system service: {args}.
+org.invictus.sys.set-config	Type your password to change a setting: {args}.
+org.invictus.sys.assistant-full-access	Type your password to change whether Moneta may use the terminal and every tool: {args}.
+org.invictus.sys.ai-on	Type your password to add Moneta, an AI assistant, to this computer. It asks before it changes anything. Undo: Settings > AI > No AI.
+org.invictus.sys.ai-off	Type your password to remove AI from this computer and sign everyone out of it.
+org.invictus.sys.report-collect	Type your password to collect this computer's error log for a problem report. Nothing is sent.
+org.invictus.sys.guardrails-libertas	Switch to Libertas? Nothing will pause or warn you before something is erased, and Help will be able to do more on its own. Safety copies stay on unless you turn them off. Type your password if you're sure.
+org.invictus.sys.guardrails-custodia	Type your password to switch the guard rails back on.
+org.freedesktop.Flatpak.app-install	Type your password to install {args} for everyone who uses this computer.
+org.freedesktop.udisks2.modify-device-system	Type your password to change or erase a disk inside this computer.

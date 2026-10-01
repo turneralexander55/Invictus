@@ -16,7 +16,7 @@
 
 pkgname=invictus-base
 pkgver=0.3.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Invictus base system: kernel, firmware, btrfs snapshots, limine boot, network, everyday command line'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
@@ -57,6 +57,9 @@ depends=(
 
   # polkit (invictus-sys authorises through it), package cache cleanup
   'polkit' 'pacman-contrib'
+  # the guard rails, on every installed machine (design-simple-mode 6.1);
+  # they bring invictus-sys, the only door to root (design 4.1)
+  'invictus-guardrails'
 
   # everyday command line
   'sudo' 'nano' 'less' 'tree' 'man-db' 'man-pages'

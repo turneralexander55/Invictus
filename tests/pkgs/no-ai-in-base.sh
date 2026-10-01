@@ -10,7 +10,7 @@
 #       bash /src/tests/pkgs/no-ai-in-base.sh /src/out/repo
 #
 # For every invictus-* package in the repo that is not an AI meta
-# (tests/pkgs/lib/ai-set.sh), `pactree -s` must contain none of the AI set,
+# (scripts/lib/ai-set.sh), `pactree -s` must contain none of the AI set,
 # and a full install of all of them together must pull none of it
 # (pacman -Sp with every one as a target). CI runs it on every repo build,
 # before publishing (.github/workflows/packages.yml), and e2e-arch.sh runs
@@ -23,8 +23,8 @@ set -euo pipefail
 [[ -f /.dockerenv || -f /run/.containerenv ]] || { echo "Run this only in a container." >&2; exit 2; }
 REPO_DIR="$(cd -- "${1:?usage: no-ai-in-base.sh REPO_DIR}" && pwd)"
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=tests/pkgs/lib/ai-set.sh
-. "$HERE/lib/ai-set.sh"
+# shellcheck source=scripts/lib/ai-set.sh
+. "$HERE/../../scripts/lib/ai-set.sh"
 [[ -f "$REPO_DIR/invictus-testing.db" ]] || { echo "No invictus-testing.db in $REPO_DIR: build the repo first." >&2; exit 2; }
 
 fail=0

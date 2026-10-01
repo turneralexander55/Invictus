@@ -1,0 +1,8 @@
+# The Invictus polkit agent's hold list (design-simple-mode G6): for these
+# action ids the password field stays off for 5 seconds while the warning
+# and the scam line are read. Custodia only; the agent reads
+# /etc/invictus/guardrails on every prompt. update-pause joins when it is
+# built (with unattended updates).
+org.freedesktop.udisks2.modify-device-system
+org.freedesktop.udisks2.modify-device-other-seat
+org.invictus.sys.guardrails-libertas

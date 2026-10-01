@@ -2,6 +2,11 @@
 # Groups 4 to 13 of tests/pkgs/run.sh (sourced; uses REPO, HERE, TMP, ok, bad).
 # shellcheck disable=SC2153 # REPO, HERE and TMP come from run.sh
 # Each check prints one ok/FAIL line.
+if [[ "${BASH_SOURCE[0]}" == "$0" ]] || ! declare -F ok bad >/dev/null || [[ -z "${REPO:-}" || -z "${TMP:-}" ]]; then
+    echo "tests/pkgs/runtime.sh is groups 4 to 13 of tests/pkgs/run.sh: run that" >&2
+    # shellcheck disable=SC2317 # exit is reached when run, not sourced
+    return 2 2>/dev/null || exit 2
+fi
 
 LUA="${LUA:-$(command -v lua5.5 || command -v lua5.4 || command -v lua || true)}"
 STUBS="$REPO/tests/hyprland-lua/stubs/hl.meta.lua"
@@ -166,8 +171,8 @@ mkdir -p "$TMP/doclib/doctor"
 cp "$REPO/scripts/doctor/hypr-check.lua" "$REPO"/tests/hyprland-lua/{mock_hl,api,hyprrequire}.lua "$TMP/doclib/doctor/"
 doctor() { # HOME, then args
     local h="$1"; shift
-    HOME="$h" XDG_CONFIG_HOME="" INVICTUS_STATE="" INVICTUS_SHARE="$SHARE" INVICTUS_LIB="$TMP/doclib" \
-        INVICTUS_DEFAULTS_SH="$REPO/scripts/lib/defaults.sh" INVICTUS_HYPRLAND=no-such-hyprland \
+    HOME="$h" XDG_CONFIG_HOME="" INVICTUS_STATE="" INVICTUS_DOCTOR_AS_ROOT="${DOC_AS_ROOT-0}" INVICTUS_SHARE="$SHARE" INVICTUS_LIB="$TMP/doclib" \
+        INVICTUS_DEFAULTS_SH="$REPO/scripts/lib/defaults.sh" INVICTUS_HYPRLAND="${DOC_HYPRLAND:-no-such-hyprland}" \
         HL_STUBS="$STUBS" LUA="$LUA" INVICTUS_PACMAN_CONF="$TMP/pacman.conf" INVICTUS_ROOT_FSTYPE=ext4 \
         bash "$DOC" "$@"
 }
@@ -213,6 +218,32 @@ echo 'hl.config({ general = { no_such_option = 1 } })' >> "$H/.config/hypr/user.
 if doctor "$H" --hypr > "$TMP/doc.log" 2>&1; then bad "doctor --hypr passed a user.lua with a bad option"
 elif grep -q "unknown config key 'general.no_such_option'" "$TMP/doc.log"; then ok "doctor --hypr: a bad option in user.lua fails and is named"
 else bad "doctor --hypr: $(cat "$TMP/doc.log")"; fi
+# H1 (Janus) and Felix: root never reads a person's ~/.config. --system (and
+# any run as root) skips the per-user checks; --user runs only them. The
+# user.lua above is broken, and a fake Hyprland records any call.
+printf '#!/bin/sh\necho called > "%s"\nexit 1\n' "$TMP/hypr-called" > "$TMP/fake-hyprland"; chmod +x "$TMP/fake-hyprland"
+rm -f "$TMP/hypr-called"; rc=0
+DOC_HYPRLAND="$TMP/fake-hyprland" doctor "$H" --post-update --system > "$TMP/doc.log" 2>&1 || rc=$?
+if [[ $rc == 0 && ! -e "$TMP/hypr-called" ]] && ! grep -qE '^(ok|FAIL|warn|note) +(hypr|defaults):' "$TMP/doc.log" && grep -q '^ok    repo:' "$TMP/doc.log"; then
+    ok "H1-doctor-system: --system runs the system checks only; a broken ~/.config is never read and Hyprland is never run"
+else bad "H1-doctor-system: rc $rc, hyprland called: $([[ -e "$TMP/hypr-called" ]] && echo yes || echo no): $(grep -E 'hypr|defaults|unknown' "$TMP/doc.log" | head -3)"; fi
+rm -f "$TMP/hypr-called"; rc=0; DOC_HYPRLAND="$TMP/fake-hyprland" doctor "$H" --user > "$TMP/doc.log" 2>&1 || rc=$?
+if [[ $rc == 1 && -e "$TMP/hypr-called" ]] && grep -q "unknown config key 'general.no_such_option'" "$TMP/doc.log" && ! grep -q '^ok    repo:' "$TMP/doc.log"; then
+    ok "H1-doctor-user: --user runs only the checks on your own files (and finds the bad option)"
+else bad "H1-doctor-user: rc $rc: $(head -5 "$TMP/doc.log")"; fi
+E="$TMP/h-root"; mkdir -p "$E"
+rc=0; DOC_AS_ROOT=1 doctor "$E" > "$TMP/doc.log" 2>&1 || rc=$?
+if [[ $rc == 0 ]] && ! grep -q 'FAIL  hypr' "$TMP/doc.log" && grep -q '^note  per-user checks skipped as root' "$TMP/doc.log"; then
+    ok "H1-doctor-root: as root the doctor skips the per-user checks (no FAIL for root's own missing ~/.config/hypr)"
+else bad "H1-doctor-root: rc $rc: $(grep -E 'FAIL|per-user' "$TMP/doc.log" | head -3)"; fi
+if [[ $EUID -eq 0 ]]; then
+    rc=0; DOC_AS_ROOT="" doctor "$E" > "$TMP/doc.log" 2>&1 || rc=$?
+    if [[ $rc == 0 ]] && grep -q '^note  per-user checks skipped as root' "$TMP/doc.log"; then ok "H1-doctor-root: the same when really run as root"
+    else bad "H1-doctor-root (real root): rc $rc"; fi
+    rc=0; DOC_AS_ROOT="" doctor "$E" --hypr > "$TMP/doc.log" 2>&1 || rc=$?
+    if [[ $rc == 2 ]]; then ok "H1-doctor-root: --hypr as root is refused (run it as yourself)"
+    else bad "H1-doctor-root: --hypr as root ran (rc $rc)"; fi
+fi
 echo
 
 # ---- 8. invictus-update --------------------------------------------------------------
@@ -234,8 +265,9 @@ update() {
     FAKE_LOG="$TMP/upd.log" HOME="$TMP/h-upd" INVICTUS_PACMAN="$TMP/fake/pacman" INVICTUS_SUDO="" \
         INVICTUS_DOCTOR="$TMP/fake/doctor" INVICTUS_PARU=no-such-paru bash "$UPD" "$@" >"$TMP/upd.out" 2>&1
 }
+want_doc="doctor --post-update"; [[ $EUID -eq 0 ]] && want_doc="doctor --post-update --system"
 rm -f "$TMP/upd.log"; rc=0; update --noconfirm || rc=$?
-if [[ $rc == 0 && "$(cat "$TMP/upd.log")" == "$(printf -- '-Syu --noconfirm\ndoctor --post-update')" ]]; then
+if [[ $rc == 0 && "$(cat "$TMP/upd.log")" == "$(printf -- '-Syu --noconfirm\n%s' "$want_doc")" ]]; then
     ok "one pacman -Syu, then invictus-doctor --post-update"
 else
     bad "update calls: rc $rc: $(cat "$TMP/upd.log")"
@@ -245,6 +277,16 @@ if [[ $rc == 1 && "$(cat "$TMP/upd.log")" == "-Syu" ]]; then ok "pacman failing 
 else bad "pacman failure: rc $rc, calls: $(cat "$TMP/upd.log")"; fi
 rm -f "$TMP/upd.log"; rc=0; FAKE_DOCTOR_RC=1 update || rc=$?
 if [[ $rc == 3 ]]; then ok "a doctor problem after a good update exits 3"; else bad "doctor failure: rc $rc"; fi
+# H1: --system (the root helper's call) runs the doctor's system checks and
+# touches nothing in a home: no waybar cache, no paru.
+mkdir -p "$TMP/h-upd/.cache"; : > "$TMP/h-upd/.cache/waybar-updates.cache"
+rm -f "$TMP/upd.log"; rc=0; update --noconfirm --system || rc=$?
+if [[ $rc == 0 && "$(cat "$TMP/upd.log")" == "$(printf -- '-Syu --noconfirm\ndoctor --post-update --system')" && -e "$TMP/h-upd/.cache/waybar-updates.cache" ]]; then
+    ok "H1-update-system: invictus-update --system runs -Syu, then the doctor's system checks, and leaves the home alone"
+else bad "H1-update-system: rc $rc: $(paste -sd'|' "$TMP/upd.log" 2>/dev/null)"; fi
+rc=0; update --system --aur || rc=$?
+if [[ $rc == 2 ]]; then ok "H1-update-system: --aur is refused with --system (AUR builds are per person)"
+else bad "H1: --system --aur ran (rc $rc)"; fi
 if grep -qE '\bgit\b|stash' <(grep -v '^#' "$UPD"); then bad "invictus-update mentions git or stash"
 else ok "invictus-update has no git and no stash"; fi
 # No shipped or dev script may run pacman -Sy without u (partial upgrade),
@@ -544,10 +586,10 @@ chmod +x "$TMP/fake/sysctl" "$TMP/fake/inhibit"
 pending() {
     FAKE_LOG="$TMP/px.log" INVICTUS_PACMAN="$TMP/fake/pacman" INVICTUS_SYSTEMCTL="$TMP/fake/sysctl" \
         INVICTUS_INHIBIT="$TMP/fake/inhibit" INVICTUS_EXTRAS_PENDING="$TMP/px-pending" \
-        INVICTUS_EXTRAS_LIST="$REPO/scripts/lib/extras.list" bash "$PX" >"$TMP/px.out" 2>&1
+        INVICTUS_EXTRAS_LIST="$REPO/scripts/lib/extras.list" INVICTUS_LIB="$REPO/scripts" bash "$PX" >"$TMP/px.out" 2>&1
 }
 printf 'invictus-office\ninvictus-gaming\n' > "$TMP/px-pending"; rm -f "$TMP/px.log"; rc=0; pending || rc=$?
-if [[ $rc == 0 && "$(cat "$TMP/px.log")" == "$(printf 'inhibit\n-Syu --needed --noconfirm invictus-office invictus-gaming\nsystemctl disable invictus-extras.service')" \
+if [[ $rc == 0 && "$(cat "$TMP/px.log")" == "$(printf 'inhibit\n-Syu --needed --noconfirm -- invictus-office invictus-gaming\nsystemctl disable invictus-extras.service')" \
       && ! -e "$TMP/px-pending" ]]; then
     ok "pending extras: one pacman -Syu --needed under a shutdown inhibitor, then the file goes and the service is disabled"
 else

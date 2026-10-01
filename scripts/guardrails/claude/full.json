@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "defaultMode": "default",
+    "disableBypassPermissionsMode": "disable",
+    "disableAutoMode": "disable",
+    "deny": [
+      "Bash(sudo *)",
+      "Bash(rm -rf *)",
+      "Bash(dd *)",
+      "Bash(mkfs*)",
+      "Bash(btrfs subvolume delete *)",
+      "Bash(makepkg *)",
+      "Bash(pacman *)",
+      "Read(~/.claude/.credentials.json)",
+      "Read(~/.ssh/**)",
+      "Read(~/.local/share/keyrings/**)",
+      "Read(~/.config/invictus/windows/**)",
+      "Read(~/.config/winapps/**)",
+      "Edit(//etc/**)",
+      "Edit(//boot/**)",
+      "Edit(//usr/**)"
+    ]
+  }
+}

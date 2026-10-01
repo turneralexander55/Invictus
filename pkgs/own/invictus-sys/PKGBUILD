@@ -1,0 +1,60 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# invictus-sys, the only door to root (design 4.1; design-no-ai.md N4.6:
+# the always-installed half of the old invictus-assistant, never anything
+# from the AI set). No desktop dependencies: invictus-base pulls it through
+# invictus-guardrails, invictus-tools (so every desktop) depends on it. Files come from this repo (scripts/sys, scripts/lib) at
+# the same commit as this PKGBUILD: bump pkgrel when any of them changes.
+#
+#   /usr/bin/invictus-sys                      what people, Settings and Moneta call
+#   /usr/lib/invictus/invictus-sys             the root half, run by pkexec
+#   /usr/lib/invictus/lib/sys-verbs.sh         the verb table both halves check
+#   /usr/lib/invictus/lib/pacman.sh            package names, the -Syu --needed install
+#                                              (pending-extras uses it too)
+#   /usr/lib/invictus/lib/acta.sh              the Acta journal entry
+#   /usr/lib/invictus/lib/guardrails-state.sh  how every guard reads the rails
+#   /usr/lib/invictus/lib/ai-set.sh            the AI set (ai on|off and the tests)
+#   /usr/lib/invictus/ai-signout               ai off's per-person part, run as each person
+#   /usr/lib/invictus/ai-pending               ai on's install when it ran offline,
+#                                              run by invictus-ai-pending.service
+#   /usr/share/polkit-1/actions/org.invictus.sys.policy   one action per verb
+#   /usr/share/invictus/sys/services.allow     units the service verb may change
+#   /usr/share/invictus/sys/protected-packages never removed; Custodia's HoldPkg
+#
+# Reference: docs/invictus-sys.md.
+
+pkgname=invictus-sys
+pkgver=0.2.0
+pkgrel=3
+pkgdesc='Invictus system helper: the fixed verbs that change the system, each behind its own polkit prompt'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=(
+  # (coreutils, gawk, grep, sed, findutils, systemd: Arch's base)
+  'bash' 'polkit' 'pacman' 'snapper' 'util-linux'
+)
+optdepends=(
+  'invictus-tools: the update verb runs invictus-update (pacman -Syu, then the doctor)'
+  'snap-pac: snapshots around every pacman transaction (otherwise invictus-sys takes its own pair)'
+  'limine-snapper-sync: rollback puts back the safety copy you booted into'
+)
+
+package() {
+  local root="$startdir/../../.."
+  local lib="$pkgdir/usr/lib/invictus"
+
+  install -Dm755 "$root/scripts/sys/invictus-sys.sh" "$pkgdir/usr/bin/invictus-sys"
+  install -Dm755 "$root/scripts/sys/invictus-sys-root.sh" "$lib/invictus-sys"
+  install -Dm644 -t "$lib/lib" "$root/scripts/lib/sys-verbs.sh" "$root/scripts/lib/pacman.sh" \
+    "$root/scripts/lib/acta.sh" "$root/scripts/lib/guardrails-state.sh" "$root/scripts/lib/ai-set.sh"
+  install -Dm755 "$root/scripts/sys/ai-signout.sh" "$lib/ai-signout"
+  install -Dm755 "$root/scripts/sys/ai-pending.sh" "$lib/ai-pending"
+  # Not enabled here: ai on enables it when the install has to wait.
+  install -Dm644 "$root/scripts/systemd/invictus-ai-pending.service" \
+    "$pkgdir/usr/lib/systemd/system/invictus-ai-pending.service"
+  install -Dm644 "$root/scripts/sys/org.invictus.sys.policy" \
+    "$pkgdir/usr/share/polkit-1/actions/org.invictus.sys.policy"
+  install -Dm644 -t "$pkgdir/usr/share/invictus/sys" \
+    "$root/scripts/sys/services.allow" "$root/scripts/sys/protected-packages"
+}

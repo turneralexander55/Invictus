@@ -17,13 +17,16 @@
 
 pkgname=invictus-tools
 pkgver=0.1.0
-pkgrel=3
+pkgrel=5
 pkgdesc='Invictus commands: theme, motion, update, doctor, and the scripts the desktop runs'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
 license=('GPL-3.0-or-later')
 depends=(
   'bash' 'python' 'lua' 'invictus-branding'
+  # pending-extras and the doctor read /usr/lib/invictus/lib/{pacman,
+  # guardrails-state}.sh; Settings and the desktop call invictus-sys
+  'invictus-sys'
   # waybar modules (checkupdates, free), the cheatsheet and pickers
   # (rofi, notify-send), pkill, gsettings for the GTK look
   'pacman-contrib' 'libnotify' 'rofi' 'util-linux' 'procps-ng' 'glib2'

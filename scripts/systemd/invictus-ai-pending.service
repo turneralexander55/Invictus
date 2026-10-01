@@ -1,0 +1,21 @@
+[Unit]
+Description=Invictus: install the AI assistant chosen while there was no internet
+Documentation=file:///usr/lib/invictus/ai-pending
+ConditionPathExists=/var/lib/invictus/ai-install-pending
+Wants=network-online.target
+After=network-online.target
+# Same pattern as invictus-extras.service: Wi-Fi often comes up only after
+# someone logs in, so try every 10 minutes, at most 12 times per start.
+StartLimitIntervalSec=3h
+StartLimitBurst=12
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/invictus/ai-pending
+Restart=on-failure
+RestartSec=10min
+# 2: pacman failed for a reason other than the download; retrying will not help.
+RestartPreventExitStatus=2
+
+[Install]
+WantedBy=multi-user.target

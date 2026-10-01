@@ -1,0 +1,16 @@
+# Custodia: removing a package that keeps the computer working pauses
+# (design-simple-mode G4). pacman's own HoldPkg question decides (the list
+# is in /etc/pacman.d/invictus-guardrails.conf under Custodia); this prints
+# the plain warning and the scam line first. Under Libertas it prints
+# nothing. Always exits 0. The Target lines come from protected-packages
+# when the package is built.
+[Trigger]
+Operation = Remove
+Type = Package
+@TARGETS@
+
+[Action]
+Description = Checking for packages that keep this computer working...
+When = PreTransaction
+Exec = /usr/lib/invictus/guardrails hold-warning
+NeedsTargets
