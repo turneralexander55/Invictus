@@ -56,6 +56,12 @@ applies the theme in use (Dusk on a new home), Calm and light apps.
   scale, transform), a catch-all for screens plugged in later, and workspace
   1 on the main screen.
 
+- **Wi-Fi passwords are the one exception** (Alex, 2026-10-01,
+  `team/decisions.md`): NetworkManager keeps them in its system-owned,
+  root-only connection files, so the computer joins Wi-Fi before anyone logs
+  in. Every other secret stays in the person's keyring. (The Wi-Fi screen
+  itself is a later release.)
+
 ## The provider layer
 
 The contract is `docs/moneta-panel.md` (Vulcan, branch `invictus-panel`);
