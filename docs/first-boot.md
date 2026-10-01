@@ -3,7 +3,7 @@
 The wizard a person sees the first time they log in (design.md 2.3; Atrium's
 screens in simple-mode.md 3.2; the assistant screen in no-ai.md 2). Built in
 Beta 0.2.0 part 4 by Vulcan 2 (2026-10-01). Build notes: design.md 11, "First
-start".
+start" (notes 38 to 46).
 
 ## Pieces
 
@@ -39,12 +39,13 @@ applies the theme in use (Dusk on a new home), Calm and light apps.
 
 ## Rules it keeps
 
-- **Never sees or stores a token.** Claude's sign-in is Claude Code's own
-  (`invictus-provider login claude-code`); the command then only asks whether
+- **Never sees or stores a token.** Claude's sign-in is Claude Code's own:
+  the `login` argv of the shipped `/usr/share/invictus/providers/claude-code/provider.toml`
+  (a file in the home is never read for it, and the program must be under
+  `/usr/bin`), run in a terminal. The command then only asks whether
   `~/.claude/.credentials.json` exists. A key for another AI service is read
-  from stdin and passed on stdin to `invictus-provider use ... --key-stdin`,
-  which keeps it in the keyring; it is never on a command line or in a file
-  we write.
+  from stdin and passed on stdin to `invictus-provider key set`, which keeps
+  it in the keyring; it is never on a command line or in a file we write.
 - **Root only through invictus-sys**, labelled `--request first-start` in
   Acta: `ai on` (the password, org.invictus.sys.ai-on, never kept), `ai off`
   (No AI after AI was on), `snapshot "First boot done"`.
@@ -55,40 +56,42 @@ applies the theme in use (Dusk on a new home), Calm and light apps.
   scale, transform), a catch-all for screens plugged in later, and workspace
   1 on the main screen.
 
-## Provider interface (for Vulcan's provider layer, `invictus-panel`)
+## The provider layer
 
-First start never configures a provider itself. It calls one command, which
-the provider layer ships in `invictus-moneta` (so it exists only after
-`invictus-sys ai on` has installed the AI set). Written 2026-10-01 against a
-stub, because the provider layer was not pushed yet; the tests fake it
-(`tests/pkgs/firstboot.sh`). Agree changes here.
+The contract is `docs/moneta-panel.md` (Vulcan, branch `invictus-panel`);
+first start calls only what it documents, after `invictus-sys ai on` has
+installed the AI set (and `invictus-provider` with it):
 
-```
-invictus-provider use claude-code
-invictus-provider use openai-compatible --address ADDRESS [--key-stdin]
-invictus-provider use local
-invictus-provider use none
-invictus-provider login claude-code
-```
-
-| Call | Must |
+| Choice | Calls |
 |---|---|
-| `use NAME` | Make NAME the person's provider. Exit 0 when set up; non-zero otherwise (first start shows `Can't reach ADDRESS...` for a home AI system and lets the person carry on) |
-| `use claude-code` | Also set `DISABLE_AUTOUPDATER=1` for Claude Code, so the package is the only update path (design.md 2.3; name checked on code.claude.com/docs/en/setup, "Disable auto-updates", 2026-10-01). Where is the layer's call: the managed settings `env`, or `~/.config/environment.d/`. `DISABLE_UPDATES` also blocks `claude update`; worth considering, since the package owns updates |
-| `--address` | A host name (`atlas.local`, `atlas.local:11434`) or an `http(s)://` URL; first start has already refused anything else |
-| `--key-stdin` | Read the key from stdin to EOF, store it in the keyring (`secret-tool`, the layer's own attributes), never on disk or argv |
-| `use local` | The local model provider (D15), offered only when `/usr/share/invictus/providers/local/` exists |
-| `login claude-code` | Run the provider's `login` from `provider.toml` with no terminal: the browser opens, and the command returns when the sign-in ends (any exit code; first start then checks the credentials file itself) |
+| Claude | `invictus-provider set claude-code`, then the provider's `login` in a terminal |
+| A home AI system | `invictus-provider set openai-compatible --endpoint URL`. What the person types becomes the URL: `atlas.local` is `http://atlas.local:11434/v1` (an ollama-style server); a full `http(s)://` address is used as typed. No key |
+| Another AI service | `set openai-compatible --endpoint URL` (a bare host becomes `https://HOST/v1`), then `key set openai-compatible` with the key on stdin |
+| No AI | nothing here |
 
-When `ai on` is pending (no connection), the tool is not installed yet:
-first start records the choice (provider name and address, never a key) in
-`~/.local/state/invictus/first-boot.json` (`provider`, `provider_pending`).
-The provider layer should read it the first time it runs without a provider,
-or Settings > Moneta should offer it. Open question for Vulcan.
+`invictus-provider` exits 2 or 3 (an endpoint it will not take, or not
+allowed): the screen says `That address can't be used...`. Exit 1 (the
+keyring refused the key): `The key couldn't be saved...`. Moneta stays on in
+both cases and the person can carry on with `Later`.
+
+Updates: Claude Code's `DISABLE_UPDATES=1` is in the managed profiles and
+the package's wrapper (the panel's side); first start sets nothing for it.
+
+**Offline.** When `ai on` comes back `pending`, the packages and
+`invictus-provider` arrive later. First start keeps the choice in
+`~/.local/state/invictus/first-boot.json` (`provider: {choice, endpoint}`,
+`provider_pending: true`), never the key. Every session start runs
+`invictus-first-boot start --if-pending` from Hyprland's autostart, and
+`start` first runs `apply-pending`: once `invictus-provider` is installed
+and AI still reads on, it makes the same `set` call and clears the flag (if
+AI was turned off meanwhile, the choice is dropped). A key for another
+service is never kept, so that person adds it in Settings > Moneta, which
+shows the Not signed in card; a Claude person signs in from Help's card
+(no-ai.md 2.3). No change to the panel is needed.
 
 ## Tests
 
-- `tests/pkgs/firstboot.sh` (group 17 of `tests/pkgs/run.sh`): the command
+- `tests/pkgs/firstboot.sh` (group 18 of `tests/pkgs/run.sh`): the command
   with every tool faked at the seam; monitors.lua through the stub config
   check.
 - `tests/firstboot/qml.sh` (container, CI job `firstboot-qml`): qmllint with

@@ -15,16 +15,15 @@ Card {
     property string picked: ""           // "", "ai" or "none": never preselected
     property string provider: "claude"   // inside the AI card: preselected (D13)
     property bool otherOpen: false
-    property bool homeThisComputer: false
     property bool failedSignIn: false    // 2.2 step 4: Not signed in yet
-    property string unreachable: ""      // a home AI address that did not answer
+    property string addressProblem: ""   // the provider layer did not take the address or key
     property string problem: ""
 
     readonly property bool aiOnAlready: wiz && wiz.st && wiz.st.ai === "on"
     readonly property bool ready: picked === "none"
         || (picked === "ai" && (provider === "claude"
-            || (provider === "home" && (homeThisComputer || address.text.trim() !== ""))
-            || (provider === "other" && key.text !== "")))
+            || (provider === "home" && address.text.trim() !== "")
+            || (provider === "other" && otherAddress.text.trim() !== "" && key.text !== "")))
 
     wide: true
     step: wiz ? wiz.stepLine : ""
@@ -33,12 +32,12 @@ Card {
     nextLabel: picked === "ai" && provider === "claude" ? "Sign in to Claude" : "Continue"
     nextEnabled: ready
     backVisible: wiz && wiz.index > 0
-    laterLabel: failedSignIn || unreachable !== "" ? "Later" : ""
+    laterLabel: failedSignIn || addressProblem !== "" ? "Later" : ""
     note: busy ? "Adding Moneta. This can take a few minutes."
         : failedSignIn ? "Not signed in yet. You can try again now, or sign in later from Help."
-        : unreachable !== "" ? "Can't reach " + unreachable + ". Check the address, or ask Support."
+        : addressProblem !== "" ? addressProblem
         : problem
-    noteColor: problem !== "" && !busy && !failedSignIn && unreachable === "" ? theme.pompeii : theme.parchment
+    noteColor: problem !== "" && !busy && !failedSignIn && addressProblem === "" ? theme.pompeii : theme.parchment
 
     Component.onCompleted: {
         // Only tests/firstboot/qml.sh's fake command sends render_preset, to
@@ -51,7 +50,7 @@ Card {
         picked = "ai"
         if (p) provider = p
         failedSignIn = false
-        unreachable = ""
+        addressProblem = ""
         problem = ""
     }
 
@@ -73,11 +72,8 @@ Card {
             return
         }
         const args = ["assistant", provider]
-        if (provider === "home") {
-            if (homeThisComputer) args.push("--this-computer")
-            else args.push("--address", address.text.trim())
-        }
-        if (provider === "other" && otherAddress.text.trim() !== "") args.push("--address", otherAddress.text.trim())
+        if (provider === "home") args.push("--address", address.text.trim())
+        if (provider === "other") args.push("--address", otherAddress.text.trim())
         busy = true
         wiz.call(args, provider === "other" ? key.text : "", (code, o) => {
             busy = false
@@ -95,8 +91,15 @@ Card {
                 }
                 return
             }
-            if (o.result === "provider-failed" && provider === "home" && !homeThisComputer) {
-                unreachable = address.text.trim()
+            // Moneta is on; only its settings did not take
+            wiz.reload()
+            wiz.choice = "ai"
+            if (o.result === "provider-refused") {
+                addressProblem = "That address can't be used. Check it, or ask Support."
+                return
+            }
+            if (o.result === "provider-failed") {
+                addressProblem = "The key couldn't be saved. Try again, or ask Support."
                 return
             }
             problem = "Moneta couldn't be added. Try again, or ask Support."
@@ -192,16 +195,7 @@ Card {
                     id: address
                     theme: step.theme
                     Layout.fillWidth: true
-                    visible: !step.homeThisComputer
                     placeholder: "Address, like atlas.local"
-                }
-                SetupButton {
-                    theme: step.theme
-                    visible: step.provider === "home" && step.wiz && step.wiz.st && step.wiz.st.this_computer
-                    implicitHeight: 44
-                    size: 15
-                    label: step.homeThisComputer ? "Use an address" : "Use this computer"
-                    onClicked: { step.homeThisComputer = !step.homeThisComputer; step.pickAi("home") }
                 }
             }
             Item {
@@ -260,7 +254,7 @@ Card {
             picked: step.picked === "none"
             title: "No AI"
             line: "Short how-to guides you can search, and Support when you need a person. Nothing on this computer uses AI."
-            onPick: { step.picked = "none"; step.failedSignIn = false; step.unreachable = ""; step.problem = "" }
+            onPick: { step.picked = "none"; step.failedSignIn = false; step.addressProblem = ""; step.problem = "" }
             picture: Rectangle {
                 anchors.centerIn: parent
                 width: 250

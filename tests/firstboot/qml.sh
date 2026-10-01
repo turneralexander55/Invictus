@@ -136,7 +136,7 @@ state_json() {  # state_json FLAVOR NMON STEPS PRESET
     (( $2 > 1 )) && mons+=',{"name":"HEADLESS-2","description":"","width":1920,"height":1080,"refresh":60.0,"x":1920,"y":0,"scale":1.0,"transform":0,"laptop":false}'
     cat <<EOF
 {"flavor":"$1","monitors":[$mons],"auto_main":"HEADLESS-1","online":true,"ai":"off","signed_in":false,
- "this_computer":false,"themes":[{"id":"dusk","name":"Dusk","current":true},{"id":"porphyry","name":"Porphyry","current":false},
+"themes":[{"id":"dusk","name":"Dusk","current":true},{"id":"porphyry","name":"Porphyry","current":false},
  {"id":"aegean","name":"Aegean","current":false},{"id":"alexandria","name":"Alexandria","current":false}],
  "motion":"showcase","apps":"dark","tokens":{},"steps":$3,"later":["wifi"],"again":false,"assistant":null
  ${4:+,\"render_preset\":$4}}

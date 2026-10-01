@@ -1,15 +1,15 @@
 # shellcheck shell=bash
-# Group 17 of tests/pkgs/run.sh (sourced; uses REPO, TMP, ALL, LUA, STUBS,
+# Group 18 of tests/pkgs/run.sh (sourced; uses REPO, TMP, ALL, LUA, STUBS,
 # ok, bad): invictus-first-boot, the first-start wizard's logic (design.md
 # 2.3, no-ai.md 2, simple-mode.md 3.2), with every command it calls faked at
 # the seam: hyprctl, invictus-sys, invictus-provider (Vulcan's provider
-# layer, docs/first-boot.md), invictus-theme, invictus-motion, gsettings,
+# layer, docs/moneta-panel.md), the terminal, invictus-theme, invictus-motion, gsettings,
 # nmcli, invictus-doctor and quickshell. The screens themselves are tested
 # in the real toolkit by tests/firstboot/qml.sh (container).
 # shellcheck disable=SC2153,SC2015,SC2016 # REPO, TMP, ALL, STUBS come from run.sh; ok || bad on purpose; the fakes' bodies expand when they run
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]] || ! declare -F ok bad >/dev/null || [[ -z "${REPO:-}" || -z "${TMP:-}" ]]; then
-    echo "tests/pkgs/firstboot.sh is group 17 of tests/pkgs/run.sh: run that" >&2
+    echo "tests/pkgs/firstboot.sh is group 18 of tests/pkgs/run.sh: run that" >&2
     # shellcheck disable=SC2317 # exit is reached when run, not sourced
     return 2 2>/dev/null || exit 2
 fi
@@ -35,10 +35,18 @@ if [[ "$3 $4" == "ai off" && $rc == 0 ]]; then echo off > "$FAKE_DIR/ai"; fi
 (( rc == 0 )) && echo "invictus-sys: $res snapshot=$snap"
 exit "$rc"'
 # invictus-provider: logs argv; whatever comes on stdin goes to its own file
+# invictus-provider as docs/moneta-panel.md documents it: set NAME [--endpoint
+# URL], key set NAME (one line on stdin). Logs argv; the key to its own file.
 fake invictus-provider 'echo "invictus-provider $*" >> "$FAKE_DIR/log"
-if [[ " $* " == *" --key-stdin "* ]]; then cat > "$FAKE_DIR/provider-stdin"; fi
-if [[ "$1" == login && "${FAKE_LOGIN_OK:-0}" == 1 ]]; then mkdir -p "$HOME/.claude"; echo "{\"t\":\"SECRET-TOKEN-MARK\"}" > "$HOME/.claude/.credentials.json"; chmod 000 "$HOME/.claude/.credentials.json"; fi
-exit "${FAKE_PROVIDER_RC:-0}"'
+case "$1 $2" in
+    "key set") IFS= read -r k; printf "%s" "$k" > "$FAKE_DIR/provider-stdin"; exit "${FAKE_KEY_RC:-0}" ;;
+    "set "*) exit "${FAKE_PROVIDER_RC:-0}" ;;
+    *) exit 2 ;;
+esac'
+# the terminal the Claude sign-in runs in; "signs in" when FAKE_LOGIN_OK=1
+fake terminal 'echo "terminal $*" >> "$FAKE_DIR/log"
+if [[ "${FAKE_LOGIN_OK:-0}" == 1 ]]; then mkdir -p "$HOME/.claude"; echo "{\"t\":\"SECRET-TOKEN-MARK\"}" > "$HOME/.claude/.credentials.json"; chmod 000 "$HOME/.claude/.credentials.json"; fi
+exit 0'
 fake invictus-theme 'echo "invictus-theme $*" >> "$FAKE_DIR/log"
 [[ "$1" == list ]] && printf "* dusk Dusk\n  porphyry Porphyry\n  aegean Aegean\n  alexandria Alexandria\n"
 exit 0'
@@ -70,6 +78,7 @@ fb() {   # fb ARGS...: run the wizard command in $H; stdout to $H/out
         INVICTUS_HYPRCTL="$FF/hyprctl" INVICTUS_SYS_CMD="$FF/invictus-sys" INVICTUS_PROVIDER_CMD="$FF/invictus-provider" \
         INVICTUS_THEME_CMD="$FF/invictus-theme" INVICTUS_MOTION_CMD="$FF/invictus-motion" INVICTUS_GSETTINGS="$FF/gsettings" \
         INVICTUS_NMCLI="$FF/nmcli" INVICTUS_DOCTOR_CMD="$FF/invictus-doctor" INVICTUS_QUICKSHELL="$FF/quickshell" \
+        INVICTUS_TERMINAL="$FF/terminal" \
         python3 "$FB" "$@" > "$H/out" 2> "$H/err"
 }
 jq_() { python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(eval(sys.argv[2], {'d': d}))" "$H/out" "$1" 2>/dev/null; }
@@ -212,7 +221,7 @@ fb look nero calm light; rc=$?
 [[ $rc == 2 ]] && ! grep -q "apply\|set" "$H/log" && ok "look refuses a theme invictus-theme does not list; nothing applied" \
     || bad "look with an unknown theme: rc $rc $(cat "$H/log")"
 
-# ---- step 3: the assistant (no-ai.md 2) -----------------------------------------------
+# ---- step 3: the assistant (no-ai.md 2), against docs/moneta-panel.md ----------------
 new_home none atrium
 fb assistant none
 [[ ! -s "$H/log" ]] && grep -q '"result": "ok"' "$H/out" \
@@ -225,8 +234,9 @@ grep -qx "invictus-sys --request first-start ai off" "$H/log" && [[ "$(cat "$H/a
 new_home claude atrium
 fb assistant claude
 if [[ "$(head -1 "$H/log")" == "invictus-sys --request first-start ai on" \
-      && "$(sed -n 2p "$H/log")" == "invictus-provider use claude-code" ]] && grep -q '"result": "ok"' "$H/out"; then
-    ok "NA6/N1 at first start: Claude asks the password through invictus-sys ai on (org.invictus.sys.ai-on), then the provider layer"
+      && "$(sed -n 2p "$H/log")" == "invictus-provider set claude-code" && "$(wc -l < "$H/log")" == 2 ]] \
+   && grep -q '"result": "ok"' "$H/out"; then
+    ok "NA6/N1 at first start: Claude asks the password through invictus-sys ai on (org.invictus.sys.ai-on), then invictus-provider set claude-code"
 else
     bad "claude flow: $(cat "$H/log" "$H/out")"
 fi
@@ -235,55 +245,94 @@ FAKE_SYS_RC=126 fb assistant claude
 grep -q '"result": "cancelled"' "$H/out" && ! grep -q invictus-provider "$H/log" && [[ "$(cat "$H/ai")" == off ]] \
     && [[ ! -e "$H/.local/state/invictus/first-boot.json" ]] \
     && ok "a cancelled password changes nothing: no provider, AI still off, nothing recorded" || bad "cancel: $(cat "$H/log" "$H/out")"
-new_home pending atrium
-FAKE_SYS_RESULT=pending fb assistant claude
-grep -q '"result": "pending"' "$H/out" && ! grep -q invictus-provider "$H/log" \
-    && python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['provider_pending'] and d['provider']['name']=='claude-code'" "$H/.local/state/invictus/first-boot.json" \
-    && ok "offline (ai on pending): the choice is kept for later, the provider is not called yet" || bad "pending: $(cat "$H/log" "$H/out")"
 
 new_home other atrium
 KEY="sk-test-$RANDOM-not-a-real-key"
-printf '%s' "$KEY" | fb assistant other --address https://api.example.org/v1
+printf '%s\n' "$KEY" | fb assistant other --address https://api.example.org/v1
 if [[ "$(cat "$H/provider-stdin" 2>/dev/null)" == "$KEY" ]] && ! grep -q -- "$KEY" "$H/log" \
    && ! grep -rq -- "$KEY" "$H/.local" "$H/.config" "$H/out" "$H/err" \
-   && grep -qx "invictus-provider use openai-compatible --address https://api.example.org/v1 --key-stdin" "$H/log"; then
-    ok "S2: another service's key goes only to the provider layer's stdin: not on any command line, not in any file we write"
+   && [[ "$(sed -n 2p "$H/log")" == "invictus-provider set openai-compatible --endpoint https://api.example.org/v1" \
+      && "$(sed -n 3p "$H/log")" == "invictus-provider key set openai-compatible" ]]; then
+    ok "S2: another service: set --endpoint, then the key on key set's stdin only: not on any command line, not in any file we write"
 else
     bad "key handling: $(cat "$H/log")"
 fi
 new_home home atrium
 fb assistant home --address atlas.local
-grep -qx "invictus-provider use openai-compatible --address atlas.local" "$H/log" \
-    && ok "a home AI system: the address goes to the provider layer (openai-compatible, chat only)" || bad "home: $(cat "$H/log")"
+grep -qx "invictus-provider set openai-compatible --endpoint http://atlas.local:11434/v1" "$H/log" && ! grep -q "key set" "$H/log" \
+    && ok "a home AI system: atlas.local becomes http://atlas.local:11434/v1 for set --endpoint; no key" || bad "home: $(cat "$H/log")"
+new_home home2 atrium
+fb assistant home --address http://192.168.1.20:8080/v1
+grep -qx "invictus-provider set openai-compatible --endpoint http://192.168.1.20:8080/v1" "$H/log" \
+    && ok "a full address is passed as typed" || bad "home URL: $(cat "$H/log")"
+new_home refused atrium
+FAKE_PROVIDER_RC=3 fb assistant home --address atlas.local
+grep -q '"result": "provider-refused"' "$H/out" && ok "invictus-provider exit 3 (or 2): provider-refused, so the screen says the address can't be used" \
+    || bad "refused provider: $(cat "$H/out")"
+new_home keyfail atrium
+printf 'k\n' | FAKE_KEY_RC=1 fb assistant other --address https://api.example.org/v1
+grep -q '"result": "provider-failed"' "$H/out" && ok "the keyring refusing the key (exit 1): provider-failed" || bad "key fail: $(cat "$H/out")"
 : > "$H/log"; echo off > "$H/ai"
 all2=0
-for a in "home" "home --address atlas.local;id" "home --address -x" "claude --address atlas.local" "other --this-computer" "generic-cli"; do
+for a in "home" "other" "home --address atlas.local;id" "home --address -x" "claude --address atlas.local" "home --this-computer" "generic-cli"; do
     # shellcheck disable=SC2086 # split on purpose
     fb assistant $a < /dev/null; rc=$?
     [[ $rc == 2 ]] || { bad "assistant $a: exit $rc, expected 2"; all2=1; }
 done
 [[ $all2 == 0 && ! -s "$H/log" ]] && ok "SM10: bad choices are refused before any password (no generic-cli, no odd address); nothing called" \
     || bad "refused choices still called: $(cat "$H/log")"
-new_home here atrium
-mkdir -p "$TMP/fbshare/providers/local"
-fb assistant home --this-computer
-grep -qx "invictus-provider use local" "$H/log" && ok "a home AI on this computer: the local provider" || bad "this computer: $(cat "$H/log")"
-rmdir "$TMP/fbshare/providers/local" "$TMP/fbshare/providers"
+
+# Offline: ai on is pending, invictus-provider is not installed yet.
+new_home pending atrium
+printf 'k-%s\n' "$RANDOM" > "$H/key"
+FAKE_SYS_RESULT=pending fb assistant other --address https://api.example.org/v1 < "$H/key"
+grep -q '"result": "pending"' "$H/out" && ! grep -q invictus-provider "$H/log" \
+    && python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['provider_pending'] and d['provider']=={'choice':'other','endpoint':'https://api.example.org/v1'}" "$H/.local/state/invictus/first-boot.json" \
+    && ! grep -rq -- "$(cat "$H/key")" "$H/.local" \
+    && ok "offline (ai on pending): the choice and endpoint are kept, never the key; the provider is not called yet" || bad "pending: $(cat "$H/log" "$H/out")"
+: > "$H/log"
+HOME="$H" INVICTUS_STATE="" XDG_STATE_HOME="" XDG_CONFIG_HOME="" INVICTUS_AI_FILE="$H/ai" INVICTUS_PROVIDER_CMD=/nonexistent \
+    python3 "$FB" apply-pending > "$H/out" 2>/dev/null
+grep -q "waiting for the packages" "$H/out" && ! grep -q invictus-provider "$H/log" \
+    && ok "apply-pending before the packages arrive: waits, calls nothing" || bad "apply-pending early: $(cat "$H/out")"
+fb start --if-pending
+if grep -qx "invictus-provider set openai-compatible --endpoint https://api.example.org/v1" "$H/log" && ! grep -q "key set" "$H/log" \
+   && python3 -c "import json,sys; assert not json.load(open(sys.argv[1]))['provider_pending']" "$H/.local/state/invictus/first-boot.json"; then
+    ok "the next session start (Hyprland autostart, start) sets the kept choice up once invictus-provider is in; the key is left for Settings"
+else
+    bad "pending pickup: $(cat "$H/log")"
+fi
+: > "$H/log"; fb start --if-pending
+! grep -q invictus-provider "$H/log" && ok "a picked-up choice is set up once, not at every session" || bad "pending applied twice"
+new_home pending2 atrium
+FAKE_SYS_RESULT=pending fb assistant claude
+echo off > "$H/ai"; : > "$H/log"
+fb apply-pending
+grep -q '"result": "dropped: AI is off"' "$H/out" && ! grep -q invictus-provider "$H/log" \
+    && ok "a kept choice is dropped if AI was turned off meanwhile" || bad "pending after ai off: $(cat "$H/out" "$H/log")"
 
 # ---- sign-in: never sees the token -----------------------------------------------------
 new_home signin atrium
 fb signin
-grep -q '"signed_in": false' "$H/out" && grep -qx "invictus-provider login claude-code" "$H/log" \
-    && ok "sign-in runs the provider's own login; no credentials file: not signed in" || bad "signin none: $(cat "$H/out")"
+grep -q '"signed_in": false' "$H/out" && [[ ! -s "$H/log" ]] \
+    && ok "sign-in with no shipped claude-code provider (AI pending): no terminal, not signed in" || bad "signin none: $(cat "$H/out" "$H/log")"
+mkdir -p "$TMP/fbshare/providers/claude-code" "$H/.config/invictus/providers/claude-code"
+echo 'login = ["/usr/bin/claude", "auth", "login"]' > "$TMP/fbshare/providers/claude-code/provider.toml"
+echo 'login = ["/bin/sh", "-c", "touch /tmp/pwned"]' > "$H/.config/invictus/providers/claude-code/provider.toml"
 FAKE_LOGIN_OK=1 fb signin
-if grep -q '"signed_in": true' "$H/out" && ! grep -rq SECRET-TOKEN-MARK "$H/out" "$H/err" "$H/.local"; then
-    ok "never sees the token: an unreadable (mode 000) credentials file counts as signed in, its content goes nowhere"
+if grep -qx "terminal --class invictus-signin --title Sign in to Claude /usr/bin/claude auth login" "$H/log" \
+   && grep -q '"signed_in": true' "$H/out" && ! grep -rq SECRET-TOKEN-MARK "$H/out" "$H/err" "$H/.local"; then
+    ok "never sees the token: the shipped provider's login runs in a terminal (a home provider file is ignored); a mode 000 credentials file counts as signed in"
 else
-    bad "signin with a credentials file: $(cat "$H/out" "$H/err")"
+    bad "signin with a credentials file: $(cat "$H/log" "$H/out" "$H/err")"
 fi
 fb state
 grep -q SECRET-TOKEN-MARK "$H/out" && bad "state printed the token" || ok "state says signed in without the token"
 chmod 600 "$H/.claude/.credentials.json"
+echo 'login = ["sh", "-c", "x"]' > "$TMP/fbshare/providers/claude-code/provider.toml"
+: > "$H/log"; fb signin
+[[ ! -s "$H/log" ]] && ok "a login command outside /usr/bin is not run" || bad "odd login ran: $(cat "$H/log")"
+rm -rf "$TMP/fbshare/providers"
 
 # ---- finish: the "First boot done" snapshot ----------------------------------------------
 new_home finish atrium

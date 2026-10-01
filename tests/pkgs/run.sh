@@ -29,7 +29,7 @@
 # 15. The polkit rules, run in node with polkitd's order and defaults.
 # 16. The guard rails: apply, the live switch both ways, timed Libertas,
 #    nets, full access, pre-admin-snapshot, the pacman hook (SM9 to SM26).
-# 17. First start (invictus-first-boot): run once per person, monitors.lua,
+# 18. First start (invictus-first-boot): run once per person, monitors.lua,
 #    look, the assistant step's calls and its key handling, the snapshot.
 #
 # Needs lua 5.4+ for groups 7 and 10 (LUA=...), node and python3 for 14-16.

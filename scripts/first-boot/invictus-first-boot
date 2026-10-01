@@ -19,26 +19,31 @@ subcommand prints one JSON object on stdout. Installed as
                                            `hyprctl monitors -j` (backup, check,
                                            restore on a failed check, reload)
   invictus-first-boot look THEME MOTION light|dark
-  invictus-first-boot assistant claude|home|other|none [--address A | --this-computer]
+  invictus-first-boot assistant claude|home|other|none [--address A]
                                            step 3 (no-ai.md 2): `invictus-sys ai on`
-                                           (the password) then the provider layer;
-                                           `none` runs `ai off` only if AI is on.
-                                           For `other` the key comes on stdin and
-                                           goes straight to the provider layer
-  invictus-first-boot signin              the provider's own sign-in, then only
-                                           checks ~/.claude/.credentials.json exists
+                                           (the password) then `invictus-provider set`
+                                           (docs/moneta-panel.md); `none` runs `ai off`
+                                           only if AI is on. For `other` the key comes
+                                           on stdin and goes to `invictus-provider key
+                                           set` on its stdin
+  invictus-first-boot apply-pending       a choice made while `ai on` was pending:
+                                           set it up once the packages are in (every
+                                           `start` runs this first)
+  invictus-first-boot signin              Claude Code's own sign-in (the shipped
+                                           provider's `login`, in a terminal), then
+                                           only checks ~/.claude/.credentials.json exists
   invictus-first-boot finish              "First boot done" snapshot through
                                            invictus-sys, then marks this home done
 
 Never sees or stores a token: the Claude sign-in is Claude Code's own, and a
-key typed for another service is passed on stdin to `invictus-provider`, which
-keeps it in the keyring. Never runs anything as root except through
+key typed for another service is passed on stdin to `invictus-provider key
+set`, which keeps it in the keyring. Never runs anything as root except through
 invictus-sys.
 
 Env (tests): INVICTUS_STATE, INVICTUS_SHARE, INVICTUS_AI_FILE, and the commands
 INVICTUS_HYPRCTL, INVICTUS_SYS_CMD, INVICTUS_PROVIDER_CMD, INVICTUS_THEME_CMD,
 INVICTUS_MOTION_CMD, INVICTUS_DOCTOR_CMD, INVICTUS_GSETTINGS, INVICTUS_NMCLI,
-INVICTUS_QUICKSHELL.
+INVICTUS_QUICKSHELL, INVICTUS_TERMINAL.
 """
 import datetime
 import fcntl
@@ -425,37 +430,68 @@ def apply_look(theme, motion, apps):
 
 
 # ---------------------------------------------------------------- the assistant
+#
+# The provider layer is Vulcan's `invictus-provider` (docs/moneta-panel.md, the
+# contract; package invictus-tribune, pulled by invictus-moneta, so it exists
+# only once `invictus-sys ai on` has installed the AI set). First start only
+# calls its documented commands: `set claude-code`; `set openai-compatible
+# --endpoint URL`; `key set openai-compatible` with the key on stdin. Exit
+# codes: 0 done, 1 failed (the keyring), 2 bad arguments, 3 refused.
 
-PROVIDERS = {
-    # choice -> provider name in the provider layer (design.md 4.2)
-    "claude": "claude-code",
-    "home": "openai-compatible",
-    "other": "openai-compatible",
-}
+HOME_AI_PORT = "11434"   # a bare home host name means an ollama-style server
 
 
 def provider_cmd():
     return tool("INVICTUS_PROVIDER_CMD", "invictus-provider")
 
 
+def endpoint_for(choice, address):
+    """The URL `invictus-provider set` wants, from what the person typed."""
+    if address is None:
+        return None
+    if re.match(r"^https?://", address):
+        return address
+    host, _, path = address.partition("/")
+    if choice == "home":
+        if not re.search(r":[0-9]+$", host):
+            host += ":" + HOME_AI_PORT
+        return f"http://{host}/{path or 'v1'}"
+    return f"https://{host}/{path or 'v1'}"
+
+
+def apply_provider(choice, endpoint, key):
+    """Set the provider up through invictus-provider. Returns ok,
+    provider-refused (2 or 3: an endpoint it will not take, or not allowed)
+    or provider-failed (1: the keyring, or anything else)."""
+    if choice == "claude":
+        calls = [([provider_cmd(), "set", "claude-code"], None)]
+    else:
+        calls = [([provider_cmd(), "set", "openai-compatible", "--endpoint", endpoint], None)]
+        if key:
+            calls.append(([provider_cmd(), "key", "set", "openai-compatible"], key + "\n"))
+    for cmd, stdin in calls:
+        rc, _ = run(cmd, stdin=stdin)
+        if rc in (2, 3):
+            return "provider-refused"
+        if rc != 0:
+            return "provider-failed"
+    return "ok"
+
+
 def cmd_assistant(args):
     if not args or args[0] not in ("claude", "home", "other", "none"):
-        raise Fail("usage: assistant claude|home|other|none [--address A | --this-computer]", 2)
+        raise Fail("usage: assistant claude|home|other|none [--address A]", 2)
     choice, rest = args[0], args[1:]
-    address, this_computer = None, False
+    address = None
     while rest:
         if rest[0] == "--address" and len(rest) > 1:
             address, rest = rest[1], rest[2:]
-        elif rest[0] == "--this-computer":
-            this_computer, rest = True, rest[1:]
         else:
             raise Fail(f"unknown argument {rest[0]!r}", 2)
     if address is not None and not HOST_RE.match(address):
         raise Fail("the address must be a host name, like atlas.local, or an http(s) address", 2)
-    if choice == "home" and not (address or this_computer):
-        raise Fail("a home AI system needs --address or --this-computer", 2)
-    if choice != "home" and this_computer:
-        raise Fail("--this-computer is for a home AI system", 2)
+    if choice in ("home", "other") and not address:
+        raise Fail(f"{choice} needs --address", 2)
     if choice in ("claude", "none") and address:
         raise Fail(f"{choice} takes no address", 2)
 
@@ -467,13 +503,13 @@ def cmd_assistant(args):
         if ai_state() == "on":
             rc, word, _ = sys_call("ai", "off")
             result = SYS_OUTCOME.get(rc, "failed")
-        update_record(assistant="none", provider=None)
+        update_record(assistant="none", provider=None, provider_pending=False)
         out({"result": result, "ai": ai_state()})
         return 0
 
     key = None
     if choice == "other":
-        key = sys.stdin.read().strip()
+        key = sys.stdin.readline().strip()
         if not key:
             raise Fail("another AI service needs its key on stdin", 2)
 
@@ -489,34 +525,71 @@ def cmd_assistant(args):
             out({"result": result})
             return 0
 
-    # 2. The provider layer sets the provider up (Vulcan's invictus-provider,
-    #    docs/first-boot.md "Provider interface"). Offline, the packages and
-    #    the tool come later: keep the choice (never a key) for Settings and
-    #    the Not signed in state.
-    name = "local" if this_computer else PROVIDERS[choice]
-    record = {"name": name, "address": address}
+    # 2. The provider layer. Offline the AI set, and invictus-provider with
+    #    it, come later: keep the choice (never the key) and let
+    #    `apply-pending` set it up at the next session start.
+    endpoint = endpoint_for(choice, address)
+    record = {"choice": choice, "endpoint": endpoint}
     if result == "pending" or not have(provider_cmd()):
         update_record(assistant=choice, provider=record, provider_pending=True)
-        out({"result": "pending", "provider": name})
+        out({"result": "pending"})
         return 0
-    cmd = [provider_cmd(), "use", name]
-    if address:
-        cmd += ["--address", address]
-    if key is not None:
-        cmd += ["--key-stdin"]
-    rc, _ = run(cmd, stdin=key)
+    result = apply_provider(choice, endpoint, key)
     key = None
-    update_record(assistant=choice, provider=record, provider_pending=rc != 0)
-    out({"result": "ok" if rc == 0 else "provider-failed", "provider": name})
+    update_record(assistant=choice, provider=record, provider_pending=False)
+    out({"result": result})
     return 0
+
+
+def cmd_apply_pending(args=(), quiet=False):
+    """A choice made while `ai on` was pending: set it up once invictus-provider
+    is installed. Run by every `start` (Hyprland's autostart), so it happens at
+    the first session after the packages arrived. A key for another service is
+    never kept: Settings > Moneta asks for it (the Not signed in state)."""
+    if args:
+        raise Fail("usage: apply-pending", 2)
+    rec = read_record()
+    prov = rec.get("provider") or {}
+    if not rec.get("provider_pending") or not prov.get("choice"):
+        result = "nothing pending"
+    elif ai_state() != "on":
+        update_record(provider_pending=False)
+        result = "dropped: AI is off"
+    elif not have(provider_cmd()):
+        result = "waiting for the packages"
+    else:
+        result = apply_provider(prov["choice"], prov.get("endpoint"), None)
+        if result == "ok":
+            update_record(provider_pending=False)
+    if not quiet:
+        out({"result": result})
+    return 0
+
+
+def claude_login_argv():
+    """The `login` argv from the shipped claude-code provider file (root-owned;
+    a file in the home never replaces a shipped one, docs/moneta-panel.md)."""
+    import tomllib
+    try:
+        with open(share_dir() / "providers" / "claude-code" / "provider.toml", "rb") as f:
+            argv = tomllib.load(f).get("login")
+    except (OSError, ValueError):
+        return None
+    if not (isinstance(argv, list) and argv and all(isinstance(a, str) for a in argv)
+            and argv[0].startswith("/usr/bin/")):
+        return None
+    return argv
 
 
 def cmd_signin(args):
     if args:
         raise Fail("usage: signin", 2)
-    if have(provider_cmd()):
-        # Claude Code's own sign-in (browser); we only wait for it to end.
-        run([provider_cmd(), "login", "claude-code"], timeout=1800)
+    argv = claude_login_argv()
+    if argv:
+        # Claude Code's own sign-in, in a terminal as the contract says (it
+        # opens the browser); we only wait for the window to close.
+        run([tool("INVICTUS_TERMINAL", "kitty"), "--class", "invictus-signin",
+             "--title", "Sign in to Claude", *argv], timeout=1800)
     signed = credentials_file().is_file()
     update_record(signed_in=signed)
     out({"signed_in": signed})
@@ -580,7 +653,6 @@ def cmd_state(args):
         "online": is_online,
         "ai": ai_state(),
         "signed_in": credentials_file().is_file(),
-        "this_computer": (share_dir() / "providers" / "local").is_dir(),
         "themes": themes() if fl == "tessera" else [],
         "motion": motion() if fl == "tessera" else None,
         "apps": color_scheme() if fl == "tessera" else None,
@@ -630,6 +702,9 @@ def cmd_start(args):
     mode = args[0] if args else None
     if mode not in (None, "--if-pending", "--again") or len(args) > 1:
         raise Fail("usage: start [--if-pending | --again]", 2)
+    # Every session start: a choice made offline is set up once its packages
+    # are in (no window; it does nothing when nothing is pending).
+    cmd_apply_pending(quiet=True)
     if mode == "--if-pending" and (not pending_file().exists() or done_file().exists()):
         out({"started": False, "why": "not pending"})
         return 0
@@ -661,6 +736,7 @@ COMMANDS = {
     "monitors-write": cmd_monitors_write,
     "look": cmd_look,
     "assistant": cmd_assistant,
+    "apply-pending": cmd_apply_pending,
     "signin": cmd_signin,
     "finish": cmd_finish,
 }
