@@ -544,10 +544,10 @@ chmod +x "$TMP/fake/sysctl" "$TMP/fake/inhibit"
 pending() {
     FAKE_LOG="$TMP/px.log" INVICTUS_PACMAN="$TMP/fake/pacman" INVICTUS_SYSTEMCTL="$TMP/fake/sysctl" \
         INVICTUS_INHIBIT="$TMP/fake/inhibit" INVICTUS_EXTRAS_PENDING="$TMP/px-pending" \
-        INVICTUS_EXTRAS_LIST="$REPO/scripts/lib/extras.list" bash "$PX" >"$TMP/px.out" 2>&1
+        INVICTUS_EXTRAS_LIST="$REPO/scripts/lib/extras.list" INVICTUS_LIB="$REPO/scripts" bash "$PX" >"$TMP/px.out" 2>&1
 }
 printf 'invictus-office\ninvictus-gaming\n' > "$TMP/px-pending"; rm -f "$TMP/px.log"; rc=0; pending || rc=$?
-if [[ $rc == 0 && "$(cat "$TMP/px.log")" == "$(printf 'inhibit\n-Syu --needed --noconfirm invictus-office invictus-gaming\nsystemctl disable invictus-extras.service')" \
+if [[ $rc == 0 && "$(cat "$TMP/px.log")" == "$(printf 'inhibit\n-Syu --needed --noconfirm -- invictus-office invictus-gaming\nsystemctl disable invictus-extras.service')" \
       && ! -e "$TMP/px-pending" ]]; then
     ok "pending extras: one pacman -Syu --needed under a shutdown inhibitor, then the file goes and the service is disabled"
 else

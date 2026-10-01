@@ -17,9 +17,11 @@
 # Failure (still no internet, a mirror down): the file stays and the next
 # start tries again. Exit: pacman's code, 2 for a bad pending file.
 # Env (tests): INVICTUS_PACMAN, INVICTUS_SYSTEMCTL, INVICTUS_INHIBIT,
-#              INVICTUS_EXTRAS_PENDING, INVICTUS_EXTRAS_LIST
+#              INVICTUS_EXTRAS_PENDING, INVICTUS_EXTRAS_LIST, INVICTUS_LIB
 # ------------------------------------------------------------
 set -euo pipefail
+# shellcheck source=scripts/lib/pacman.sh
+. "${INVICTUS_LIB:-/usr/lib/invictus}/lib/pacman.sh"
 
 PENDING="${INVICTUS_EXTRAS_PENDING:-/var/lib/invictus/pending-extras}"
 LIST="${INVICTUS_EXTRAS_LIST:-/usr/share/invictus/extras.list}"
@@ -40,7 +42,7 @@ allowed=" $(awk '!/^[[:space:]]*#/ && NF { print $1 }' "$LIST" | paste -sd' ') "
 names=()
 while IFS= read -r n || [[ -n "$n" ]]; do
     [[ -z "$n" ]] && continue
-    if [[ ! "$n" =~ ^[a-z0-9][a-z0-9@._+-]*$ || "$allowed" != *" $n "* ]]; then
+    if ! valid_package_name "$n" || [[ "$n" == */* || "$allowed" != *" $n "* ]]; then
         say "refusing '$n': not an extra (see $LIST)"
         exit 2
     fi
@@ -50,7 +52,7 @@ done < "$PENDING"
 
 say "installing: ${names[*]}"
 rc=0
-"${INHIBIT[@]}" "$PACMAN" -Syu --needed --noconfirm "${names[@]}" || rc=$?
+pacman_install_needed "${names[@]}" || rc=$?
 if ((rc != 0)); then
     say "pacman stopped (exit $rc); trying again on the next start"
     exit "$rc"
