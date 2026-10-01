@@ -1,0 +1,60 @@
+# Maintainer: Alex Turner (turneralexander55)
+#
+# The Moneta panel (code name tribune) and the provider layer (design 4.2),
+# with the Invictus plugin for Claude Code. Part of the AI set
+# (scripts/lib/ai-set.sh): invictus-moneta pulls it, `invictus-sys ai off`
+# removes it, and nothing always installed depends on it. Files come from this
+# repo (scripts/moneta, config/hypr/invictus/moneta.lua, collegium/template)
+# at the same commit as this PKGBUILD: bump pkgrel when any of them changes.
+#
+#   /usr/lib/invictus/moneta/moneta.py       the panel and the provider layer
+#   /usr/bin/tribune                         -> moneta.py: the panel, chat, acta
+#   /usr/bin/invictus-provider               -> moneta.py: who answers (Settings,
+#                                            the first-start wizard; docs/moneta-panel.md)
+#   /usr/lib/invictus/moneta/mcp.py          the plugin's MCP server (structured calls)
+#   /usr/share/invictus/providers/<name>/provider.toml   claude-code, generic-cli,
+#                                            openai-compatible, none (root-owned: A8)
+#   /usr/share/invictus/claude-plugin/       the Invictus plugin: the invictus-tools
+#                                            skill (TOOLS.md) and the MCP server entry
+#   /usr/share/invictus/hypr/invictus/moneta.lua   Super+A (no AI, no bind)
+#
+# The managed Claude Code settings and their A6 guard are not here: they
+# belong to invictus-guardrails, on every machine, so the guard rails decide
+# the profile whether or not the AI set is installed.
+
+pkgname=invictus-tribune
+pkgver=0.2.0
+pkgrel=1
+pkgdesc='Invictus Moneta panel: Super+A, any AI agent or chat service behind it, the Invictus plugin (AI; opt-in)'
+arch=('any')
+url='https://github.com/turneralexander55/invictus'
+license=('GPL-3.0-or-later')
+depends=('invictus-sys' 'invictus-guardrails' 'python' 'kitty' 'libsecret' 'hyprland')
+
+package() {
+  local root="$startdir/../../.."
+  local src="$root/scripts/moneta"
+  local lib="$pkgdir/usr/lib/invictus/moneta"
+  local share="$pkgdir/usr/share/invictus"
+
+  install -Dm755 "$src/moneta.py" "$lib/moneta.py"
+  install -Dm755 "$src/mcp.py" "$lib/mcp.py"
+  install -dm755 "$pkgdir/usr/bin"
+  ln -s ../lib/invictus/moneta/moneta.py "$pkgdir/usr/bin/tribune"
+  ln -s ../lib/invictus/moneta/moneta.py "$pkgdir/usr/bin/invictus-provider"
+
+  local p
+  for p in "$src"/providers/*/provider.toml; do
+    install -Dm644 "$p" "$share/providers/$(basename "$(dirname "$p")")/provider.toml"
+  done
+
+  local plugin="$share/claude-plugin"
+  install -Dm644 "$src/claude-plugin/.claude-plugin/plugin.json" "$plugin/.claude-plugin/plugin.json"
+  install -Dm644 "$src/claude-plugin/.mcp.json" "$plugin/.mcp.json"
+  install -dm755 "$plugin/skills/invictus-tools"
+  cat "$src/claude-plugin/skills/invictus-tools/SKILL.head.md" "$root/collegium/template/TOOLS.md" \
+    > "$plugin/skills/invictus-tools/SKILL.md"
+  chmod 644 "$plugin/skills/invictus-tools/SKILL.md"
+
+  install -Dm644 "$root/config/hypr/invictus/moneta.lua" "$share/hypr/invictus/moneta.lua"
+}

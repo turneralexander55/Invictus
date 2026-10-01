@@ -1,0 +1,6 @@
+# No assistant in the panel. (Machine-wide No AI is `invictus-sys ai off`,
+# which removes the panel itself; this is for a person on an AI machine who
+# wants none for their own account.)
+name = "none"
+label = "No assistant"
+kind = "none"

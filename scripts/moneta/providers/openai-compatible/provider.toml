@@ -1,0 +1,10 @@
+# Any chat service that speaks the OpenAI chat-completions API (design 4.2):
+# a home AI system (ollama, llama.cpp server, LM Studio) or a hosted one.
+# Chat only: it proposes invictus-sys calls, the person presses to run one
+# (A13). The key, if the service needs one, lives in the keyring, tied to the
+# endpoint it was typed for. Plain http only inside the home network.
+name = "openai-compatible"
+label = "A chat service (home AI system or another AI service)"
+kind = "api"
+harness = "agents-md"
+capabilities = []

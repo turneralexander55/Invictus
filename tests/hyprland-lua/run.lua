@@ -343,6 +343,7 @@ local EXCEPTIONS = {
 -- Keyed like EXCEPTIONS: modmask + key (SUPER+SHIFT = 65).
 local NEW_BINDS = {
     ["65+t"] = { "exec_cmd", "invictus-theme pick" }, -- Look: change theme (docs/look.md, The switcher)
+    ["64+a"] = { "workspace.toggle_special", "moneta" }, -- Moneta: the panel (design 4.2; invictus/moneta.lua, AI set only)
 }
 local KEY_RENAMES = { ESC = "Escape" } -- ESC is not an xkb keysym; the old bind never fired
 -- Old binds deliberately left out of the shipped config: Alex's own, not a friend's.
@@ -592,7 +593,7 @@ end
 test("window rules match window-rules.conf", function(check)
     local gamingRule = {}
     for _, r in ipairs(state.windowRules) do
-        if r.name and (r.name:match("^game%-") or r.name:match("^steam%-toasts")) then gamingRule[r.name] = true end
+        if r.name and (r.name:match("^game%-") or r.name:match("^steam%-toasts") or r.name:match("^moneta%-")) then gamingRule[r.name] = true end
     end
     local plain = {}
     for _, r in ipairs(state.windowRules) do if not gamingRule[r.name] then table.insert(plain, r) end end
@@ -1079,6 +1080,51 @@ test("the config requires the generated file (not dofile), so Hyprland sees it a
     check(src:find('require, GENERATED', 1, true) or src:find('pcall(require', 1, true), "colors.lua does not require the file")
     check(not src:find("dofile", 1, true) and not src:find("loadfile", 1, true), "colors.lua uses dofile or loadfile")
     check(src:find(".config/invictus/current/hyprland-colors.lua", 1, true), "colors.lua does not read the generated path")
+end)
+
+-- ─── the Moneta panel (design 4.2; no-ai.md: no Super+A with No AI) ────────
+
+test("Moneta panel: Super+A toggles special:moneta, whose first show starts tribune in kitty", function(check)
+    local L = loadConfig({})
+    noProblems(L, check)
+    check(L.requiredModules["invictus.moneta"], "core.lua did not load invictus.moneta")
+    local rule
+    for _, r in ipairs(L.state.workspaceRules) do if r.workspace == "special:moneta" then rule = r end end
+    check(rule and rule.on_created_empty == "kitty --class invictus-moneta --title Moneta /usr/bin/tribune",
+        "special:moneta needs on_created_empty running /usr/bin/tribune in kitty, got " .. show(rule))
+    local win
+    for _, r in ipairs(L.state.windowRules) do if r.name == "moneta-panel-workspace" then win = r end end
+    check(win and win.match.class == "^invictus-moneta$" and win.workspace == "special:moneta silent",
+        "the panel's kitty must land on special:moneta: " .. show(win))
+    local n = 0
+    for _, b in ipairs(L.state.binds) do
+        if deepEqual(actualDispatcher(b.dispatcher), { "workspace.toggle_special", "moneta" }) then
+            n = n + 1
+            check(b.keys == "SUPER + A", "Moneta bind on " .. b.keys)
+            check(b.opts.description == "Moneta: show/hide the Moneta panel", "description " .. tostring(b.opts.description))
+        end
+    end
+    check(n == 1, n .. " binds toggle special:moneta")
+    -- kitty and tribune must come from packages: kitty from invictus-desktop,
+    -- tribune from invictus-tribune, which the AI meta (invictus-moneta) pulls.
+    local f = io.open(repo .. "/pkgs/meta/invictus-moneta/PKGBUILD")
+    local meta = f and f:read("a") or ""
+    if f then f:close() end
+    check(meta:find("'invictus-tribune'", 1, true), "invictus-moneta must depend on invictus-tribune")
+end)
+
+test("Moneta panel: with No AI (module absent) the config loads cleanly and nothing binds Super+A", function(check)
+    local realSearch = package.searchpath
+    package.searchpath = function(name, path, ...)
+        if name == "invictus.moneta" then return nil, "hidden by the test" end
+        return realSearch(name, path, ...)
+    end
+    local L = loadConfig({})
+    package.searchpath = realSearch
+    noProblems(L, check)
+    check(not L.requiredModules["invictus.moneta"], "invictus.moneta loaded although absent")
+    for _, b in ipairs(L.state.binds) do check(b.keys ~= "SUPER + A", "Super+A bound with No AI") end
+    for _, r in ipairs(L.state.workspaceRules) do check(r.workspace ~= "special:moneta", "special:moneta rule with No AI") end
 end)
 
 -- ─── fake `hyprctl binds` output for the show-keybindings test ──────────────

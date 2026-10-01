@@ -1,0 +1,13 @@
+# The default provider (design 4.2): Claude Code with the Invictus plugin,
+# signed in with the person's own Claude account (D13; no shared accounts).
+# Its rules are the managed settings in /etc/claude-code (A7, A8), whatever
+# is in the person's own ~/.claude.
+name = "claude-code"
+label = "Claude"
+kind = "cli"
+chat = ["/usr/bin/claude", "--plugin-dir", "/usr/share/invictus/claude-plugin"]
+run = ["/usr/bin/claude", "-p", "{prompt}", "--output-format", "text"]
+resume = ["/usr/bin/claude", "--plugin-dir", "/usr/share/invictus/claude-plugin", "--continue"]
+login = ["/usr/bin/claude", "auth", "login"]
+harness = "claude-code"
+capabilities = ["tools", "sessions"]

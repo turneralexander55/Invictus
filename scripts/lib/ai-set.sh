@@ -11,6 +11,6 @@
 # shellcheck disable=SC2034 # read by the scripts that source this
 AI_METAS="invictus-moneta invictus-voice"
 # shellcheck disable=SC2034
-AI_PKGS="claude-code whisper-cpp ggml-vulkan invictus-collegium $AI_METAS"
+AI_PKGS="claude-code invictus-tribune whisper-cpp ggml-vulkan invictus-collegium $AI_METAS"
 # shellcheck disable=SC2034
 AI_ON_INSTALL="invictus-moneta"
