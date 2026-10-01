@@ -63,6 +63,6 @@ package() {
   install -Dm644 -t "$brand" "$root"/installer/branding/invictus/{stylesheet.qss,show.qml}
   sed "s/@VERSION@/$pkgver/g" "$root/installer/branding/invictus/branding.desc" > "$brand/branding.desc"
   chmod 644 "$brand/branding.desc"
-  install -Dm644 -t "$brand" "$root"/installer/branding/invictus/*.png
+  install -Dm644 -t "$brand" "$root"/installer/branding/invictus/*.png "$root"/installer/branding/invictus/*.svg
   install -Dm644 "$root/installer/branding/invictus/icon.png" "$pkgdir/usr/share/icons/hicolor/64x64/apps/invictus.png"
 }

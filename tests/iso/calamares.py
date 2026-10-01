@@ -106,34 +106,60 @@ def group_packages(groups):
 
 
 def check_extras():
-    """The Extras page, the extras list and our job module agree."""
-    ni = load(os.path.join(CAL, "common", "modules", "netinstall.conf"))
-    groups = ni["groups"]
+    """The Extras pages (one per path), the extras list and our job module agree."""
     listed = extras_list()
-    page = sorted(set(group_packages(groups)))
-    check("extras: the page draws from its own config, nothing downloaded", ni["groupsUrl"] == "local")
-    check("extras: the page may be left with nothing ticked", ni["required"] is False)
-    check("extras: every package on the page is in scripts/lib/extras.list as 'page'",
-          all(listed.get(p) == "page" for p in page), str(page))
-    check("extras: every 'page' entry of extras.list is on the page",
-          sorted(n for n, how in listed.items() if how == "page") == page, str(listed))
-    check("extras: the only automatic extra is NVIDIA firmware",
-          sorted(n for n, how in listed.items() if how != "page") == ["linux-firmware-nvidia"]
+    on_page = sorted(n for n, how in listed.items() if how.startswith("page"))
+    check("extras: the only automatic-only extra is NVIDIA firmware",
+          sorted(n for n, how in listed.items() if not how.startswith("page")) == ["linux-firmware-nvidia"]
           and listed["linux-firmware-nvidia"].startswith("auto"))
-    check("extras: no group is critical (a missing extra never stops the install)",
-          all(not g.get("critical", False) for g in groups))
-    selected = [g["name"] for g in groups if g.get("selected")]
-    check("extras: only Office is ticked by default", selected == ["Office"], str(selected))
-    office = [g for g in groups if g["name"] == "Office"][0]
-    check("extras: Office installs invictus-office", office["packages"] == ["invictus-office"])
-    names = {g["name"] for g in groups}
-    check("extras: Games and Programming are offered", {"Games", "Programming"} <= names, str(names))
-    check("extras: no AI set on the page (design-no-ai.md N5)",
-          not ({"invictus-moneta", "invictus-voice", "claude-code"} & set(page)))
-    title = ni["label"]["title"]
-    check("extras: the page says it needs internet and the install finishes without it",
-          "internet" in title and "still finishes" in title, title)
-    check("extras: plain words, no em-dash", "—" not in yaml.safe_dump(ni))
+    check("common: no shared Extras page (each path has its own)",
+          not os.path.exists(os.path.join(CAL, "common", "modules", "netinstall.conf")))
+    pages = {}
+    for v in ("plain", "advanced"):
+        ni = load(os.path.join(CAL, v, "modules", "netinstall.conf"))
+        pages[v] = ni
+        groups = ni["groups"]
+        page = sorted(set(group_packages(groups)))
+        check(f"{v} extras: the page draws from its own config, nothing downloaded", ni["groupsUrl"] == "local")
+        check(f"{v} extras: the page may be left with nothing ticked", ni["required"] is False)
+        check(f"{v} extras: every package on the page is in scripts/lib/extras.list as 'page'",
+              all(p in on_page for p in page), str(page))
+        check(f"{v} extras: no group or subgroup is critical (a missing extra never stops the install)",
+              all(not g.get("critical", False) for g in groups for g in [g] + g.get("subgroups", [])))
+        # Venus 2026-10-01: packages sit in one hidden, selected subgroup per
+        # group, so no expand arrow shows a package name.
+        check(f"{v} extras: each group shows no package (its packages are in one hidden, selected subgroup)",
+              all("packages" not in g and len(g.get("subgroups", [])) == 1
+                  and g["subgroups"][0].get("hidden") is True and g["subgroups"][0].get("selected") is True
+                  and not g["subgroups"][0].get("subgroups") for g in groups), str([g["name"] for g in groups]))
+        selected = [g["name"] for g in groups if g.get("selected")]
+        check(f"{v} extras: only Documents is ticked by default", selected == ["Documents"], str(selected))
+        by = {g["name"]: sorted(group_packages([g])) for g in groups}
+        check(f"{v} extras: Documents installs invictus-office", by.get("Documents") == ["invictus-office"])
+        check(f"{v} extras: Games is offered", by.get("Games") == ["invictus-gaming"])
+        check(f"{v} extras: CJK fonts are offered", by.get("Chinese, Japanese and Korean text") == ["noto-fonts-cjk"])
+        check(f"{v} extras: no AI set on the page (design-no-ai.md N5)",
+              not ({"invictus-moneta", "invictus-voice", "claude-code"} & set(page)))
+        title = ni["label"]["title"]
+        # Calamares 3.4.2 page_netinst.ui: the title label does not wrap.
+        check(f"{v} extras: the title says it needs internet, on one line (under 100 characters)",
+              "online" in title and "\n" not in title and len(title) < 100, title)
+        check(f"{v} extras: short descriptions (the column sizes to its contents)",
+              all(len(g["description"]) <= 72 for g in groups), str([len(g["description"]) for g in groups]))
+        check(f"{v} extras: plain words, no em-dash", "\u2014" not in yaml.safe_dump(ni, allow_unicode=True))
+    adv = {g["name"]: g for g in pages["advanced"]["groups"]}
+    pla = {g["name"]: g for g in pages["plain"]["groups"]}
+    check("advanced extras: Programming is offered", sorted(group_packages([adv.get("Programming", {})])) == ["invictus-dev"])
+    check("plain extras: no Programming (friends; Venus 2026-10-01)", "Programming" not in pla)
+    check("extras: every page entry of extras.list is on the Advanced page",
+          sorted(set(group_packages(pages["advanced"]["groups"]))) == on_page)
+    check("extras: the plain page is the Advanced page less Programming, in the same order",
+          list(pla) == [n for n in adv if n != "Programming"])
+    check("extras: shared groups match (Games may name fewer tools on the plain path)",
+          all(pla[n] == adv[n] for n in pla if n != "Games")
+          and {k: v for k, v in pla["Games"].items() if k != "description"}
+          == {k: v for k, v in adv["Games"].items() if k != "description"})
+    check("extras: both paths use the same title", pages["plain"]["label"] == pages["advanced"]["label"])
 
     desc = load(os.path.join(EXTRAS_MODULE, "module.desc"))
     check("extras module: a Python job named invictusextras with no config",
@@ -186,6 +212,25 @@ def check_extras_module():
         r = mod.run()
         del os.environ["FAKE_RC"]
         check("extras module: a failing job fails the step with a message", isinstance(r, tuple) and len(r) == 2)
+        store["packageOperations"] = [{"source": "netinstall@netinstall", "try_install": ["invictus-office"]}]
+        store["locale"] = "ja-JP"
+        mod.run()
+        args = open(log).read().split("\n")[:-1]
+        check("extras module: Japanese adds the CJK fonts though their box was not ticked",
+              args == ["/tmp/calamares-root-x", "invictus-office", "noto-fonts-cjk"], str(args))
+        store["locale"] = "en-GB"
+        store["localeConf"] = {"LANG": "zh_TW.UTF-8"}
+        check("extras module: Chinese in LANG counts too", mod.needs_cjk(store["locale"], store["localeConf"]))
+        store["localeConf"] = {"LANG": "en_GB.UTF-8"}
+        mod.run()
+        args = open(log).read().split("\n")[:-1]
+        check("extras module: English adds no fonts", args == ["/tmp/calamares-root-x", "invictus-office"], str(args))
+        store["locale"] = "ko-KR"
+        store["packageOperations"] = [{"source": "netinstall@netinstall", "try_install": ["noto-fonts-cjk"]}]
+        mod.run()
+        args = open(log).read().split("\n")[:-1]
+        check("extras module: ticked and Korean names the fonts once", args == ["/tmp/calamares-root-x", "noto-fonts-cjk"], str(args))
+        check("extras module: no language, no fonts", not mod.needs_cjk(None, None))
         store["rootMountPoint"] = None
         check("extras module: no root mount point fails the step", isinstance(mod.run(), tuple))
 

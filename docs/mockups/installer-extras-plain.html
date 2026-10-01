@@ -1,0 +1,42 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Extras page, plain</title><meta name="description" content="Invictus installer, the Extras page on the Plain path (Atrium, Custodia), as Calamares 3.4 draws it with our stylesheet.">
+<style>
+:root{--night:#14120F;--basalt:#1C1A16;--stone:#27241F;--line:#3A352D;--marble:#ECE6DA;--parchment:#BDB4A3;--ash:#968E7F;--sol:#E0A64B;
+--sans:"IBM Plex Sans","Noto Sans",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--night);color:var(--marble);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+.note{max-width:1100px;margin:0 auto;padding:16px;color:var(--ash);font-size:13px;line-height:1.5}
+.win{max-width:1100px;margin:0 auto 16px;display:flex;min-height:640px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--basalt)}
+.side{width:210px;flex:none;background:var(--night);padding:20px 0}
+.side .logo{display:flex;align-items:center;gap:10px;padding:0 20px 18px;font-weight:600;letter-spacing:.04em}
+.side .logo i{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle,var(--sol) 0 45%,transparent 47%)}
+.side li{list-style:none;padding:9px 20px;color:var(--parchment);font-size:14px}
+.side li.cur{background:var(--basalt);color:var(--sol)}
+.main{flex:1;display:flex;flex-direction:column;padding:28px 28px 20px;min-width:0}
+.step{display:none;color:var(--ash);font-size:13px;margin-bottom:8px}
+.title{text-align:center;font-size:15px;line-height:1.4;margin-bottom:16px}
+.tree{background:var(--stone);border:1px solid var(--line);border-radius:6px;padding:4px}
+.grid{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:24px;align-items:center}.hdr,.row{display:contents}
+.hdr span{color:var(--ash);font-size:13px;padding:6px 10px;border-bottom:1px solid var(--line)}
+.row>div{padding:12px 10px;font-size:15px}
+.row .n{display:flex;align-items:center;gap:12px;white-space:nowrap}
+.row .d{color:var(--parchment);font-size:14px;line-height:1.35}
+.box{width:20px;height:20px;border-radius:4px;border:2px solid var(--ash);background:var(--stone);flex:none}
+.box.on{background:var(--parchment) url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 20 20%27%3E%3Cpath d=%27M5 10.5l3.2 3.2L15 6.8%27 fill=%27none%27 stroke=%27%2314120F%27 stroke-width=%272.4%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E") center/16px no-repeat;border-color:var(--parchment)}
+.sp{flex:1}
+.nav{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.btn{padding:9px 20px;border-radius:8px;border:1px solid var(--line);background:var(--stone);font-size:14px;color:var(--marble)}
+.btn.next{background:var(--sol);color:var(--night);border:none;font-weight:600}
+@media (max-width:700px){
+ .side{display:none}.step{display:block}.win{min-height:0;border-radius:0;border-left:0;border-right:0}
+ .main{padding:20px 16px}.title{text-align:left}
+ .grid{grid-template-columns:1fr}.hdr{display:none}.row .n{padding-bottom:2px}.row .d{padding:0 10px 12px 42px}
+}
+</style></head><body>
+<p class="note">Plain path (Atrium, Custodia): the Extras page in the Invictus installer (Calamares window 1100 x 700, our Dusk stylesheet). Step 4 of 7. Words are drafts until Clio's pass.</p>
+<div class="win"><ul class="side"><div class="logo"><i></i>Invictus</div><li class="">Welcome</li><li class="">Location</li><li class="">Keyboard</li><li class="cur">Extras</li><li class="">Users</li><li class="">Partitions</li><li class="">Your files</li></ul>
+<div class="main"><div class="step">Step 4 of 7: Extras</div>
+<p class="title">Add any of these? They download while Invictus installs, or the first time you&#x27;re online.</p>
+<div class="tree grid"><div class="hdr"><span>Name</span><span>Description</span></div><div class="row"><div class="n"><span class="box on"></span>Documents</div><div class="d">Letters, budgets and slides. Opens Word, Excel and PowerPoint files.</div></div><div class="row"><div class="n"><span class="box"></span>Games</div><div class="d">Steam, and what it needs to run Windows games.</div></div><div class="row"><div class="n"><span class="box"></span>Chinese, Japanese and Korean text</div><div class="d">Shows these languages on web pages and in documents.</div></div></div>
+<div class="sp"></div><div class="nav"><span class="btn">Back</span><span class="btn next">Next</span><span class="btn">Cancel</span></div></div></div>
+</body></html>
