@@ -34,9 +34,13 @@ pacman_install_needed() {
 }
 
 # pacman's own summary lines (LC_ALL=C) when the databases or the packages
-# could not be downloaded. Checked against pacman 7 in Arch with no network
-# (tests/pkgs/e2e-sys.sh). Nothing else counts as a download failure, and
-# there is no separate `pacman -Sy` probe (MUST A4).
+# could not be downloaded. Seen from pacman 7 in Arch, 2026-10-01: a
+# refused or unresolvable mirror gives "failed to synchronize all databases
+# (failed to retrieve some files)", a failed package fetch "failed to
+# commit transaction (failed to retrieve some files)" (tests/pkgs/e2e-sys.sh
+# checks the first). "download library error" is libalpm's text for a curl
+# failure. Nothing else counts as a download failure, and there is no
+# separate `pacman -Sy` probe (MUST A4).
 PACMAN_DOWNLOAD_FAILED='failed to synchronize all databases|failed to retrieve some files|download library error'
 pacman_install_classified() {
     local err rc=0

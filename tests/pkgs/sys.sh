@@ -672,7 +672,7 @@ if [[ $rc == 0 && "$(cat "$R/etc/invictus/ai")" == on && "$(stat -c %a "$R/etc/i
 else gbad "ai on: rc $rc: $(paste -sd'|' "$TMP/sys.log") out: $(cat "$TMP/sys.out")"; fi
 # Offline: the choice stands, the install waits for the connection. The
 # error lines are pacman 7's own (e2e-sys.sh checks them in Arch).
-NET_ERR='error: failed to synchronize all databases (download library error)'
+NET_ERR='error: failed to synchronize all databases (failed to retrieve some files)'
 GET_ERR='error: failed to commit transaction (failed to retrieve some files)'
 new_root aioff1 custodia; export_env; grd apply; echo off > "$R/etc/invictus/ai"
 : > "$TMP/sys.log"; FAKE_PACMAN_RC=1 FAKE_PACMAN_ERR="$NET_ERR" isys ai on
