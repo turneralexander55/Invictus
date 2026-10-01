@@ -77,6 +77,7 @@ invictus-office invictus
 invictus-sys invictus
 invictus-tessera invictus
 invictus-tools invictus
+invictus-tribune invictus
 ipp-usb extra
 jq extra
 kitty extra

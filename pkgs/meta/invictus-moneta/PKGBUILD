@@ -14,15 +14,18 @@
 
 pkgname=invictus-moneta
 pkgver=0.1.0
-pkgrel=1
-pkgdesc='Invictus Moneta, the AI assistant: Claude Code now, the panel later (AI; opt-in)'
+pkgrel=2
+pkgdesc='Invictus Moneta, the AI assistant: the Moneta panel and Claude Code (AI; opt-in)'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
 license=('GPL-3.0-or-later')
 depends=(
   'invictus-desktop'
 
-  # Claude Code, built from our pin in pkgs/aur
+  # The Moneta panel, the provider layer, the Invictus plugin and MCP server
+  'invictus-tribune'
+
+  # Claude Code, built from our pin in pkgs/aur (the default provider)
   'claude-code'
 )
 

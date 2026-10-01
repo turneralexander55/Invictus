@@ -76,6 +76,9 @@ journalctl -t invictus-sys -o json
 
 ## For the Moneta panel (part 6)
 
+Built in `invictus-tribune` (branch invictus-panel); its own contract, including the provider setup the wizard calls, is `docs/moneta-panel.md`. What it relies on here:
+
+
 - Call `invictus-sys --request <thread id> VERB ...` as the user; never `pkexec` or the root helper directly.
 - Read the last stdout line for the result and snapshot id; read the exit code for the outcome. 126 means the person said no; say so and stop.
 - After a guard-rails or full-access change, the panel receives `restart-profile\n` on its socket `/run/user/<uid>/invictus/tribune.sock` (create it in your own `/run/user/<uid>`; root connects as you, and skips a folder not owned by its uid). End the running agent (SIGTERM to its process group, SIGKILL after 5 s) and start it again: `/etc/claude-code/managed-settings.json` already points at the right profile. On `ai off` it receives `stop\n`: end the agent the same way, then exit.

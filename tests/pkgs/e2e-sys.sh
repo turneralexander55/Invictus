@@ -18,6 +18,11 @@
 #   6. HoldPkg under Custodia stops `pacman -R --noconfirm` of a held
 #      package; after `guardrails set libertas` it goes through
 #   7. Acta lands in the journal with its fields (when journald runs here)
+#   7a. the Moneta panel installed for real and run as tester: Full access
+#      on and the switch to Custodia (the real verbs) restart its agent
+#      under the new profile, generic-cli comes and goes from the list, and
+#      root's stop ends the panel and its agent; the installed copy ignores
+#      INVICTUS_* overrides
 #   7b. ai off as root signs a real user out through setpriv (their files,
 #      their process), writes the browser policy; the panel's socket is
 #      reached as its folder's owner (L1); ai on fails (exit 1, nothing
@@ -177,8 +182,69 @@ else
     echo "note  journald does not run in this container: Acta's journal fields are checked on a VM"
 fi
 
+# 7a. The Moneta panel, installed for real (its desktop depends skipped:
+# no kitty or Hyprland here), run as tester, driven by the real verbs: Full
+# access on restarts it with the full profile, the switch to Custodia
+# restarts it with the fixed one and takes generic-cli off the list, and
+# `guardrails signal stop` ends it and its agent (SM10, SM26, G7, A8).
+tu="$(id -u tester)"; th="$(getent passwd tester | cut -d: -f6)"
+(cd "$WORK/src/pkgs/own/invictus-tribune" && sudo -u builder PKGDEST="$WORK/out" makepkg -d --noconfirm >"$WORK/make-tribune.log" 2>&1) \
+    || bad "makepkg invictus-tribune: $(tail -5 "$WORK/make-tribune.log")"
+if pacman -U -dd --noconfirm "$WORK"/out/invictus-tribune-*.pkg.tar.zst >"$WORK/tribune-install.log" 2>&1 \
+   && [[ "$(stat -c '%U %a' /usr/lib/invictus/moneta/moneta.py /usr/lib/invictus/moneta/mcp.py /usr/lib/invictus/claude-config-guard | sort -u)" == "root 755" ]] \
+   && [[ "$(stat -c '%U %a' /usr/share/invictus/providers/*/provider.toml /usr/share/invictus/guardrails/claude/*.json | sort -u)" == "root 644" ]] \
+   && [[ "$(stat -c '%U %a' /etc/claude-code /usr/share/invictus/claude-plugin /usr/share/invictus/providers)" == "$(printf 'root 755\nroot 755\nroot 755')" ]] \
+   && [[ "$(readlink -f /usr/bin/tribune)" == /usr/lib/invictus/moneta/moneta.py ]]; then
+    ok "A8: invictus-tribune installs root-owned: panel 0755, providers and both profiles 0644, /etc/claude-code 0755 (no drop-ins from a home)"
+else
+    bad "invictus-tribune install: $(tail -3 "$WORK/tribune-install.log") $(stat -c '%U %a %n' /usr/lib/invictus/moneta/* /etc/claude-code 2>&1 | paste -sd' ')"
+fi
+echo on > /etc/invictus/ai   # AI on without the package install; ai on itself is 7b's
+printf '#!/bin/bash\necho "$$" >> /tmp/claude.pids\nexec sleep 300\n' > /usr/bin/claude
+chmod 755 /usr/bin/claude
+: > /tmp/claude.pids; chmod 666 /tmp/claude.pids
+mkdir -p "/run/user/$tu"; chown tester "/run/user/$tu"; chmod 700 "/run/user/$tu"
+offered() { sudo -u tester env XDG_RUNTIME_DIR="/run/user/$tu" HOME="$th" "$@" invictus-provider list --json \
+            | python3 -c 'import json,sys; print(" ".join(sorted(x["name"] for x in json.load(sys.stdin) if x["offered"])))'; }
+waitfor() { local i; for i in $(seq 1 100); do eval "$1" && return 0; sleep 0.1; done; return 1; }
+sudo -u tester env XDG_RUNTIME_DIR="/run/user/$tu" HOME="$th" tribune run < /dev/null > /tmp/tribune.log 2>&1 &
+tpid=$!
+if waitfor '[[ -S /run/user/$tu/invictus/tribune.sock && -s /tmp/claude.pids ]]' && [[ "$(offered)" == "claude-code none openai-compatible" ]]; then
+    ok "tribune runs as tester with the shipped claude-code provider; Libertas without Full access offers no command-line agent"
+else bad "tribune start: $(cat /tmp/tribune.log) offered '$(offered)'"; fi
+c1="$(head -1 /tmp/claude.pids)"
+invictus-sys set-config assistant.full-access on > "$WORK/fa.log" 2>&1 || bad "full access on: $(cat "$WORK/fa.log")"
+if waitfor '[[ $(grep -c "started claude-code" /tmp/tribune.log) == 2 ]]' && ! kill -0 "$c1" 2>/dev/null \
+   && [[ "$(readlink /etc/claude-code/managed-settings.json)" == */full.json && "$(offered)" == "claude-code generic-cli none openai-compatible" ]]; then
+    ok "SM26: Full access on (real verb) restarts the panel's agent under the full profile (old pid gone) and offers generic-cli"
+else bad "full access restart: $(cat /tmp/tribune.log) link $(readlink /etc/claude-code/managed-settings.json) offered '$(offered)'"; fi
+if [[ "$(offered INVICTUS_GUARDRAILS=/bin/false INVICTUS_PROVIDERS_DIR=/tmp)" == "claude-code generic-cli none openai-compatible" ]]; then
+    ok "the installed invictus-provider ignores INVICTUS_* overrides (state and providers are the root-owned ones)"
+else bad "installed copy honoured an override: '$(offered INVICTUS_GUARDRAILS=/bin/false INVICTUS_PROVIDERS_DIR=/tmp)'"; fi
+c2="$(sed -n 2p /tmp/claude.pids)"
+invictus-sys guardrails set custodia > "$WORK/cust.log" 2>&1 || bad "set custodia: $(cat "$WORK/cust.log")"
+if waitfor '[[ $(grep -c "started claude-code" /tmp/tribune.log) == 3 ]]' && ! kill -0 "$c2" 2>/dev/null \
+   && [[ "$(readlink /etc/claude-code/managed-settings.json)" == */fixed.json && "$(offered)" == "claude-code none openai-compatible" ]]; then
+    ok "SM10/SM21: the switch to Custodia restarts the agent under the fixed profile; generic-cli is offered nowhere"
+else bad "custodia restart: $(cat /tmp/tribune.log) offered '$(offered)'"; fi
+/usr/lib/invictus/guardrails signal stop > "$WORK/stop.log" 2>&1
+if waitfor '! kill -0 $tpid 2>/dev/null' && ! pgrep -u tester -f 'sleep 300' >/dev/null && [[ ! -e "/run/user/$tu/invictus/tribune.sock" ]] \
+   && grep -q 'told 1 Moneta panel' "$WORK/stop.log"; then
+    ok "NA2/G7: root's stop reaches the real panel through setpriv; the panel, its agent and its socket are gone"
+else bad "stop: $(cat "$WORK/stop.log") $(cat /tmp/tribune.log) $(pgrep -u tester -a 2>&1 | paste -sd' ')"; fi
+rm -f /usr/bin/claude
+invictus-sys guardrails set libertas > /dev/null 2>&1 || true
+
 # 7b. ai on|off (design-no-ai.md N1, N3) with the real passwd, setpriv and
 # pacman. pkaction first, then the verbs as root (no logind session here).
+# Real pacman decides from here on. systemd-inhibit needs logind, which does
+# not run here (it failed, so before this stub pacman never ran in these
+# checks, and ai off never removed anything): a pass-through stand-in, like
+# the snapper stub.
+mv /usr/bin/systemd-inhibit /usr/bin/systemd-inhibit.real
+# shellcheck disable=SC2016 # the stand-in's own text
+printf '#!/bin/bash\nwhile [[ "$1" == --* ]]; do shift; done\nexec "$@"\n' > /usr/bin/systemd-inhibit
+chmod 755 /usr/bin/systemd-inhibit
 if [[ "$(pa ai-on)" == auth_admin && "$(pa ai-off)" == auth_admin ]]; then
     ok "polkitd: org.invictus.sys.ai-on and ai-off are auth_admin with no keep (ai-off's YES at your own desktop is the rules file's)"
 else
@@ -200,20 +266,14 @@ rc=0; invictus-sys ai off > "$WORK/aioff.out" 2>&1 || rc=$?
 sleep 0.5
 if [[ $rc == 0 && "$(cat /etc/invictus/ai)" == off && ! -e "$th/.claude/.credentials.json" && -f "$th/.claude/projects/p/c" ]] \
    && [[ "$(stat -c %U "$th/.claude.json")" == tester ]] && ! grep -q oauthAccount "$th/.claude.json" && grep -q numStartups "$th/.claude.json" \
-   && [[ -f /etc/firefox/policies/policies.json && -f "/var/lib/invictus/ai-off-pending/$tu" ]]; then
-    ok "ai off as root: tester's credential file and account block removed by a process running as tester (real setpriv), memory kept, browser policy and pending marker written"
+   && [[ -f /etc/firefox/policies/policies.json && -f "/var/lib/invictus/ai-off-pending/$tu" ]] \
+   && ! pacman -Q invictus-tribune >/dev/null 2>&1; then
+    ok "ai off as root: tester's credential file and account block removed by a process running as tester (real setpriv), memory kept, browser policy and pending marker written, the Moneta panel package removed"
 else
     bad "ai off: rc $rc: $(cat "$WORK/aioff.out"); $(find "$th" -maxdepth 2 -printf '%u %p\n' 2>&1 | paste -sd' ')"
 fi
 if [[ "$(cat /tmp/tribune.got 2>/dev/null)" == "stop uid=$tu" ]]; then ok "L1: root reached the panel's socket as its folder's owner (uid $tu), with stop"
 else bad "L1 real setpriv: tribune got '$(cat /tmp/tribune.got 2>/dev/null)'"; fi
-# N-L2: real pacman decides. systemd-inhibit needs logind, which does not
-# run here (it failed, so before this stub pacman never ran in these
-# checks): a pass-through stand-in, like the snapper stub.
-mv /usr/bin/systemd-inhibit /usr/bin/systemd-inhibit.real
-# shellcheck disable=SC2016 # the stand-in's own text
-printf '#!/bin/bash\nwhile [[ "$1" == --* ]]; do shift; done\nexec "$@"\n' > /usr/bin/systemd-inhibit
-chmod 755 /usr/bin/systemd-inhibit
 # The AI set is in no configured repo here: that is not a download
 # failure, so ai on fails and nothing waits.
 rc=0; invictus-sys ai on > "$WORK/aion.out" 2>&1 || rc=$?

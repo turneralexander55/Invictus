@@ -28,3 +28,8 @@ require("invictus.binds")
 require("invictus.rules")
 require("invictus.workspaces")
 require("invictus.gaming")
+
+-- The Moneta panel comes with the AI set (invictus-tribune). With No AI the
+-- module is not on disk, and "module not found" is the only error require
+-- raises (any other error in a module is reported and require returns {}).
+pcall(require, "invictus.moneta")

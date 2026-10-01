@@ -2,7 +2,6 @@
   "permissions": {
     "defaultMode": "default",
     "disableBypassPermissionsMode": "disable",
-    "disableAutoMode": "disable",
     "deny": [
       "Bash(sudo *)",
       "Bash(rm -rf *)",
@@ -11,14 +10,44 @@
       "Bash(btrfs subvolume delete *)",
       "Bash(makepkg *)",
       "Bash(pacman *)",
+      "Bash(pkexec *)",
+      "Bash(secret-tool *)",
       "Read(~/.claude/.credentials.json)",
       "Read(~/.ssh/**)",
       "Read(~/.local/share/keyrings/**)",
       "Read(~/.config/invictus/windows/**)",
       "Read(~/.config/winapps/**)",
+      "Read(//var/lib/invictus/vm/**)",
       "Edit(//etc/**)",
       "Edit(//boot/**)",
-      "Edit(//usr/**)"
+      "Edit(//usr/**)",
+      "Edit(~/.config/invictus/moneta.toml)",
+      "Edit(~/.config/invictus/providers/**)",
+      "Edit(~/.claude/settings.json)",
+      "Edit(~/.claude/settings.local.json)"
+    ]
+  },
+  "disableAutoMode": "disable",
+  "env": {
+    "DISABLE_UPDATES": "1",
+    "DISABLE_AUTOUPDATER": "1"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "/usr/lib/invictus/claude-config-guard pre full", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "/usr/lib/invictus/claude-config-guard post", "timeout": 60 }
+        ]
+      }
     ]
   }
 }

@@ -1,4 +1,4 @@
-# Tools for agents on an Invictus machine
+# Tools for agents on an Invictus computer
 
 You run as the person who uses this computer, with no sudo. Anything that changes the system goes through one command, and the person answers its password prompt themselves.
 
@@ -21,6 +21,25 @@ The last line of the output is `invictus-sys: <result> snapshot=<id>`. Exit 126 
 
 The full reference, with exit codes and polkit actions, is `docs/invictus-sys.md` in the Invictus repository.
 
+How you reach it depends on how you run:
+- **Claude Code in the Moneta panel**: the `invictus` MCP tools (`update_now`, `package_install`, `package_remove`, `snapshot`, `rollback`, `service_set`, `report_collect`, `doctor`, `acta`). They call `invictus-sys` for you, with your thread id. Without Full access you have no shell; these tools are how you act.
+- **Another command-line agent** (Full access): run `invictus-sys` yourself.
+- **A chat service** (no tools): write each proposed call in a fenced block, one per line, and the panel shows it as a button the person presses:
+
+  ````
+  ```invictus-sys
+  install firefox
+  ```
+  ````
+
+## Your own config files
+
+You may change only `~/.config/hypr/user.lua`, `~/.config/hypr/monitors.lua`, `~/.config/waybar/` and `~/.config/invictus/` (not `moneta.toml`, `providers/` or `theme-hooks.d/`: who answers, and what runs on a theme change, are the person's choice). A copy is saved under `~/.local/state/invictus/backups/` before each change, and a change to the Hyprland config that fails `invictus-doctor --hypr` is put back. Anything else in the home, such as `~/.bashrc`, is the person's to change.
+
 ## invictus-doctor
 
 `invictus-doctor` runs read-only checks and prints `ok`, `note`, `warn` or `FAIL` lines. Run it before you guess.
+
+## Acta
+
+`tribune acta` (or the `acta` tool) lists what `invictus-sys` changed, when, and the safety copy that undoes it. Use it to answer "what changed yesterday".

@@ -8,6 +8,10 @@
 #
 #   /usr/lib/invictus/guardrails               set, apply, expire (invictus-sys calls it)
 #   /usr/lib/invictus/pre-admin-snapshot       G2, run by pam_exec
+#   /usr/lib/invictus/claude-config-guard      MUST A6: the managed profiles' Edit/Write
+#                                              hook (allowlist, backup, doctor check);
+#                                              here, not in the AI set, so a profile is
+#                                              never installed without its guard
 #   /usr/share/polkit-1/rules.d/40-invictus-guardrails.rules   always
 #   /usr/share/invictus/guardrails/            the Custodia tier 1 rule template, the
 #                                              sudo lecture, both Claude Code managed
@@ -29,12 +33,12 @@
 
 pkgname=invictus-guardrails
 pkgver=0.2.0
-pkgrel=3
+pkgrel=4
 pkgdesc='Invictus guard rails: Custodia or Libertas, switched live, with the silent safety nets'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
 license=('GPL-3.0-or-later')
-depends=('invictus-sys' 'snapper' 'sudo' 'polkit' 'pacman' 'python' 'util-linux')
+depends=('invictus-sys>=0.2.0-4' 'snapper' 'sudo' 'polkit' 'pacman' 'python' 'util-linux')
 backup=('etc/pam.d/polkit-1' 'etc/pacman.d/invictus-guardrails.conf')
 install=invictus-guardrails.install
 
@@ -45,6 +49,7 @@ package() {
 
   install -Dm755 "$src/guardrails.sh" "$pkgdir/usr/lib/invictus/guardrails"
   install -Dm755 "$src/pre-admin-snapshot.sh" "$pkgdir/usr/lib/invictus/pre-admin-snapshot"
+  install -Dm755 "$src/claude/config-guard.py" "$pkgdir/usr/lib/invictus/claude-config-guard"
   install -Dm644 "$src/40-invictus-guardrails.rules" \
     "$pkgdir/usr/share/polkit-1/rules.d/40-invictus-guardrails.rules"
   install -Dm644 -t "$share" "$src/40-invictus-custodia.rules" "$src/sudo-lecture" \
