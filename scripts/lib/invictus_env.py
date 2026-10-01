@@ -17,7 +17,11 @@ tests/pkgs/firstboot.sh fails on any other direct INVICTUS_* read in a
 shipped Python script.
 
 Load it from a script with this block, copied as is (the script must find
-the helper before it knows whether it is installed):
+the helper before it knows whether it is installed). The block raises
+ImportError and never exits: the caller decides (Minerva, final review
+2026-10-01, ruling 5). A PreToolUse hook catches Exception and exits 2 (any
+other non-zero exit lets the tool call through); a tool prints the message
+and exits 1. tests/pkgs/lib/env-ast.py fails on a _invictus_env that exits.
 
     def _invictus_env():
         import importlib.util
@@ -31,14 +35,18 @@ the helper before it knows whether it is installed):
                       ("..", "lib", "invictus", "lib"))]
         path = next((p for p in paths if os.path.isfile(p)), None)
         if path is None:
-            sys.stderr.write(f"{os.path.basename(here)}: {paths[0] if here.startswith('/usr/') else 'invictus_env.py'} "
-                             "is missing (invictus-sys 0.2.0-4 or later installs it as "
-                             "/usr/lib/invictus/lib/invictus_env.py)\n")
-            sys.exit(1)
+            raise ImportError(f"{os.path.basename(here)}: {paths[0] if here.startswith('/usr/') else 'invictus_env.py'} "
+                              "is missing (invictus-sys 0.2.0-4 or later installs it as "
+                              "/usr/lib/invictus/lib/invictus_env.py)")
         spec = importlib.util.spec_from_file_location("invictus_env", path)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return mod.for_script(here)
+
+    try:
+        env = _invictus_env()
+    except ImportError as e:
+        sys.exit(f"{e}")
 """
 import os
 

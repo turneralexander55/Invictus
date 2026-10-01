@@ -70,17 +70,19 @@ def _invictus_env():
                   ("..", "lib", "invictus", "lib"))]
     path = next((p for p in paths if os.path.isfile(p)), None)
     if path is None:
-        sys.stderr.write(f"{os.path.basename(here)}: {paths[0] if here.startswith('/usr/') else 'invictus_env.py'} "
-                         "is missing (invictus-sys 0.2.0-4 or later installs it as "
-                         "/usr/lib/invictus/lib/invictus_env.py)\n")
-        sys.exit(1)
+        raise ImportError(f"{os.path.basename(here)}: {paths[0] if here.startswith('/usr/') else 'invictus_env.py'} "
+                          "is missing (invictus-sys 0.2.0-4 or later installs it as "
+                          "/usr/lib/invictus/lib/invictus_env.py)")
     spec = importlib.util.spec_from_file_location("invictus_env", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod.for_script(here)
 
 
-ENV = _invictus_env()
+try:
+    ENV = _invictus_env()
+except ImportError as e:  # not a gate: say what is missing and stop
+    sys.exit(f"{e}")
 if os.path.realpath(__file__).startswith("/usr/"):
     # Installed: every tool is called by full path, and the programs they
     # start (the Claude sign-in) see only the system's (Janus N2).

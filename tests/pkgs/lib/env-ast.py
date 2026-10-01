@@ -11,10 +11,35 @@ For each shipped Python script:
   - a file that names INVICTUS_* at all must load the helper
     (scripts/lib/invictus_env.py, the _invictus_env() loader);
   - every tool(NAME, DEFAULT) default is an absolute path, so PATH never
-    picks the program (Janus N2).
+    picks the program (Janus N2);
+  - the _invictus_env() loader never exits (sys.exit, SystemExit, os._exit):
+    it raises ImportError and the caller decides (Minerva, ruling 5);
+  - in a Claude Code hook (scripts/guardrails/claude/), every sys.exit,
+    SystemExit and os._exit has the literal argument 2: a PreToolUse hook
+    that exits with anything else but 0 lets the tool call through, and 0
+    comes from falling off the end.
 """
 import ast
+import os
 import sys
+
+HOOK_DIR = "/scripts/guardrails/claude/"
+
+
+def exit_call(node):
+    """(what, first argument or None) for sys.exit(...), os._exit(...),
+    SystemExit(...) and a bare raise SystemExit; else None."""
+    if isinstance(node, ast.Raise) and isinstance(node.exc, ast.Name) and node.exc.id == "SystemExit":
+        return "raise SystemExit", None
+    if isinstance(node, ast.Call):
+        f = node.func
+        arg = node.args[0] if node.args else None
+        if isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name) and (
+                (f.value.id == "sys" and f.attr == "exit") or (f.value.id == "os" and f.attr == "_exit")):
+            return f"{f.value.id}.{f.attr}", arg
+        if isinstance(f, ast.Name) and f.id in ("SystemExit", "exit", "quit"):
+            return f.id, arg
+    return None
 
 
 def env_call_name(node):
@@ -56,6 +81,17 @@ def check(path):
             d = node.args[1]
             if not (isinstance(d, ast.Constant) and isinstance(d.value, str) and d.value.startswith("/")):
                 bad.append(f"{path}:{node.lineno}: tool() default is not an absolute path")
+    hook = HOOK_DIR in os.path.abspath(path)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_invictus_env":
+            for sub in ast.walk(node):
+                ex = exit_call(sub)
+                if ex:
+                    bad.append(f"{path}:{sub.lineno}: _invictus_env exits ({ex[0]}); it must raise ImportError")
+        if hook:
+            ex = exit_call(node)
+            if ex and not (isinstance(ex[1], ast.Constant) and ex[1].value == 2 and type(ex[1].value) is int):
+                bad.append(f"{path}:{node.lineno}: {ex[0]} in a hook without the literal 2 (only exit 2 blocks)")
     if "INVICTUS_" in src and "_invictus_env()" not in src:
         bad.append(f"{path}: names INVICTUS_* but does not load invictus_env")
     return bad

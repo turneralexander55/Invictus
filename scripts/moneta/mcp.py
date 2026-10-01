@@ -34,14 +34,21 @@ def _invictus_env():
         paths = [os.path.join(d, *p, "invictus_env.py") for p in
                  (("lib",), ("..", "lib"), ("..", "scripts", "lib"), ("..", "..", "lib"),
                   ("..", "lib", "invictus", "lib"))]
-    path = next(p for p in paths if os.path.isfile(p))
+    path = next((p for p in paths if os.path.isfile(p)), None)
+    if path is None:
+        raise ImportError(f"{os.path.basename(here)}: {paths[0] if here.startswith('/usr/') else 'invictus_env.py'} "
+                          "is missing (invictus-sys 0.2.0-4 or later installs it as "
+                          "/usr/lib/invictus/lib/invictus_env.py)")
     spec = importlib.util.spec_from_file_location("invictus_env", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod.for_script(here)
 
 
-env = _invictus_env()
+try:
+    env = _invictus_env()
+except ImportError as e:  # not a gate: say what is missing and stop
+    sys.exit(f"{e}")
 
 
 INVICTUS_SYS = env("INVICTUS_SYS", "/usr/bin/invictus-sys")

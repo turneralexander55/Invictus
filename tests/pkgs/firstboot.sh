@@ -452,6 +452,54 @@ EOF
 n_bad="$(python3 "$HERE/lib/env-ast.py" "$TMP/envast-bad.py" | wc -l)"
 [[ "$n_bad" == 4 ]] && ok "N3: the check catches a split call, a computed name, a subscript and a bare tool() default (4 of 4; the marked label passes)" \
     || bad "N3: the checker found $n_bad of 4 planted reads"
+# Minerva ruling 5: the loader raises, and a hook exits only with the literal 2.
+mkdir -p "$TMP/envast-hook/scripts/guardrails/claude" "$TMP/envast-hook/scripts/tool"
+cat > "$TMP/envast-hook/scripts/guardrails/claude/hook.py" <<'EOF'
+import os, sys
+def main(): return 2
+if main():
+    sys.exit(2)
+sys.exit(main())
+sys.exit(1)
+sys.exit()
+raise SystemExit
+raise SystemExit(0)
+os._exit(3)
+exit(1)
+EOF
+cat > "$TMP/envast-hook/scripts/tool/loader.py" <<'EOF'
+import os, sys
+def _invictus_env():
+    path = None
+    if path is None:
+        sys.exit(1)
+    return path
+env = _invictus_env()
+sys.exit(1)
+EOF
+python3 "$HERE/lib/env-ast.py" "$TMP/envast-hook/scripts/guardrails/claude/hook.py" "$TMP/envast-hook/scripts/tool/loader.py" > "$TMP/envast-hook.out"
+n_hook="$(grep -c 'hook.py:.*without the literal 2' "$TMP/envast-hook.out")"
+n_load="$(grep -c 'loader.py:.*_invictus_env exits' "$TMP/envast-hook.out")"
+n_all="$(wc -l < "$TMP/envast-hook.out")"
+[[ "$n_hook" == 7 && "$n_load" == 1 && "$n_all" == 8 ]] \
+    && ok "ruling 5: the check catches a hook exit that is not the literal 2 (7 of 7: main(), 1, none, bare and 0 SystemExit, os._exit, exit) and a loader that exits; sys.exit(2) and a tool's own exit 1 pass" \
+    || bad "ruling 5: env-ast found $n_hook of 7 hook exits, $n_load of 1 loader exits, $n_all lines: $(head -10 "$TMP/envast-hook.out")"
+# ... and the block the helper's docstring tells every script to copy passes the same check
+if python3 - "$REPO/scripts/lib/invictus_env.py" "$TMP/envast-doc.py" <<'EOF'
+import ast, sys, textwrap
+doc = ast.get_docstring(ast.parse(open(sys.argv[1]).read()), clean=False)
+block = doc.split("def _invictus_env():", 1)[1]
+code = textwrap.dedent("    def _invictus_env():" + block)
+assert "raise ImportError" in code, "the copied loader must raise ImportError"
+open(sys.argv[2], "w").write("import os, sys\n" + code)
+EOF
+then
+    python3 "$HERE/lib/env-ast.py" "$TMP/envast-doc.py" > "$TMP/envast-doc.out" \
+        && ok "ruling 5: the loader block in invictus_env.py's docstring raises ImportError and never exits" \
+        || bad "ruling 5: the docstring's loader block: $(head -3 "$TMP/envast-doc.out")"
+else
+    bad "ruling 5: the docstring's loader block does not raise ImportError"
+fi
 grep -q "invictus_env.py" "$REPO/pkgs/own/invictus-sys/PKGBUILD" && [[ -f "$ALL/usr/lib/invictus/lib/invictus_env.py" ]] \
     && ok "L1: invictus-sys installs the helper as /usr/lib/invictus/lib/invictus_env.py" || bad "L1: the helper is not packaged"
 
@@ -535,14 +583,16 @@ grep -qx "invictus-sys>=$sysv" <<< "$toolsdeps" && (( toolsrel >= 7 )) \
 mkdir -p "$TMP/nohelper/bin"
 cp "$FB" "$TMP/nohelper/bin/invictus-first-boot"
 cp "$REPO/theme/invictus-theme" "$TMP/nohelper/bin/invictus-theme"
+cp "$REPO/scripts/moneta/moneta.py" "$TMP/nohelper/bin/moneta.py"
+cp "$REPO/scripts/moneta/mcp.py" "$TMP/nohelper/bin/mcp.py"
 n4=""
-for s in invictus-first-boot invictus-theme; do
-    python3 "$TMP/nohelper/bin/$s" state > /dev/null 2> "$TMP/nohelper/$s.err"; rc=$?
+for s in invictus-first-boot invictus-theme moneta.py mcp.py; do
+    python3 "$TMP/nohelper/bin/$s" state > /dev/null 2> "$TMP/nohelper/$s.err" < /dev/null; rc=$?
     if [[ $rc == 0 ]] || grep -q Traceback "$TMP/nohelper/$s.err" || ! grep -q "invictus_env.py" "$TMP/nohelper/$s.err"; then
         n4+=" $s(rc $rc: $(tail -1 "$TMP/nohelper/$s.err"))"
     fi
 done
-[[ -z "$n4" ]] && ok "N4: with the helper missing, both scripts stop with a line naming invictus_env.py, no traceback" || bad "N4:$n4"
+[[ -z "$n4" ]] && ok "N4, ruling 5: with the helper missing, the wizard, invictus-theme, the panel and the MCP server stop with a line naming invictus_env.py, no traceback" || bad "N4:$n4"
 # Info: a provider-failed kept choice stops after five tries
 new_home cap atrium
 FAKE_SYS_RESULT=pending fb assistant claude
