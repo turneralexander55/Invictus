@@ -278,27 +278,56 @@ Card {
                         height: 24
                         radius: 6
                         color: step.theme.stone
-                        Text {
+                        Row {
                             x: 8
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "What do you need help with?"
-                            font.family: step.theme.sans
-                            font.pixelSize: 11
-                            color: step.theme.ash
+                            spacing: 6
+                            Icon {
+                                width: 11
+                                height: 11
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: step.theme.ash
+                                paths: ["M16.5 10.5a6 6 0 1 1-12 0a6 6 0 1 1 12 0", "m15 15 5 5"]
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "What do you need help with?"
+                                font.family: step.theme.sans
+                                font.pixelSize: 11
+                                color: step.theme.ash
+                            }
                         }
                     }
                     Item { width: 1; height: 6 }
+                    // the guides, each with its icon (the mockup's printer,
+                    // Wi-Fi and go-back icons), so the picture reads as a list
+                    // you can click and not as a paragraph
                     Repeater {
-                        model: ["Print something", "Connect to Wi-Fi", "Get a deleted file back"]
-                        Text {
-                            required property string modelData
+                        model: [
+                            ["Print something", ["M7 9V4h10v5", "M5.5 9h13a2 2 0 0 1 2 2v3.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V11a2 2 0 0 1 2-2z", "M7 14h10v6H7z"]],
+                            ["Connect to Wi-Fi", ["M2.5 9a14 14 0 0 1 19 0", "M5.5 12.3a9.5 9.5 0 0 1 13 0", "M8.6 15.5a5 5 0 0 1 6.8 0", ["M12 18.8h.01", 2.6]]],
+                            ["Get a deleted file back", ["M4.5 12a7.5 7.5 0 1 0 2.2-5.3L4.5 9", "M4.5 4.5V9H9", "M12 8v4.3l3 1.7"]]
+                        ]
+                        Row {
+                            id: guide
+                            required property var modelData
                             height: 24
-                            verticalAlignment: Text.AlignVCenter
-                            leftPadding: 22
-                            text: modelData
-                            font.family: step.theme.sans
-                            font.pixelSize: 12
-                            color: step.theme.marble
+                            spacing: 8
+                            Icon {
+                                width: 14
+                                height: 14
+                                anchors.verticalCenter: parent.verticalCenter
+                                stroke: 1.7
+                                color: step.theme.parchment
+                                paths: guide.modelData[1]
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: guide.modelData[0]
+                                font.family: step.theme.sans
+                                font.pixelSize: 12
+                                color: step.theme.marble
+                            }
                         }
                     }
                 }
