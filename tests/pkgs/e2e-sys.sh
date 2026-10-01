@@ -20,8 +20,9 @@
 #   7. Acta lands in the journal with its fields (when journald runs here)
 #   7b. ai off as root signs a real user out through setpriv (their files,
 #      their process), writes the browser policy; the panel's socket is
-#      reached as its folder's owner (L1); ai on goes pending when no repo
-#      has the AI set
+#      reached as its folder's owner (L1); ai on fails (exit 1, nothing
+#      waits) when no repo has the AI set, and goes pending only when no
+#      mirror answers; ai-pending exits 1 offline and 2 otherwise (N-L2)
 #   8. removing invictus-guardrails takes the derived files and lines away
 #      and pacman still works
 # Not here (no logind session in a container): subject.local/active, so
@@ -206,13 +207,42 @@ else
 fi
 if [[ "$(cat /tmp/tribune.got 2>/dev/null)" == "stop uid=$tu" ]]; then ok "L1: root reached the panel's socket as its folder's owner (uid $tu), with stop"
 else bad "L1 real setpriv: tribune got '$(cat /tmp/tribune.got 2>/dev/null)'"; fi
+# N-L2: real pacman decides. systemd-inhibit needs logind, which does not
+# run here (it failed, so before this stub pacman never ran in these
+# checks): a pass-through stand-in, like the snapper stub.
+mv /usr/bin/systemd-inhibit /usr/bin/systemd-inhibit.real
+printf '#!/bin/bash\nwhile [[ "$1" == --* ]]; do shift; done\nexec "$@"\n' > /usr/bin/systemd-inhibit
+chmod 755 /usr/bin/systemd-inhibit
+# The AI set is in no configured repo here: that is not a download
+# failure, so ai on fails and nothing waits.
 rc=0; invictus-sys ai on > "$WORK/aion.out" 2>&1 || rc=$?
-if [[ $rc == 0 && "$(cat /etc/invictus/ai)" == on && -f /var/lib/invictus/ai-install-pending && ! -e /etc/firefox/policies/policies.json ]] \
-   && grep -q 'invictus-sys: pending' "$WORK/aion.out"; then
-    ok "ai on with the AI set in no configured repo: AI reads on, the install waits (pending marker), our browser policy is gone"
+if [[ $rc == 1 && "$(cat /etc/invictus/ai)" == on && ! -e /var/lib/invictus/ai-install-pending && ! -e /etc/firefox/policies/policies.json ]] \
+   && [[ -z "$(ls -A /var/lib/invictus/ai-off-pending)" ]] \
+   && grep -q 'Update first' "$WORK/aion.out" && grep -q 'invictus-sys: failed' "$WORK/aion.out" \
+   && grep -q 'target not found: invictus-moneta' "$WORK/aion.out"; then
+    ok "ai on with the AI set in no configured repo (real pacman): failed, exit 1, no pending marker; AI reads on, our browser policy and the ai-off markers are gone"
 else
-    bad "ai on: rc $rc: $(tail -3 "$WORK/aion.out")"
+    bad "ai on, not in a repo: rc $rc: $(tail -3 "$WORK/aion.out")"
 fi
+# No mirror answers (connection refused): pacman 7's own lines must read as
+# a download failure, so ai on waits for the connection.
+cp /etc/pacman.d/mirrorlist "$WORK/mirrorlist"
+echo 'Server = http://127.0.0.1:9/$repo/os/$arch' > /etc/pacman.d/mirrorlist
+rc=0; invictus-sys ai on > "$WORK/aion2.out" 2>&1 || rc=$?
+if [[ $rc == 0 && -f /var/lib/invictus/ai-install-pending ]] && grep -q 'invictus-sys: pending' "$WORK/aion2.out" \
+   && grep -q 'failed to synchronize all databases' "$WORK/aion2.out"; then
+    ok "ai on with no mirror reachable (real pacman): pending, the install waits for the connection"
+else
+    bad "ai on offline: rc $rc: $(tail -4 "$WORK/aion2.out")"
+fi
+rc=0; /usr/lib/invictus/ai-pending > "$WORK/pend1.out" 2>&1 || rc=$?
+[[ $rc == 1 && -f /var/lib/invictus/ai-install-pending ]] && ok "ai-pending with no mirror reachable: exit 1 (the unit tries again), marker kept" \
+    || bad "ai-pending offline: rc $rc: $(tail -3 "$WORK/pend1.out")"
+cp "$WORK/mirrorlist" /etc/pacman.d/mirrorlist
+rc=0; /usr/lib/invictus/ai-pending > "$WORK/pend2.out" 2>&1 || rc=$?
+[[ $rc == 2 ]] && ok "ai-pending online with the AI set in no repo: exit 2 (RestartPreventExitStatus, no retry loop)" \
+    || bad "ai-pending, not a download failure: rc $rc: $(tail -3 "$WORK/pend2.out")"
+mv -f /usr/bin/systemd-inhibit.real /usr/bin/systemd-inhibit
 
 # 8. Removing the guard rails leaves nothing pointing at removed files.
 pacman -R --noconfirm invictus-guardrails > "$WORK/rm.log" 2>&1 || bad "remove invictus-guardrails: $(tail -3 "$WORK/rm.log")"
