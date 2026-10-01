@@ -47,13 +47,25 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-INSTALLED = os.path.realpath(__file__).startswith("/usr/")
+def _invictus_env():
+    # INVICTUS_* overrides work only from a checkout: scripts/lib/invictus_env.py
+    import importlib.util
+    here = os.path.realpath(__file__)
+    if here.startswith("/usr/"):
+        paths = ["/usr/lib/invictus/lib/invictus_env.py"]
+    else:  # a checkout, or a test's install tree
+        d = os.path.dirname(here)
+        paths = [os.path.join(d, *p, "invictus_env.py") for p in
+                 (("lib",), ("..", "lib"), ("..", "scripts", "lib"), ("..", "..", "lib"),
+                  ("..", "lib", "invictus", "lib"))]
+    path = next(p for p in paths if os.path.isfile(p))
+    spec = importlib.util.spec_from_file_location("invictus_env", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.for_script(here)
 
 
-def env(name, default):
-    if INSTALLED:
-        return default
-    return os.environ.get(name, default)
+env = _invictus_env()
 
 
 GUARDRAILS = env("INVICTUS_GUARDRAILS", "/usr/lib/invictus/guardrails")
@@ -615,7 +627,7 @@ def chat_cli(argv):
         print(f"Moneta will not use this endpoint: {ext(e)}")
         return EXIT_REFUSED
     key = key_lookup(p["name"], p["endpoint"])
-    thread = os.environ.get("INVICTUS_THREAD", "")
+    thread = os.environ.get("INVICTUS_THREAD", "")  # not an override
     if not re.match(r"^[A-Za-z0-9._:-]{1,64}$", thread):
         thread = new_thread_id()
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]

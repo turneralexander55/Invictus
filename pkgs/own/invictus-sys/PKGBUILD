@@ -14,6 +14,8 @@
 #   /usr/lib/invictus/lib/acta.sh              the Acta journal entry
 #   /usr/lib/invictus/lib/guardrails-state.sh  how every guard reads the rails
 #   /usr/lib/invictus/lib/ai-set.sh            the AI set (ai on|off and the tests)
+#   /usr/lib/invictus/lib/invictus_env.py      INVICTUS_* test overrides, honoured
+#                                              only from a checkout (Python tools)
 #   /usr/lib/invictus/ai-signout               ai off's per-person part, run as each person
 #   /usr/lib/invictus/ai-pending               ai on's install when it ran offline,
 #                                              run by invictus-ai-pending.service
@@ -25,7 +27,7 @@
 
 pkgname=invictus-sys
 pkgver=0.2.0
-pkgrel=3
+pkgrel=4
 pkgdesc='Invictus system helper: the fixed verbs that change the system, each behind its own polkit prompt'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
@@ -47,7 +49,8 @@ package() {
   install -Dm755 "$root/scripts/sys/invictus-sys.sh" "$pkgdir/usr/bin/invictus-sys"
   install -Dm755 "$root/scripts/sys/invictus-sys-root.sh" "$lib/invictus-sys"
   install -Dm644 -t "$lib/lib" "$root/scripts/lib/sys-verbs.sh" "$root/scripts/lib/pacman.sh" \
-    "$root/scripts/lib/acta.sh" "$root/scripts/lib/guardrails-state.sh" "$root/scripts/lib/ai-set.sh"
+    "$root/scripts/lib/acta.sh" "$root/scripts/lib/guardrails-state.sh" "$root/scripts/lib/ai-set.sh" \
+    "$root/scripts/lib/invictus_env.py"
   install -Dm755 "$root/scripts/sys/ai-signout.sh" "$lib/ai-signout"
   install -Dm755 "$root/scripts/sys/ai-pending.sh" "$lib/ai-pending"
   # Not enabled here: ai on enables it when the install has to wait.

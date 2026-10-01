@@ -29,7 +29,7 @@ pkgdesc='Invictus Moneta panel: Super+A, any AI agent or chat service behind it,
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
 license=('GPL-3.0-or-later')
-depends=('invictus-sys' 'invictus-guardrails' 'python' 'kitty' 'libsecret' 'hyprland')
+depends=('invictus-sys>=0.2.0-4' 'invictus-guardrails' 'python' 'kitty' 'libsecret' 'hyprland')
 
 package() {
   local root="$startdir/../../.."

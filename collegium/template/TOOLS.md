@@ -34,7 +34,7 @@ How you reach it depends on how you run:
 
 ## Your own config files
 
-You may change only `~/.config/hypr/user.lua`, `~/.config/hypr/monitors.lua`, `~/.config/waybar/` and `~/.config/invictus/` (not `moneta.toml` or `providers/`: who answers is the person's choice). A copy is saved under `~/.local/state/invictus/backups/` before each change, and a change to the Hyprland config that fails `invictus-doctor --hypr` is put back. Anything else in the home, such as `~/.bashrc`, is the person's to change.
+You may change only `~/.config/hypr/user.lua`, `~/.config/hypr/monitors.lua`, `~/.config/waybar/` and `~/.config/invictus/` (not `moneta.toml`, `providers/` or `theme-hooks.d/`: who answers, and what runs on a theme change, are the person's choice). A copy is saved under `~/.local/state/invictus/backups/` before each change, and a change to the Hyprland config that fails `invictus-doctor --hypr` is put back. Anything else in the home, such as `~/.bashrc`, is the person's to change.
 
 ## invictus-doctor
 

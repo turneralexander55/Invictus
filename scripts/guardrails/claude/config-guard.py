@@ -11,7 +11,8 @@
 # pre: the file must be on the A6 allowlist in the home:
 #        ~/.config/hypr/user.lua, ~/.config/hypr/monitors.lua,
 #        ~/.config/invictus/** (not moneta.toml or providers/: who answers is
-#        the person's choice, T7), ~/.config/waybar/**
+#        the person's choice, T7; not theme-hooks.d/: invictus-theme apply
+#        runs what is there, Janus I5), ~/.config/waybar/**
 #      fixed (Custodia, or Libertas without Full access): nothing else.
 #      full (Full access): also any path in the home whose first part does
 #        not start with a dot (projects, documents); no other dotfile, and
@@ -40,11 +41,29 @@ import subprocess
 import sys
 import time
 
-INSTALLED = os.path.realpath(__file__).startswith("/usr/")
+def _invictus_env():
+    # INVICTUS_* overrides work only from a checkout: scripts/lib/invictus_env.py
+    import importlib.util
+    here = os.path.realpath(__file__)
+    if here.startswith("/usr/"):
+        paths = ["/usr/lib/invictus/lib/invictus_env.py"]
+    else:  # a checkout, or a test's install tree
+        d = os.path.dirname(here)
+        paths = [os.path.join(d, *p, "invictus_env.py") for p in
+                 (("lib",), ("..", "lib"), ("..", "scripts", "lib"), ("..", "..", "lib"),
+                  ("..", "lib", "invictus", "lib"))]
+    path = next(p for p in paths if os.path.isfile(p))
+    spec = importlib.util.spec_from_file_location("invictus_env", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.for_script(here)
 
 
-def env(name, default):
-    return default if INSTALLED else os.environ.get(name, default)
+try:
+    env = _invictus_env()
+except Exception as e:  # fail closed: exit 1 would let the edit through
+    print(f"claude-config-guard cannot load invictus_env ({type(e).__name__}); not allowed.", file=sys.stderr)
+    sys.exit(2)
 
 
 DOCTOR = env("INVICTUS_DOCTOR", "/usr/bin/invictus-doctor")
@@ -54,7 +73,8 @@ STATE = os.path.join(HOME, ".local/state/invictus/backups")
 
 ALLOW_FILES = (".config/hypr/user.lua", ".config/hypr/monitors.lua")
 ALLOW_TREES = (".config/invictus", ".config/waybar")
-NEVER = (".config/invictus/moneta.toml", ".config/invictus/providers")
+NEVER = (".config/invictus/moneta.toml", ".config/invictus/providers",
+         ".config/invictus/theme-hooks.d")  # programs invictus-theme apply runs (Janus I5)
 
 
 def rel_in_home(path):

@@ -587,6 +587,7 @@ cases = {
     (".config/invictus/moneta.toml", "full"): 2, (".config/invictus/providers/x/provider.toml", "full"): 2,
     (".config/waybar/evil.css", "fixed"): 2, (".config/waybar/../../.bashrc", "fixed"): 2,
     (".claude/settings.json", "full"): 2, ("projects/app.py", "fixed"): 2, ("projects/app.py", "full"): 0,
+    (".config/invictus/theme-hooks.d/10-evil", "fixed"): 2, (".config/invictus/theme-hooks.d/10-evil", "full"): 2,
 }
 got = {k: guard("pre", os.path.join(GH, k[0]), k[1]).returncode for k in cases}
 got[("/etc/hosts", "full")] = guard("pre", "/etc/hosts", "full").returncode
@@ -595,8 +596,17 @@ want = dict(cases)
 want[("/etc/hosts", "full")] = 2
 want[("relative", "full")] = 2
 check(got == want, "A6: edits only on the allowlist (fixed), plus non-dot home paths (full); symlinks and .. "
-      "are followed; who-answers files, ~/.bashrc and ~/.claude are never edited",
+      "are followed; who-answers files, theme hooks (I5), ~/.bashrc and ~/.claude are never edited",
       f"guard decisions differ: {[(k, got[k], want[k]) for k in want if got[k] != want[k]]}")
+# The guard alone, where invictus_env.py cannot be found: still exit 2.
+LONE = os.path.join(W, "lone")
+os.makedirs(LONE, exist_ok=True)
+shutil.copy(GUARD, os.path.join(LONE, "config-guard.py"))
+r = subprocess.run([PY, "-I", os.path.join(LONE, "config-guard.py"), "pre", "fixed"],
+                   input=json.dumps({"tool_input": {"file_path": os.path.join(GH, ".bashrc")}}),
+                   capture_output=True, text=True, env=envmap(HOME_OVERRIDE=GH), timeout=30)
+check(r.returncode == 2, "A6: a guard that cannot load its helper still blocks the edit (exit 2, not 1)",
+      f"lone guard: {r.returncode} {r.stderr[-200:]!r}")
 r = guard("pre", "", "fixed", raw="not json")
 check(r.returncode == 2, "A6: a guard that cannot read its input blocks the edit (fails closed)", f"garbage: {r.returncode}")
 

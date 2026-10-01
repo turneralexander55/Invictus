@@ -38,7 +38,7 @@ pkgdesc='Invictus guard rails: Custodia or Libertas, switched live, with the sil
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
 license=('GPL-3.0-or-later')
-depends=('invictus-sys' 'snapper' 'sudo' 'polkit' 'pacman' 'python' 'util-linux')
+depends=('invictus-sys>=0.2.0-4' 'snapper' 'sudo' 'polkit' 'pacman' 'python' 'util-linux')
 backup=('etc/pam.d/polkit-1' 'etc/pacman.d/invictus-guardrails.conf')
 install=invictus-guardrails.install
 

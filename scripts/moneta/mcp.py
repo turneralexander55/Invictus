@@ -23,18 +23,32 @@ import subprocess
 import sys
 import time
 
-INSTALLED = os.path.realpath(__file__).startswith("/usr/")
+def _invictus_env():
+    # INVICTUS_* overrides work only from a checkout: scripts/lib/invictus_env.py
+    import importlib.util
+    here = os.path.realpath(__file__)
+    if here.startswith("/usr/"):
+        paths = ["/usr/lib/invictus/lib/invictus_env.py"]
+    else:  # a checkout, or a test's install tree
+        d = os.path.dirname(here)
+        paths = [os.path.join(d, *p, "invictus_env.py") for p in
+                 (("lib",), ("..", "lib"), ("..", "scripts", "lib"), ("..", "..", "lib"),
+                  ("..", "lib", "invictus", "lib"))]
+    path = next(p for p in paths if os.path.isfile(p))
+    spec = importlib.util.spec_from_file_location("invictus_env", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.for_script(here)
 
 
-def env(name, default):
-    return default if INSTALLED else os.environ.get(name, default)
+env = _invictus_env()
 
 
 INVICTUS_SYS = env("INVICTUS_SYS", "/usr/bin/invictus-sys")
 DOCTOR = env("INVICTUS_DOCTOR", "/usr/bin/invictus-doctor")
 HELP_SESSION = env("INVICTUS_HELP_SESSION", "/run/invictus/help-session")
 JOURNALCTL = env("INVICTUS_JOURNALCTL", "/usr/bin/journalctl")
-THREAD = os.environ.get("INVICTUS_THREAD", "")
+THREAD = os.environ.get("INVICTUS_THREAD", "")  # not an override
 if not re.match(r"^[A-Za-z0-9._:-]{1,64}$", THREAD):
     THREAD = time.strftime("mcp-%Y%m%d-%H%M%S-") + secrets.token_hex(2)
 
