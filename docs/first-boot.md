@@ -60,8 +60,18 @@ applies the theme in use (Dusk on a new home), Calm and light apps.
   tests use (`INVICTUS_SHARE`, `INVICTUS_TERMINAL`, ...) are read through
   `scripts/lib/invictus_env.py`; an installed copy (under `/usr/`) ignores
   them, and the installed screens always call `/usr/bin/invictus-first-boot`.
-  So nothing in a session's environment chooses the provider file, the
-  terminal, or the program a key goes to.
+  Installed, every tool is called by its full path under `/usr/bin` and
+  `PATH` is set to `/usr/bin` for everything it starts. What holds: the test
+  variables are ignored when installed, and the tools are called by full
+  path. A program running as the same person can still change how Python
+  itself starts (`PYTHONPATH`, `LD_PRELOAD`); that is outside what a user
+  tool can prevent.
+- **Theme files are checked field by field** when they load (`invictus-theme`'s
+  schema): unknown sections or keys, a name or concept with anything but
+  letters, digits, spaces and plain punctuation, a wallpaper or accent that is
+  not a plain name, a colour that is not exactly `#RRGGBB`. Such a theme is
+  skipped, so the Look step never lists it, and meta strings are cleaned
+  again when they are written into a generated file.
 - **monitors.lua backups** get a folder of their own each time (two writes in
   one second keep both). Writing the same text again changes nothing and
   runs no check. A `monitors.lua` that is a symlink (a dotfiles repo) is
