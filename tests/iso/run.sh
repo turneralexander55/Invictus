@@ -8,12 +8,14 @@
 #   2. calamares.py  installer configs: YAML, modules, schemas, decisions
 #                    (needs python3 with yaml and jsonschema)
 #   3. jobs.sh       the install jobs and live scripts on a fake target
+#   3b. boot-smoke-rules.py  the boot smoke test's verdicts, against a
+#                    fake root shell (the boot itself: boot-smoke.sh)
 #   4. lint          every ISO and installer shell script, with the
 #                    ShellCheck binary on PATH and, when SHELLCHECK_OLD
 #                    points at one, an older release too (CI pins 0.9.0)
 #
-# The ISO itself is checked by tests/iso/e2e-iso.sh (container, after a
-# build) and booted by tests/iso/boot-qemu.sh.
+# The ISO itself is scanned for secrets by scripts/build-iso.sh, booted by tests/iso/boot-smoke.sh (CI, after the build) and
+# driven by hand with tests/iso/boot-qemu.sh.
 # ------------------------------------------------------------
 set -uo pipefail
 
@@ -41,6 +43,7 @@ run() {
 run profile bash "$HERE/profile.sh"
 run calamares python3 "$HERE/calamares.py"
 run jobs bash "$HERE/jobs.sh"
+run "boot-smoke rules" python3 "$HERE/boot-smoke-rules.py"
 
 scripts=(
     "$REPO/scripts/build-iso.sh"

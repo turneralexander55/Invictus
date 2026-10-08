@@ -10,15 +10,27 @@
 # Fallback: cage, a one-window kiosk compositor, with only the installer.
 # Used when the boot menu's "safe graphics" entry was picked
 # (invictus.safe=1), when there is no GPU render node (virtual machines
-# without 3D, very old or unsupported GPUs), or when Hyprland exits within
-# 30 seconds of starting. cage uses wlroots, which can draw in software
-# (pixman), so the installer always has a screen.
+# without 3D, very old or unsupported GPUs), when Hyprland exits within
+# 30 seconds of starting, or when it hangs: the watchdog below gives
+# Hyprland INVICTUS_HYPR_TIMEOUT seconds (default 90) to answer on its IPC
+# socket with the installer window open, and otherwise stops it and starts
+# the kiosk. cage uses wlroots, which can draw in software (pixman), so the
+# installer always has a screen. Every fallback writes its reason to the log
+# below.
+#
+# Why 90 seconds: on hardware Hyprland answers within a few seconds and
+# the installer window is up in about 10 to 20 seconds when Qt and
+# Calamares are read cold from a slow USB stick. 90 seconds is several
+# times that, and caps how long a hung Hyprland can hold the screen.
 # ------------------------------------------------------------
 set -u
 
 CMDLINE="${INVICTUS_CMDLINE:-/proc/cmdline}"
 RENDER_GLOB="${INVICTUS_RENDER_GLOB:-/dev/dri/renderD*}"
 LOG="${XDG_RUNTIME_DIR:-/tmp}/invictus-live-session.log"
+HYPR_TIMEOUT="${INVICTUS_HYPR_TIMEOUT:-90}"
+POLL="${INVICTUS_HYPR_POLL:-1}"
+HYPRCTL="${INVICTUS_HYPRCTL:-hyprctl}"
 
 kiosk() {
     echo "starting the installer in cage ($1)" >>"$LOG"
@@ -30,11 +42,64 @@ kiosk() {
 if grep -qw 'invictus.safe=1' "$CMDLINE" 2>/dev/null; then kiosk "safe graphics chosen"; fi
 if ! compgen -G "$RENDER_GLOB" >/dev/null; then kiosk "no GPU render node"; fi
 
+# The installer window is open in a Hyprland that answers on its socket.
+# hyprctl -i 0: the oldest running instance, which is ours (no
+# HYPRLAND_INSTANCE_SIGNATURE out here). Sets $ipc when Hyprland answers.
+ipc=no
+ready() {
+    local clients
+    clients="$(timeout 3 "$HYPRCTL" -i 0 -j clients 2>/dev/null)" || return 1
+    ipc=yes
+    grep -qi '"class": *"[^"]*calamares' <<<"$clients"
+}
+
+tree() {  # tree PID: PID and every process under it, children first
+    local c
+    for c in $(pgrep -P "$1" 2>/dev/null); do tree "$c"; done
+    echo "$1"
+}
+
+stop_hyprland() {  # stop_hyprland PID: TERM the whole tree, KILL what is left after 5 s
+    local pids i
+    mapfile -t pids < <(tree "$1")
+    kill -TERM "${pids[@]}" 2>/dev/null
+    for ((i = 0; i < 50; i++)); do
+        kill -0 "${pids[@]}" 2>/dev/null || break
+        sleep 0.1
+    done
+    kill -KILL "${pids[@]}" 2>/dev/null
+    wait "$1" 2>/dev/null
+}
+
 start=$(date +%s)
 if command -v start-hyprland >/dev/null; then
-    start-hyprland >>"$LOG" 2>&1
+    start-hyprland >>"$LOG" 2>&1 &
 else
-    Hyprland >>"$LOG" 2>&1
+    Hyprland >>"$LOG" 2>&1 &
 fi
+hpid=$!
+
+# Watchdog: until the installer window is up, Hyprland must keep running
+# and get there within HYPR_TIMEOUT seconds.
+up=no
+while true; do
+    if ready; then up=yes; break; fi
+    if ! kill -0 "$hpid" 2>/dev/null; then break; fi
+    if (( $(date +%s) - start >= HYPR_TIMEOUT )); then
+        if [[ "$ipc" == yes ]]; then
+            why="no installer window within $HYPR_TIMEOUT s"
+        else
+            why="Hyprland did not answer on its socket within $HYPR_TIMEOUT s"
+        fi
+        echo "watchdog: $why; stopping Hyprland" >>"$LOG"
+        stop_hyprland "$hpid"
+        kiosk "$why"
+    fi
+    sleep "$POLL"
+done
+
+wait "$hpid"
 rc=$?
+# A crash before the installer ever opened, or within 30 s, gets the kiosk.
+if (( rc != 0 )) && [[ "$up" == no ]]; then kiosk "Hyprland exited with $rc before the installer opened"; fi
 if (( rc != 0 && $(date +%s) - start < 30 )); then kiosk "Hyprland exited with $rc"; fi

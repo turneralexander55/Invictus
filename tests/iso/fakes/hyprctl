@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Fake hyprctl: answers with $FAKE_STATE/clients.json when it exists (Hyprland
+# is up), otherwise fails like hyprctl with no running instance.
+echo "hyprctl $*" >>"$FAKE_STATE/hyprctl.log"
+if [[ -f "$FAKE_STATE/clients.json" ]]; then cat "$FAKE_STATE/clients.json"; exit 0; fi
+echo "no such instance" >&2
+exit 1

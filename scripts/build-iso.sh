@@ -18,15 +18,19 @@
 #                                (delete a package file to rebuild it),
 #                                except iso/own-needed ones, always rebuilt
 #     --skip-repo-build          dev: do not run build-repo.sh, use --repo as is
-#     --fast                     zstd squashfs instead of xz (dev only)
+#     --fast                     zstd level 3 instead of 19 (dev only):
+#                                quicker to build, bigger, boots the same
 #     --version V                ISO version (default: today, YYYY.MM.DD)
 #     --keep-work                keep the staged profile (prints where)
 #     --check-size FILE          only run the size check below on FILE
 #
-# Size: GitHub refuses release assets of 2 GiB (2147483648 bytes) or more,
-# and the ISO is published next to the package repo, so every build (dev
-# too) fails when the ISO reaches that; it warns above 1.8 GiB, the
-# headroom Alex asked for (2026-09-30). The ISO is kept for inspection.
+# Size: the ISO is no longer squeezed under GitHub's 2 GiB release asset
+# limit (Alex, 2026-10-08: "we can keep it less compressed and find a
+# different way to host it"). A build of 2 GiB or more warns that it cannot
+# be a GitHub release asset (iso.yml uploads it as a workflow artifact and
+# refuses to attach it to a release); every build fails at 4 GiB, a bound
+# that only a runaway build reaches (it is also archiso's copy-to-RAM
+# limit and FAT32's file limit). The ISO is kept for inspection.
 #
 # Runs mkarchiso in a privileged Arch container (podman or docker, or
 # RUNTIME=docker to pick; rootless podman cannot mount /dev for the chroot; IMAGE=
@@ -68,7 +72,7 @@ CHANNEL=testing
 OUT="$ROOT/out/iso"
 REPO="$ROOT/out/iso-repo"
 BUILD_REPO=true
-COMPRESSION=xz
+COMPRESSION=zstd
 VERSION="$(date -u +%Y.%m.%d)"
 KEEP_WORK=false
 PREPARE_ONLY=""
@@ -80,13 +84,13 @@ while [[ $# -gt 0 ]]; do
         --out) OUT="${2:?}"; shift 2 ;;
         --repo) REPO="${2:?}"; shift 2 ;;
         --skip-repo-build) BUILD_REPO=false; shift ;;
-        --fast) COMPRESSION=zstd; shift ;;
+        --fast) COMPRESSION=zstd-fast; shift ;;
         --version) VERSION="${2:?}"; shift 2 ;;
         --keep-work) KEEP_WORK=true; shift ;;
         # Tests: stage the checkout and the profile into DIR, then stop.
         --prepare-only) PREPARE_ONLY="${2:?}"; shift 2 ;;
         --check-size) CHECK_SIZE_ONLY="${2:?}"; shift 2 ;;
-        -h|--help) sed -n '2,58p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,63p' "$0"; exit 0 ;;
         *) echo "build-iso: unknown argument $1" >&2; exit 2 ;;
     esac
 done
@@ -96,21 +100,21 @@ warn() {
     if [[ -n "${GITHUB_ACTIONS:-}" ]]; then echo "::warning::$*"; else echo "WARNING: $*" >&2; fi
 }
 
-# check_iso_size FILE: fail at 2 GiB (GitHub's release asset limit), warn
-# above 1.8 GiB.
-MAX_ISO_BYTES=2147483648
-WARN_ISO_BYTES=1932735283
+# check_iso_size FILE: fail at 4 GiB (a runaway build), warn at 2 GiB
+# (GitHub's release asset limit: hosted elsewhere, decision 2026-10-08).
+MAX_ISO_BYTES=4294967296
+GITHUB_ASSET_BYTES=2147483648
 check_iso_size() {
     local f="$1" size
     [[ -f "$f" ]] || die "no ISO at $f"
     size="$(stat -c %s "$f")"
     if ((size >= MAX_ISO_BYTES)); then
-        die "$(basename "$f") is $size bytes; GitHub release assets must be under $MAX_ISO_BYTES (2 GiB). Move more packages to the installer's extras (docs/packages.md)."
+        die "$(basename "$f") is $size bytes, at or over the 4 GiB bound ($MAX_ISO_BYTES): something made the image grow. Check the package list (docs/packages.md)."
     fi
-    if ((size > WARN_ISO_BYTES)); then
-        warn "$(basename "$f") is $size bytes, over the 1.8 GiB headroom (limit $MAX_ISO_BYTES)."
+    if ((size >= GITHUB_ASSET_BYTES)); then
+        warn "$(basename "$f") is $size bytes, 2 GiB or more: too big for a GitHub release asset. It is hosted elsewhere (team decision 2026-10-08); iso.yml keeps it as a workflow artifact and will not attach it to a release."
     fi
-    echo "==> ISO size: $size bytes ($((size * 100 / MAX_ISO_BYTES))% of the 2 GiB limit)"
+    echo "==> ISO size: $size bytes ($((size * 100 / GITHUB_ASSET_BYTES))% of GitHub's 2 GiB asset limit, bound 4 GiB)"
 }
 if [[ -n "${CHECK_SIZE_ONLY:-}" ]]; then
     check_iso_size "$CHECK_SIZE_ONLY"
@@ -124,7 +128,7 @@ case "$CHANNEL" in
 esac
 [[ "$VERSION" =~ ^[0-9A-Za-z._-]+$ ]] || die "bad --version"
 if [[ "$MODE" == release ]]; then
-    [[ "$COMPRESSION" == xz ]] || die "--fast is for dev builds only"
+    [[ "$COMPRESSION" == zstd ]] || die "--fast is for dev builds only"
     BUILD_REPO=false
     BUILD_REPO_NAME="$REPO_NAME"
 else

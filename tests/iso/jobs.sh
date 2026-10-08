@@ -53,6 +53,7 @@ new_target() {
     echo 'liber ALL=(ALL:ALL) NOPASSWD: ALL' >"$ROOTDIR/etc/sudoers.d/liber"
     echo 'HOOKS=(base udev archiso)' >"$ROOTDIR/etc/mkinitcpio.conf.d/archiso.conf"
     echo '[Service]' >"$ROOTDIR/etc/systemd/system/getty@tty1.service.d/autologin.conf"
+    ln -sfn /dev/null "$ROOTDIR/etc/systemd/system/systemd-firstboot.service"
     echo 'version=x' >"$ROOTDIR/etc/invictus/iso-release"
     echo 'invictus' >"$ROOTDIR/etc/hostname"
     printf 'passwd: files systemd\nhosts: mymachines resolve [!UNAVAIL=return] files myhostname dns\n' >"$ROOTDIR/etc/nsswitch.conf"
@@ -83,6 +84,7 @@ run_job cleanup-live.sh "$ROOTDIR"; rc=$?
 check "cleanup: exits 0" test "$rc" -eq 0
 check "cleanup: live sudo rule gone" test ! -e "$ROOTDIR/etc/sudoers.d/liber"
 check "cleanup: tty1 autologin gone" test ! -e "$ROOTDIR/etc/systemd/system/getty@tty1.service.d/autologin.conf"
+check "cleanup: the live image's systemd-firstboot mask is gone" test ! -L "$ROOTDIR/etc/systemd/system/systemd-firstboot.service"
 check "cleanup: archiso mkinitcpio drop-in gone" test ! -e "$ROOTDIR/etc/mkinitcpio.conf.d/archiso.conf"
 check "cleanup: the ISO release file is not left in the target" test ! -e "$ROOTDIR/etc/invictus/iso-release"
 check "cleanup: kept files stay (hostname, passwd)" test -f "$ROOTDIR/etc/hostname" -a -f "$ROOTDIR/etc/passwd"
@@ -369,7 +371,38 @@ check "launcher: an old /etc/calamares is replaced, not merged" test ! -e "$T/et
 
 # ---- live session ---------------------------------------------------------------------------
 S="$REPO/installer/live/session"
-session() { FAKE_LOG="$T/session.log"; : >"$FAKE_LOG"; env XDG_RUNTIME_DIR="$T" "$@" bash "$S" >/dev/null 2>&1; }
+# A session that never ends (a watchdog that does not fire) is cut off after
+# 60 s, so a broken watchdog fails its checks instead of hanging the suite;
+# fake Hyprlands it left behind (--foreground: timeout only stops the session
+# itself, so the "stopped" checks still see them) are killed before the next
+# run and at exit.
+reap_fakes() {
+    local pids
+    [[ -f "$T/sess-state/hypr.pids" ]] || return 0
+    read -ra pids <"$T/sess-state/hypr.pids"
+    kill -KILL "${pids[@]}" 2>/dev/null
+    return 0
+}
+trap 'reap_fakes; rm -rf "$T"' EXIT
+session() {
+    reap_fakes
+    FAKE_LOG="$T/session.log"; : >"$FAKE_LOG"
+    FAKE_STATE="$T/sess-state"; rm -rf "$FAKE_STATE"; mkdir -p "$FAKE_STATE"
+    rm -f "$T/invictus-live-session.log"
+    [[ -n "${CLIENTS:-}" ]] && printf '%s\n' "$CLIENTS" >"$FAKE_STATE/clients.json"
+    timeout --foreground -k 5 60 env XDG_RUNTIME_DIR="$T" INVICTUS_HYPR_POLL=0.2 "$@" bash "$S" >/dev/null 2>&1
+}
+SLOG="$T/invictus-live-session.log"
+gone() {  # gone: every pid the hanging fake Hyprland wrote has exited (a zombie
+    # waiting for init to reap it counts as exited)
+    local p st pids
+    read -ra pids <"$T/sess-state/hypr.pids"
+    for p in "${pids[@]}"; do
+        st="$(ps -o stat= -p "$p" 2>/dev/null)"
+        [[ -z "$st" || "$st" == Z* ]] || return 1
+    done
+    return 0
+}
 mkdir -p "$T/dri"; touch "$T/dri/renderD128"
 session INVICTUS_CMDLINE="$T/cmdline-plain" INVICTUS_RENDER_GLOB="$T/dri/renderD*"
 check "session: Hyprland with a GPU" grep -q '^start-hyprland' "$T/session.log"
@@ -381,6 +414,42 @@ session INVICTUS_CMDLINE="$T/cmdline-plain" INVICTUS_RENDER_GLOB="$T/nodri/rende
 check "session: no render node -> kiosk with software rendering" grep -q '^cage .*WLR_RENDERER=pixman' "$T/session.log"
 session INVICTUS_CMDLINE="$T/cmdline-plain" INVICTUS_RENDER_GLOB="$T/dri/renderD*" FAKE_EXIT_start_hyprland=1
 check "session: Hyprland failing at once -> kiosk" grep -q '^cage' "$T/session.log"
+check "session: a crash before the installer opened says so in the log" grep -q 'exited with 1 before the installer opened' "$SLOG"
+
+# Hung Hyprland watchdog (2026-10-08: a Hyprland that hangs held the screen
+# forever). Timeouts shortened through INVICTUS_HYPR_TIMEOUT.
+CAL='[{"class": "calamares", "title": "Invictus installer"}]'
+OTHER='[{"class": "kitty", "title": "kitty"}]'
+CLIENTS="" session INVICTUS_CMDLINE="$T/cmdline-plain" INVICTUS_RENDER_GLOB="$T/dri/renderD*" \
+    INVICTUS_HYPR_TIMEOUT=2 FAKE_HANG_start_hyprland=1
+check "watchdog: Hyprland hung without IPC -> kiosk" grep -q '^cage -s -- /usr/lib/invictus/live/invictus-install --auto' "$T/session.log"
+check "watchdog: the reason names the socket" grep -q 'watchdog: Hyprland did not answer on its socket within 2 s; stopping Hyprland' "$SLOG"
+check "watchdog: the kiosk log line carries the reason" grep -q 'starting the installer in cage (Hyprland did not answer on its socket within 2 s)' "$SLOG"
+check "watchdog: start-hyprland and the Hyprland under it are stopped" gone
+check "watchdog: it asked Hyprland over IPC" grep -q -- '-i 0 -j clients' "$T/sess-state/hyprctl.log"
+
+CLIENTS="$OTHER" session INVICTUS_CMDLINE="$T/cmdline-plain" INVICTUS_RENDER_GLOB="$T/dri/renderD*" \
+    INVICTUS_HYPR_TIMEOUT=2 FAKE_HANG_start_hyprland=1
+check "watchdog: IPC up but no installer window -> kiosk" bash -c "grep -q '^cage' '$T/session.log' && grep -q 'no installer window within 2 s' '$SLOG'"
+check "watchdog: no installer window: Hyprland stopped" gone
+
+SECONDS=0
+CLIENTS="" session INVICTUS_CMDLINE="$T/cmdline-plain" INVICTUS_RENDER_GLOB="$T/dri/renderD*" \
+    INVICTUS_HYPR_TIMEOUT=1 FAKE_HANG_start_hyprland=1 FAKE_IGNORE_TERM=1
+took=$SECONDS
+check "watchdog: a Hyprland that ignores SIGTERM is killed" gone
+check "watchdog: ... and the kiosk still starts, about 5 s later" bash -c "grep -q '^cage' '$T/session.log' && (($took >= 5 && $took < 20))"
+
+CLIENTS="$CAL" session INVICTUS_CMDLINE="$T/cmdline-plain" INVICTUS_RENDER_GLOB="$T/dri/renderD*" \
+    INVICTUS_HYPR_TIMEOUT=1 FAKE_RUN_start_hyprland=3
+check "watchdog: installer window up -> Hyprland keeps running past the timeout" grep -q '^start-hyprland exiting' "$T/session.log"
+check "watchdog: installer window up -> no kiosk" bash -c "! grep -q '^cage' '$T/session.log' && ! grep -q watchdog '$SLOG'"
+
+CLIENTS="$CAL" session INVICTUS_CMDLINE="$T/cmdline-plain" INVICTUS_RENDER_GLOB="$T/dri/renderD*" \
+    FAKE_RUN_start_hyprland=1
+check "watchdog: default timeout is 90 s (a quick normal start is untouched)" bash -c "grep -q '^start-hyprland exiting' '$T/session.log' && ! grep -q '^cage' '$T/session.log'"
+# shellcheck disable=SC2016  # a literal line of the script
+check "watchdog: default timeout is 90 s" grep -q 'HYPR_TIMEOUT="${INVICTUS_HYPR_TIMEOUT:-90}"' "$S"
 
 echo
 echo "jobs: $pass passed, $fail failed"

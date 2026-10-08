@@ -10,8 +10,13 @@
 #  - install_dir stays "arch" and the boot entries keep archiso's standard
 #    parameters (archisobasedir, archisosearchuuid) and hooks, which is what
 #    Ventoy's Arch support hooks into (docs/checklists/iso-test.md);
-#  - squashfs with xz like releng; scripts/build-iso.sh --fast swaps in
-#    zstd for quicker dev builds.
+#  - squashfs with zstd, not releng's xz (design 2.1, 2026-10-08): the
+#    first hardware boot took about ten minutes, and xz in 1 MiB blocks is
+#    slow to read at random. zstd in 256 KiB blocks read 20,000 small
+#    files cold 17 times faster than xz in 1 MiB blocks and the whole
+#    tree 3 times faster, for a 10% bigger squashfs (design build note 50).
+#    The level only changes build time and size. --fast (dev only) uses a
+#    low level, so dev ISOs boot the same way, only bigger.
 # scripts/build-iso.sh fills in INVICTUS_VERSION and INVICTUS_COMPRESSION.
 # ------------------------------------------------------------
 
@@ -25,10 +30,10 @@ install_dir="arch"
 bootmodes=('uefi.systemd-boot')
 pacman_conf="pacman.conf"
 airootfs_image_type="squashfs"
-if [[ "${INVICTUS_COMPRESSION:-xz}" == zstd ]]; then
-  airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '15' '-b' '1M')
+if [[ "${INVICTUS_COMPRESSION:-zstd}" == zstd-fast ]]; then
+  airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '3' '-b' '256K')
 else
-  airootfs_image_tool_options=('-comp' 'xz' '-Xbcj' 'x86' '-b' '1M' '-Xdict-size' '1M')
+  airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '19' '-b' '256K')
 fi
 bootstrap_tarball_compression=('zstd' '-c' '-T0' '--auto-threads=logical' '--long' '-19')
 file_permissions=(

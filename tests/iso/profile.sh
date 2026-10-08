@@ -35,9 +35,16 @@ check "profiledef: UEFI only, systemd-boot (D5)" test "${pd[1]}" = uefi.systemd-
 check "profiledef: install_dir stays arch (archiso and Ventoy defaults)" test "${pd[2]}" = arch
 check "profiledef: label INVICTUS_YYYYMM, at most 32 characters" bash -c "[[ '${pd[3]}' =~ ^INVICTUS_[0-9]{6}$ && \${#pd} -le 32 ]]"
 check "profiledef: publisher and application do not use the Arch name" bash -c "! grep -qi 'arch' <<<'${pd[4]} ${pd[5]}'"
-check "profiledef: xz squashfs by default" grep -q -- '-comp xz' <<<"${pd[6]}"
-pdz="$(INVICTUS_COMPRESSION=zstd bash -c "declare -A file_permissions; . '$ISO/profiledef.sh'; echo \"\${airootfs_image_tool_options[*]}\"")"
-check "profiledef: zstd with --fast" grep -q -- '-comp zstd' <<<"$pdz"
+# Compression (2026-10-08): zstd, fast to read at random; xz in 1 MiB
+# blocks was the likely cause of the ten-minute first boot.
+check "profiledef: zstd squashfs by default (fast random reads)" grep -q -- '^-comp zstd ' <<<"${pd[6]}"
+check "profiledef: never xz for the squashfs" bash -c "! grep -Eq \"'xz'|-comp xz\" '$ISO/profiledef.sh'"
+check "profiledef: zstd level 19 for release builds" grep -q -- '-Xcompression-level 19 ' <<<"${pd[6]}"
+check "profiledef: 256 KiB blocks (measured: fastest cold reads; 128 KiB is bigger and slower to read through)" grep -q -- '-b 256K$' <<<"${pd[6]}"
+pdz="$(INVICTUS_COMPRESSION=zstd-fast bash -c "declare -A file_permissions; . '$ISO/profiledef.sh'; echo \"\${airootfs_image_tool_options[*]}\"")"
+check "profiledef: --fast is zstd at a low level, same block size" grep -q -- '^-comp zstd -Xcompression-level 3 -b 256K$' <<<"$pdz"
+check "build-iso: zstd by default, zstd-fast with --fast" bash -c "grep -qx 'COMPRESSION=zstd' '$REPO/scripts/build-iso.sh' && grep -q -- '--fast) COMPRESSION=zstd-fast' '$REPO/scripts/build-iso.sh'"
+check "live initramfs: zstd, not xz" grep -qx 'COMPRESSION="zstd"' "$ISO/airootfs/etc/mkinitcpio.conf.d/archiso.conf"
 
 # ---- 2. boot entries ----------------------------------------------------------------
 entries=("$ISO"/efiboot/loader/entries/*.conf)
@@ -88,6 +95,19 @@ while IFS= read -r e; do
 done < <(list_entries "$ISO/live-only.txt")
 check "no file is both live-only and kept" bash -c "! comm -12 <(grep -v '^#' '$ISO/live-only.txt' | sort) <(grep -v '^#' '$ISO/keep.txt' | sort) | grep -q ."
 check "the live user's NOPASSWD rule is live-only" grep -qx '/etc/sudoers.d/liber' "$ISO/live-only.txt"
+
+# Boot waits (first hardware boot, 2026-10-08). The live image's
+# /etc/machine-id is "uninitialized" (mkarchiso), so systemd-firstboot runs;
+# with no /etc/vconsole.conf it asks for a keymap on a VT console and holds
+# sysinit.target until someone answers, under the Plymouth splash.
+fb="$ISO/airootfs/etc/systemd/system/systemd-firstboot.service"
+check "boot wait: systemd-firstboot is masked on the live image" bash -c "[[ -L '$fb' && \"\$(readlink '$fb')\" == /dev/null ]]"
+check "boot wait: the firstboot mask is live-only (the installed system has a machine id)" \
+    grep -qx /etc/systemd/system/systemd-firstboot.service "$ISO/live-only.txt"
+check "boot wait: no boot entry names a serial console (serial-getty would wait on its device)" \
+    bash -c "! grep -Eq 'console=tty[A-Z]' '$ISO'/efiboot/loader/entries/*.conf '$ISO/grub/loopback.cfg'"
+check "boot wait: the live image enables no time-sync or network-online waiter" \
+    bash -c "! find '$ISO/airootfs' -path '*.wants/*' | grep -Eq 'time-wait-sync|wait-online'"
 
 # ---- 4. secrets ---------------------------------------------------------------------------
 SCAN="$ISO/secrets-scan.sh"
@@ -219,17 +239,55 @@ check "build-iso never takes a private signing key" bash -c "! grep -Eq 'INVICTU
 bash "$REPO/scripts/build-iso.sh" --prepare-only "$T/stage-bad" --channel beta >/dev/null 2>&1
 check "an unknown channel refuses" test $? -ne 0
 
-# Size gate (Alex, 2026-09-30): GitHub release assets must be under 2 GiB.
-# Sparse files, so no disk is used.
+# Size gate (Alex, 2026-10-08: "we can keep it less compressed and find a
+# different way to host it"): 2 GiB warns (no GitHub release asset), 4 GiB
+# fails (a runaway build). Sparse files, so no disk is used.
 size_check() { truncate -s "$1" "$T/invictus-size.iso"; bash "$REPO/scripts/build-iso.sh" --check-size "$T/invictus-size.iso" >"$T/size.out" 2>&1; }
 size_check 2147483648; rc=$?
-check "size: an ISO of exactly 2 GiB fails the build" bash -c "[[ $rc -ne 0 ]] && grep -q 'must be under 2147483648' '$T/size.out'"
+check "size: exactly 2 GiB passes, with the hosting warning" bash -c "[[ $rc -eq 0 ]] && grep -q 'too big for a GitHub release asset. It is hosted elsewhere (team decision 2026-10-08)' '$T/size.out'"
+size_check 3000000000; rc=$?
+check "size: 3 GB passes, with the hosting warning" bash -c "[[ $rc -eq 0 ]] && grep -q 'too big for a GitHub release asset' '$T/size.out'"
+size_check 4294967296; rc=$?
+check "size: 4 GiB fails the build (runaway bound)" bash -c "[[ $rc -ne 0 ]] && grep -q 'at or over the 4 GiB bound' '$T/size.out'"
+size_check 4294967295; rc=$?
+check "size: one byte under 4 GiB passes" test "$rc" -eq 0
 size_check 2147483647; rc=$?
-check "size: one byte under 2 GiB passes, with the headroom warning" bash -c "[[ $rc -eq 0 ]] && grep -q 'over the 1.8 GiB headroom' '$T/size.out'"
-size_check 1800000000; rc=$?
-check "size: 1.8 GB passes without a warning" bash -c "[[ $rc -eq 0 ]] && ! grep -q WARNING '$T/size.out'"
+check "size: one byte under 2 GiB passes without a warning" bash -c "[[ $rc -eq 0 ]] && ! grep -q WARNING '$T/size.out'"
 rm -f "$T/invictus-size.iso"
 check "size: the build checks every ISO it makes (dev and release)" bash -c "tail -n 3 '$REPO/scripts/build-iso.sh' | grep -qx 'check_iso_size \"\$iso\"'"
+
+# iso.yml's publish step (2026-10-08): an ISO of 2 GiB or more stays a
+# workflow artifact; the step refuses before it touches any release. The
+# step's own script runs here with fake gh and sha256sum.
+pub="$T/publish"; mkdir -p "$pub/bin" "$pub/out/iso"
+python3 -c 'import sys, yaml
+w = yaml.safe_load(open(sys.argv[1]))
+print(next(st["run"] for st in w["jobs"]["publish"]["steps"] if st.get("name", "").startswith("Attach")))' \
+    "$REPO/.github/workflows/iso.yml" >"$pub/step.sh" 2>"$pub/py.err"
+check "iso.yml: the publish job's attach step is found" test -s "$pub/step.sh"
+printf '#!/bin/sh\necho "gh $*" >>"%s/gh.log"\n' "$pub" >"$pub/bin/gh"
+printf '#!/bin/sh\nexit 0\n' >"$pub/bin/sha256sum"
+chmod +x "$pub/bin/gh" "$pub/bin/sha256sum"
+publish() {  # publish BYTES: run the step on a sparse ISO of that size
+    rm -f "$pub/gh.log" "$pub/out/iso/invictus-t-x86_64.iso"; : >"$pub/gh.log"
+    truncate -s "$1" "$pub/out/iso/invictus-t-x86_64.iso"
+    (cd "$pub" && PATH="$pub/bin:$PATH" ISO=invictus-t-x86_64.iso VERSION=t bash --noprofile --norc -eo pipefail step.sh) >"$pub/out.txt" 2>&1
+}
+publish 2147483648; rc=$?
+check "iso.yml publish: an ISO of 2 GiB is refused" test "$rc" -ne 0
+check "iso.yml publish: ... with a message naming the hosting decision" grep -q '::error::invictus-t-x86_64.iso is 2147483648 bytes, 2 GiB or more: GitHub does not take release assets that big.*team decision 2026-10-08' "$pub/out.txt"
+check "iso.yml publish: ... before any release is created or uploaded to" test ! -s "$pub/gh.log"
+publish 2147483647; rc=$?
+check "iso.yml publish: an ISO under 2 GiB is attached" bash -c "[[ $rc -eq 0 ]] && grep -q '^gh release upload iso-t invictus-t-x86_64.iso' '$pub/gh.log'"
+rm -f "$pub/out/iso/invictus-t-x86_64.iso"
+python3 -c 'import sys, yaml
+steps = yaml.safe_load(open(sys.argv[1]))["jobs"]["build"]["steps"]
+smoke = next(i for i, st in enumerate(steps) if "tests/iso/boot-smoke.sh" in st.get("run", ""))
+upload = next(i for i, st in enumerate(steps) if "upload-artifact" in st.get("uses", ""))
+assert upload < smoke, "boot smoke before the upload"
+assert "/dev/kvm" in steps[smoke]["run"]' "$REPO/.github/workflows/iso.yml" 2>"$T/smoke-step.err"
+check "iso.yml: the build boots the ISO with boot-smoke.sh after uploading it, and needs KVM" test $? -eq 0
+check "iso.yml: the build no longer claims a 2 GiB failure" bash -c "! grep -q 'so an ISO that gets here is under it' '$REPO/.github/workflows/iso.yml'"
 
 # ---- 9. Plymouth theme --------------------------------------------------------------------------
 PL="$ISO/boot-branding/plymouth"

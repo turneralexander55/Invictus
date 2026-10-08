@@ -11,10 +11,14 @@
 #
 # Every build runs the ISO tests first and the squashfs secrets scan
 # (iso/secrets-scan.sh, design S1/T8) inside build-iso.sh; a finding fails
-# the run and no ISO is uploaded; so does an ISO of 2 GiB or more (GitHub's
-# release asset limit, checked in build-iso.sh). The ISO is uploaded as a workflow artifact;
-# with publish on a release build it is also attached to a GitHub release
-# tagged iso-<version>.
+# the run and no ISO is uploaded. After the upload, the ISO is booted in
+# QEMU with KVM (tests/iso/boot-smoke.sh): a failed or timed-out unit, or no
+# installer within 10 minutes, fails the run. build-iso.sh fails an ISO of 4 GiB or more
+# (a runaway build) and warns at 2 GiB. The ISO is uploaded as a workflow
+# artifact whatever its size; with publish on a release build it is also
+# attached to a GitHub release tagged iso-<version>, but only when it is
+# under 2 GiB (GitHub's release asset limit). A bigger ISO is hosted
+# elsewhere (team decision 2026-10-08) and the publish job says so and stops.
 #
 # Manual dispatch only works once this file is on the default branch. Until
 # then, a push to the working branch that changes iso/build-request runs a
@@ -135,6 +139,28 @@ jobs:
           retention-days: 14
           compression-level: 0
 
+      # After the upload, so a failing boot still leaves the ISO to look at.
+      # GitHub's ubuntu-24.04 runners for public repositories expose
+      # /dev/kvm; without it the step fails rather than skip.
+      - name: Boot the ISO in QEMU and check for failed or timed-out units (tests/iso/boot-smoke.sh)
+        env:
+          RUNTIME: docker
+          ISO: ${{ steps.iso.outputs.name }}
+        run: |
+          if [ ! -e /dev/kvm ]; then
+            echo "::error::No /dev/kvm on this runner, so the boot smoke test cannot run."
+            exit 1
+          fi
+          tests/iso/boot-smoke.sh "out/iso/$ISO" out/boot-smoke --timeout 600
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: boot-smoke
+          path: out/boot-smoke
+          if-no-files-found: ignore
+          retention-days: 14
+
   publish:
     needs: build
     if: inputs.publish && inputs.kind == 'release'
@@ -155,8 +181,14 @@ jobs:
         run: |
           cd out/iso
           sha256sum -c "$ISO.sha256"
-          # The 2 GiB release-asset limit is checked by build-iso.sh in every
-          # build (dev too), so an ISO that gets here is under it.
+          # GitHub refuses release assets of 2 GiB or more. Since 2026-10-08
+          # the ISO may be bigger (less compression for a faster boot); such
+          # an ISO stays a workflow artifact and is hosted elsewhere.
+          size="$(stat -c %s "$ISO")"
+          if [ "$size" -ge 2147483648 ]; then
+            echo "::error::$ISO is $size bytes, 2 GiB or more: GitHub does not take release assets that big, so it is not attached to a release. It is hosted elsewhere (team decision 2026-10-08); get it from this run's 'iso' artifact."
+            exit 1
+          fi
           tag="iso-$VERSION"
           gh release view "$tag" >/dev/null 2>&1 || \
             gh release create "$tag" --prerelease --title "Invictus $VERSION" \
