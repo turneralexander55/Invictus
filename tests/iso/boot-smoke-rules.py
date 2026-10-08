@@ -5,16 +5,15 @@ Unix socket answers its commands, and each scenario checks the verdict.
     python3 tests/iso/boot-smoke-rules.py     ok/FAIL lines, exit 1 on any failure
 """
 import os
-import re
-import socket
 import subprocess
 import sys
 import tempfile
-import threading
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DRIVER = os.path.join(HERE, "boot-smoke.py")
-CMD = re.compile(r"echo 'B''([0-9a-f]+)'; (.*); echo 'E''\1' \$\?")
+sys.dont_write_bytecode = True
+sys.path.insert(0, HERE)
+from fake_shell import serve  # noqa: E402
 
 HEALTHY = {
     "stty": (0, ""),
@@ -28,38 +27,6 @@ HEALTHY = {
     "systemctl list-sockets": (0, "/run/dbus/system_bus_socket dbus.socket dbus.service\n"),
     "cat /run/user": (0, ""),
 }
-
-
-def serve(path, answers):
-    srv = socket.socket(socket.AF_UNIX)
-    srv.bind(path)
-    srv.listen(1)
-
-    def loop():
-        conn, _ = srv.accept()
-        buf = b""
-        while True:
-            data = conn.recv(4096)
-            if not data:
-                return
-            buf += data
-            while b"\n" in buf:
-                line, buf = buf.split(b"\n", 1)
-                m = CMD.search(line.decode())
-                if not m:
-                    continue
-                tok, cmd = m.group(1), m.group(2)
-                ans = next((v for k, v in answers.items() if cmd.startswith(k)), (0, ""))
-                if ans is None:  # this command never returns
-                    continue
-                rc, out = ans
-                # A tty: echo of the command line, then CRLF output.
-                conn.sendall(line + b"\r\n")
-                conn.sendall(f"B{tok}\r\n{out}".replace("\n", "\r\n").replace("\r\r", "\r").encode()
-                             + f"E{tok} {rc}\r\n".encode())
-
-    threading.Thread(target=loop, daemon=True).start()
-    return srv
 
 
 passed = failed = 0
