@@ -10,12 +10,18 @@
 #   3. jobs.sh       the install jobs and live scripts on a fake target
 #   3b. boot-smoke-rules.py  the boot smoke test's verdicts, against a
 #                    fake root shell (the boot itself: boot-smoke.sh)
+#   3c. disk-boot-rules.py   the installed-disk boot test's limine.conf
+#                    logic and verdicts, against a fake root shell that
+#                    reboots (the boot itself: disk-boot.sh, after
+#                    e2e-jobs.sh --keep)
 #   4. lint          every ISO and installer shell script, with the
 #                    ShellCheck binary on PATH and, when SHELLCHECK_OLD
 #                    points at one, an older release too (CI pins 0.9.0)
 #
-# The ISO itself is scanned for secrets by scripts/build-iso.sh, booted by tests/iso/boot-smoke.sh (CI, after the build) and
-# driven by hand with tests/iso/boot-qemu.sh.
+# The ISO itself is scanned for secrets by scripts/build-iso.sh, booted by
+# tests/iso/boot-smoke.sh (CI, after the build), installed onto a btrfs
+# disk image by tests/iso/e2e-jobs.sh, whose disk tests/iso/disk-boot.sh
+# boots (CI), and driven by hand with tests/iso/boot-qemu.sh.
 # ------------------------------------------------------------
 set -uo pipefail
 
@@ -44,6 +50,7 @@ run profile bash "$HERE/profile.sh"
 run calamares python3 "$HERE/calamares.py"
 run jobs bash "$HERE/jobs.sh"
 run "boot-smoke rules" python3 "$HERE/boot-smoke-rules.py"
+run "disk-boot rules" python3 "$HERE/disk-boot-rules.py"
 
 scripts=(
     "$REPO/scripts/build-iso.sh"

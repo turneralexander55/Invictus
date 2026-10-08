@@ -13,7 +13,10 @@
 # (iso/secrets-scan.sh, design S1/T8) inside build-iso.sh; a finding fails
 # the run and no ISO is uploaded. After the upload, the ISO is booted in
 # QEMU with KVM (tests/iso/boot-smoke.sh): a failed or timed-out unit, or no
-# installer within 10 minutes, fails the run. build-iso.sh fails an ISO of 4 GiB or more
+# installer within 10 minutes, fails the run. Before the upload, the ISO's
+# system is installed onto a btrfs disk image (tests/iso/e2e-jobs.sh); after
+# the smoke test that disk is booted through limine, then once from its
+# Fresh install snapshot (tests/iso/disk-boot.sh). build-iso.sh fails an ISO of 4 GiB or more
 # (a runaway build) and warns at 2 GiB. The ISO is uploaded as a workflow
 # artifact whatever its size; with publish on a release build it is also
 # attached to a GitHub release tagged iso-<version>, but only when it is
@@ -115,13 +118,6 @@ jobs:
           [ "$KIND" = release ] && args+=(--release)
           scripts/build-iso.sh "${args[@]}"
 
-      - name: Install jobs on a real btrfs disk image (limine, snapper)
-        if: env.KIND == 'dev'
-        run: |
-          sudo modprobe btrfs loop
-          docker run --rm --privileged -v "$PWD:/src:ro" -v "$PWD/out/iso-repo:/repo:ro" \
-            docker.io/library/archlinux:base-devel bash /src/tests/iso/e2e-jobs.sh
-
       - name: Name the ISO
         id: iso
         run: |
@@ -130,6 +126,18 @@ jobs:
           echo "version=$(sed -E 's/^invictus-(.*)-x86_64\.iso$/\1/' <<<"$iso")" >> "$GITHUB_OUTPUT"
           ls -l out/iso
           cat out/iso/*.sha256
+
+      # The ISO's own system, installed the way Calamares does it onto a
+      # btrfs disk image; the disk is kept for the installed-disk boot below.
+      - name: Install the ISO onto a real btrfs disk image (install jobs, limine, snapper)
+        env:
+          ISO: ${{ steps.iso.outputs.name }}
+        run: |
+          sudo modprobe btrfs loop
+          mkdir -p out/disk
+          docker run --rm --privileged -v "$PWD:/src:ro" -v "$PWD/out/disk:/keep" \
+            docker.io/library/archlinux:base-devel bash /src/tests/iso/e2e-jobs.sh \
+            --iso "/src/out/iso/$ISO" --keep /keep
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -158,6 +166,31 @@ jobs:
         with:
           name: boot-smoke
           path: out/boot-smoke
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # The disk the e2e step installed, booted from its own ESP through
+      # limine: kernel, units, default target, Fresh install snapshot and its
+      # limine entry, no ssh, Custodia; then one boot of the snapshot entry.
+      - name: Boot the installed disk in QEMU (tests/iso/disk-boot.sh)
+        env:
+          RUNTIME: docker
+        run: |
+          if [ ! -e /dev/kvm ]; then
+            echo "::error::No /dev/kvm on this runner, so the installed-disk boot test cannot run."
+            exit 1
+          fi
+          tests/iso/disk-boot.sh out/disk out/disk-boot --timeout 600
+
+      # Logs only: the 16 GiB disk image itself is not uploaded.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: disk-boot
+          path: |
+            out/disk-boot
+            out/disk/logs
+            out/disk/disk.env
           if-no-files-found: ignore
           retention-days: 14
 

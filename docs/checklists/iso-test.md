@@ -8,8 +8,12 @@ install erases the disk you pick; nothing else is touched unless you pick it.
 
 What has been checked before you: the ISO builds, its image has no secrets
 in it, and the installer's jobs pass their tests on a fake disk and on a
-real btrfs disk image in a container. It was booted in a virtual machine
-without a graphics card (see "What was not tested" at the end). This is the
+real btrfs disk image in a container, where the ISO's whole system is
+installed the way the installer does it. The ISO and that installed disk
+were booted in a virtual machine without a graphics card: the disk through
+limine to the login screen, with the "Fresh install" snapshot in the menu,
+no ssh and Custodia on, then once from that snapshot (see "What was not
+tested" at the end). This is the
 first time it meets real hardware, so expect rough edges and note them.
 
 Before you start:
@@ -239,13 +243,17 @@ Tell Moneta, with a phone photo where a screen looked wrong:
 - No real machine and no GPU: the virtual machine had no 3D, so the live
   session used its fallback (the installer alone in a kiosk window).
   Hyprland on the stick is untested.
-- No install finished in the virtual machine (it had no KVM, so it ran at
-  software speed); the jobs were tested on a disk image in a container
-  instead, where the firmware boot entry could not be written.
+- No install through the installer's screens finished in the virtual
+  machine; the install was done by a script that runs the same jobs in
+  the same order on a disk image in a container, where the firmware boot
+  entry could not be written. The disk then started from limine as the
+  fallback loader, not from an `Invictus` firmware entry.
 - NVRAM (`Invictus` in the firmware menu), Plymouth on a real screen,
   suspend, Wi-Fi in the live system, Ventoy itself.
 - The linux-cachyos kernel on real hardware (it replaced linux and
-  linux-lts on 2026-09-30), and a snapshot boot across a kernel update.
+  linux-lts on 2026-09-30), and a snapshot boot across a kernel update
+  (the virtual machine booted the Fresh install snapshot with the same
+  kernel, and picked it by editing limine.conf, not with the arrow keys).
 - The Extras page and its install, online and offline: the jobs were
   tested with a fake target, not a real download. The NVIDIA firmware
   extra (added by itself on a machine with an NVIDIA card).

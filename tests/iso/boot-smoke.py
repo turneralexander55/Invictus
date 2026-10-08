@@ -13,61 +13,15 @@ It writes RUNDIR/journal.txt, RUNDIR/report.txt and RUNDIR/screen.png.
 """
 import argparse
 import os
-import re
-import secrets
-import socket
 import subprocess
 import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# systemd's own journal lines (PID 1) that mean a job waited until its
-# timeout, or a unit failed. Other programs' "timed out" lines (an NTP
-# server that does not answer, say) are not boot waits.
-BAD_JOURNAL = re.compile(
-    r" systemd\[1\]: .*(Timed out waiting for|[Jj]ob .* timed out|timed out\.|"
-    r"Dependency failed for|Failed to start |Failed with result)")
-
-
-class Shell:
-    def __init__(self, path, deadline):
-        self.deadline = deadline
-        while True:
-            try:
-                self.s = socket.socket(socket.AF_UNIX)
-                self.s.connect(path)
-                break
-            except OSError:
-                self.s.close()
-                if time.monotonic() > deadline:
-                    raise TimeoutError(f"no serial socket at {path}")
-                time.sleep(1)
-        self.buf = b""
-
-    def run(self, cmd, timeout):
-        """Run CMD in the guest shell; (exit status, output) or None on timeout."""
-        tok = secrets.token_hex(4)
-        # The markers are split in the command so the tty's echo of the
-        # command line never matches them.
-        line = f"echo 'B''{tok}'; {cmd}; echo 'E''{tok}' $?\n"
-        self.s.sendall(line.encode())
-        end = min(time.monotonic() + timeout, self.deadline)
-        pat = re.compile(rb"B" + tok.encode() + rb"\r?\n(.*?)E" + tok.encode() + rb" (\d+)", re.S)
-        while time.monotonic() < end:
-            m = pat.search(self.buf)
-            if m:
-                self.buf = self.buf[m.end():]
-                return int(m.group(2)), m.group(1).decode("utf-8", "replace").replace("\r", "")
-            self.s.settimeout(max(0.1, end - time.monotonic()))
-            try:
-                data = self.s.recv(65536)
-            except socket.timeout:
-                continue
-            if not data:
-                raise ConnectionError("serial socket closed (QEMU stopped?)")
-            self.buf += data
-        return None
+sys.dont_write_bytecode = True  # no __pycache__ in the checkout
+sys.path.insert(0, HERE)
+from guest_shell import BAD_JOURNAL, Shell, sshd_socket_lines, wait_root_shell  # noqa: E402
 
 
 def main():
@@ -104,14 +58,10 @@ def main():
         problems.append(str(e))
         finish()
     # 1. The debug shell comes up early in boot; retry until it answers.
-    while True:
-        r = sh.run("stty -echo cols 250 2>/dev/null; export SYSTEMD_COLORS=0 SYSTEMD_PAGER= SYSTEMD_URLIFY=0", 5)
-        if r is not None:
-            break
-        if time.monotonic() > deadline:
-            problems.append(f"no root shell on the second serial port within {a.timeout} s "
-                            "(the kernel or the initramfs did not get to systemd; see screen.png)")
-            finish()
+    if not wait_root_shell(sh, deadline):
+        problems.append(f"no root shell on the second serial port within {a.timeout} s "
+                        "(the kernel or the initramfs did not get to systemd; see screen.png)")
+        finish()
     say("root shell up")
 
     # 2. The end of boot: every job done (running or degraded).
@@ -147,11 +97,9 @@ def main():
     if r is None:
         problems.append("could not list the system's sockets")
     else:
-        # Match sshd's own units (sshd*.socket, sshd-unix-local@.service,
-        # ssh-access.socket), not any line containing "ssh": gpg-agent's
-        # gpg-agent-ssh@ socket for the pacman keyring is not a server.
-        ssh_unit = re.compile(r"^(sshd[\w@.-]*|ssh-[\w@.-]*)\.(socket|service)$")
-        hits = [ln for ln in r[1].splitlines() if any(ssh_unit.match(t) for t in ln.split())]
+        # sshd's own units only (guest_shell.SSHD_UNIT), not gpg-agent's
+        # keyring ssh socket.
+        hits = sshd_socket_lines(r[1])
         if hits:
             problems.append("sshd is listening:\n" + "\n".join(hits))
     r = sh.run("journalctl -b --no-pager -o short-monotonic", 90)

@@ -24,10 +24,10 @@
 set -euo pipefail
 
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-IMAGE="${IMAGE:-docker.io/library/archlinux:base-devel}"
 NAME=invictus-boot-smoke
-RUNTIME="${RUNTIME:-$(command -v podman || command -v docker || true)}"
-[[ -n "$RUNTIME" ]] || { echo "boot-smoke: needs podman or docker" >&2; exit 2; }
+# shellcheck source=tests/iso/qemu-lib.sh
+. "$HERE/qemu-lib.sh"
+qemu_setup boot-smoke
 
 iso="$(realpath "${1:?ISO}")"; run="${2:?RUNDIR}"; shift 2
 timeout=600 mem=6144
@@ -42,14 +42,6 @@ done
 mkdir -p "$run"
 run="$(cd "$run" && pwd -P)"
 rm -f "$run/qmp.sock" "$run/shell.sock"
-
-accel="tcg,thread=multi" devs=()
-if [[ -e /dev/kvm ]]; then
-    accel=kvm devs=(--device /dev/kvm)
-elif [[ "${ALLOW_TCG:-}" != 1 ]]; then
-    echo "boot-smoke: no /dev/kvm here; set ALLOW_TCG=1 to boot with software emulation (slow)" >&2
-    exit 2
-fi
 
 read -ra extra <<< "${CONTAINER_ARGS:-}"
 "$RUNTIME" rm -f "$NAME" >/dev/null 2>&1 || true
@@ -87,16 +79,6 @@ trap '"$RUNTIME" rm -f "$NAME" >/dev/null 2>&1 || true' EXIT
     ' >/dev/null
 
 # Package install and extraction get 10 minutes on top of the boot timeout.
-for _ in $(seq 1 600); do
-    [[ -S "$run/shell.sock" ]] && break
-    if ! "$RUNTIME" inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null | grep -qx true; then break; fi
-    sleep 1
-done
-if [[ ! -S "$run/shell.sock" ]]; then
-    echo "boot-smoke: QEMU did not start" >&2
-    "$RUNTIME" logs "$NAME" 2>&1 | tail -n 20 >&2 || true
-    cat "$run/qemu.log" >&2 2>/dev/null || true
-    exit 1
-fi
+qemu_wait boot-smoke "$run"
 echo "boot-smoke: QEMU running ($accel); command line: $(cat "$run/cmdline.txt")"
 python3 "$HERE/boot-smoke.py" "$run" --timeout "$timeout"
