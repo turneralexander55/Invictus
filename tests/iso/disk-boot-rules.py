@@ -145,6 +145,9 @@ BOOT1 = {
     "systemd-analyze time": (0, "Startup finished in 2.1s (firmware) + 3s (loader) + 1.2s (kernel) + 4s (userspace)"
                                 " = 10.3s\ngraphical.target reached after 4s in userspace.\n"),
     "systemctl is-active display-manager.service": (0, "active\n"),
+    "findmnt -n -o FSTYPE,OPTIONS --mountpoint /": (0, "btrfs rw,noatime,compress=zstd:1,ssd,discard=async,"
+                                                      "space_cache=v2,subvolid=256,subvol=/@\n"),
+    "systemctl show -p ActiveState -p Result systemd-remount-fs.service": (0, "ActiveState=active\nResult=success\n"),
     "systemctl --failed": (0, ""),
     "systemctl list-jobs": (0, "No jobs running.\n"),
     "journalctl": (0, "[ 1.0] maria-invictus systemd[1]: Started Getty on tty1.\n"),
@@ -158,16 +161,30 @@ BOOT1 = {
     "systemctl stop limine-snapper-sync": (0, ""),
     "sed -i": (0, ""),
 }
+# The snapshot boot as it must be: running, nothing failed, systemd-remount-fs
+# skipped by invictus-sys's drop-in (build note 57).
 BOOT2 = {
     "stty": (0, ""),
     "cat /proc/sys/kernel/random/boot_id": (0, "bbbb-2222\n"),
-    "systemctl is-system-running": (1, "degraded\n"),
+    "systemctl is-system-running": (0, "running\n"),
     "cat /proc/cmdline": (0, SNAP1 + "\n"),
     "systemctl is-active multi-user.target": (0, "active\n"),
     "findmnt": (0, "overlay overlay\n"),
-    "systemctl --failed": (0, "snapper-cleanup.service loaded failed failed Daily Cleanup of Snapper Snapshots\n"),
+    "systemctl show -p ActiveState -p Result systemd-remount-fs.service": (0, "ActiveState=inactive\n"
+                                                                              "Result=exec-condition\n"),
+    "systemctl --failed": (0, ""),
     "systemctl list-jobs": (0, "No jobs running.\n"),
-    "journalctl": (0, ""),
+    "journalctl": (0, "[ 1.0] maria-invictus systemd[1]: Started Getty on tty1.\n"),
+}
+# What CI run 37847290984 saw in the snapshot boot before the drop-in.
+REMOUNT_FAILED = {
+    "systemctl is-system-running": (1, "degraded\n"),
+    "systemctl show -p ActiveState -p Result systemd-remount-fs.service": (0, "ActiveState=failed\n"
+                                                                              "Result=exit-code\n"),
+    "systemctl --failed": (0, "systemd-remount-fs.service loaded failed failed Remount Root and Kernel File Systems\n"),
+    "journalctl": (0, "[    4.070070] maria-invictus systemd[1]: systemd-remount-fs.service: Failed with result "
+                      "'exit-code'.\n[    4.070085] maria-invictus systemd[1]: Failed to start Remount Root and "
+                      "Kernel File Systems.\n"),
 }
 
 
@@ -207,7 +224,10 @@ seen = scenario("a clean install boots, then boots its Fresh install snapshot", 
                 want_text=["limine booted the //linux-cachyos entry", "snapshot 1: Fresh install",
                            "limine.conf boots snapshot 1", "guard rails: custodia, full-access off",
                            "default_entry: 7 (snapshot 1)", "snapshot boot: multi-user.target reached",
-                           "note  snapshot boot: failed units:", "disk boot: passed"])
+                           "/ is btrfs rw,noatime", "snapshot boot: boot finished: running",
+                           "snapshot boot: systemd-remount-fs.service ActiveState=inactive Result=exec-condition",
+                           "disk boot: passed"],
+                not_text=["FAIL", "note  snapshot boot"])
 check("the clean run stopped limine-snapper-sync before editing and edited with sed",
       any(c.startswith("systemctl stop limine-snapper-sync") for c in seen)
       and any(c.startswith("sed -i") and "/boot/limine.conf" in c for c in seen))
@@ -290,6 +310,34 @@ scenario("a snapshot boot that lands on another snapshot fails",
 scenario("a snapshot boot short of multi-user fails",
          b2={"systemctl is-active multi-user.target": (3, "inactive\n")}, want_rc=1,
          want_text=["FAIL  the snapshot boot did not reach multi-user.target"])
+scenario("remount-fs-overlay: the snapshot boot of CI run 37847290984 (systemd-remount-fs failed) fails",
+         b2=REMOUNT_FAILED, want_rc=1,
+         want_text=["FAIL  snapshot boot: the boot finished degraded, not running",
+                    "FAIL  snapshot boot: failed units:\nsystemd-remount-fs.service loaded failed failed",
+                    "FAIL  snapshot boot: journal:", "disk boot: FAILED"])
+scenario("any failed unit in the snapshot boot fails, not only remount-fs",
+         b2={"systemctl --failed": (0, "snapper-cleanup.service loaded failed failed Daily Cleanup of Snapper Snapshots\n")},
+         want_rc=1, want_text=["FAIL  snapshot boot: failed units:", "snapper-cleanup.service"])
+scenario("a snapshot boot that finishes degraded fails even with no failed unit listed",
+         b2={"systemctl is-system-running": (1, "degraded\n")}, want_rc=1,
+         want_text=["FAIL  snapshot boot: the boot finished degraded, not running"])
+scenario("a PID 1 failure line in the snapshot boot's journal fails",
+         b2={"journalctl": (0, "[ 3.0] h systemd[1]: Dependency failed for Local File Systems.\n")}, want_rc=1,
+         want_text=["FAIL  snapshot boot: journal:", "Dependency failed for Local File Systems"])
+scenario("a job still queued in the snapshot boot fails",
+         b2={"systemctl list-jobs": (0, "12 snapper-boot.service start waiting\n")}, want_rc=1,
+         want_text=["FAIL  snapshot boot: jobs still queued after boot:", "snapper-boot.service"])
+scenario("remount-fs-normal: a normal boot that skips systemd-remount-fs fails (fstab's / options unapplied)",
+         {"systemctl show -p ActiveState -p Result systemd-remount-fs.service": (0, "ActiveState=inactive\n"
+                                                                                    "Result=exec-condition\n")},
+         want_rc=1, want_text=["FAIL  systemd-remount-fs.service did not run on the normal boot",
+                               "Result=exec-condition"])
+scenario("a normal boot whose / is not subvol=/@ fails",
+         {"findmnt -n -o FSTYPE,OPTIONS --mountpoint /": (0, "btrfs rw,subvolid=257,subvol=/@snapshots/1/snapshot\n")},
+         want_rc=1, want_text=["FAIL  / is not btrfs subvol=/@: btrfs rw,subvolid=257,subvol=/@snapshots/1/snapshot"])
+scenario("a first boot that finishes degraded fails",
+         {"systemctl is-system-running": (1, "degraded\n")}, want_rc=1,
+         want_text=["FAIL  first boot: the boot finished degraded, not running"])
 scenario("a snapshot boot that never comes back fails",
          b2={"stty": None, "cat /proc/sys/kernel/random/boot_id": None}, want_rc=1, timeout=12,
          want_text=["FAIL  the snapshot boot did not come up within 12 s"])

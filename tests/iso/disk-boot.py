@@ -18,7 +18,9 @@ Fails when, on the first boot:
     menu picked something else);
   - the default target is not reached (systemctl, systemd-analyze), or the
     display manager (the login screen) is not running;
-  - any unit failed, a job is still queued, or PID 1 logged a timeout or a
+  - / is not btrfs subvol=/@, or systemd-remount-fs.service did not run and
+    stay active (fstab's options for / were not applied; build note 57);
+  - the boot finished in any state but "running", any unit failed, a job is still queued, or PID 1 logged a timeout or a
     failed dependency (the boot smoke test's rules, guest_shell.BAD_JOURNAL);
   - snapper's root config has no "Fresh install" snapshot, or limine.conf
     has no limine-snapper-sync entry booting it (within --sync-wait s);
@@ -27,9 +29,11 @@ Fails when, on the first boot:
     `invictus-sys guardrails check` says the derived files are wrong.
 Then, unless --no-snapshot-boot, it makes the Fresh install entry limine's
 default (all menu folders open, default_entry pointing at it), reboots,
-and fails unless that boot runs from the snapshot and reaches
-multi-user.target. Failed units there are reported, not failed: a
-read-only snapshot under an overlay is a rescue boot.
+and fails unless that boot runs from the snapshot, reaches
+multi-user.target and finishes "running", with no failed unit, queued job
+or bad PID 1 journal line: a rollback must boot as cleanly as the system
+it rolls back to (CI run 37847290984 booted it "degraded", with
+systemd-remount-fs failed on the overlay root).
 
 Writes RUNDIR/report.txt, journal.txt (first boot), journal-snapshot.txt,
 limine.conf and screen.png.
@@ -192,21 +196,20 @@ def main():
         r = sh.run(cmd, timeout)
         return None if r is None else r[1]
 
-    def boot_health(label, strict):
-        """Failed units, queued jobs and PID 1's journal lines; problems if STRICT, else notes."""
-        sink = problems if strict else notes
+    def boot_health(label, first):
+        """Failed units, queued jobs and PID 1's journal lines are problems on either boot."""
         r = sh.run("systemctl --failed --plain --no-legend --full", 30)
         if r and r[1].strip():
-            sink.append(f"{label}: failed units:\n" + r[1].rstrip())
+            problems.append(f"{label}: failed units:\n" + r[1].rstrip())
         r = sh.run("systemctl list-jobs --no-legend --full", 30)
         if r and r[1].strip() and "No jobs" not in r[1]:
-            sink.append(f"{label}: jobs still queued after boot:\n" + r[1].rstrip())
+            problems.append(f"{label}: jobs still queued after boot:\n" + r[1].rstrip())
         r = sh.run("journalctl -b --no-pager -o short-monotonic", 90)
         if r:
-            save("journal.txt" if strict else "journal-snapshot.txt", r[1])
+            save("journal.txt" if first else "journal-snapshot.txt", r[1])
             bad = [ln for ln in r[1].splitlines() if BAD_JOURNAL.search(ln)]
             if bad:
-                sink.append(f"{label}: journal:\n" + "\n".join(bad[:40]))
+                problems.append(f"{label}: journal:\n" + "\n".join(bad[:40]))
 
     def wait_boot(label, deadline):
         r = sh.run("systemctl is-system-running --wait", deadline - time.monotonic())
@@ -214,8 +217,17 @@ def main():
             jobs = out("systemctl list-jobs --no-legend --full") or "?"
             problems.append(f"{label}: boot not finished within {a.timeout} s; jobs still queued:\n{jobs}")
             return False
-        say(f"{label}: boot finished: {r[1].strip()}")
+        state = r[1].strip()
+        say(f"{label}: boot finished: {state}")
+        if state != "running":
+            problems.append(f"{label}: the boot finished {state or '?'}, not running")
         return True
+
+    def remount_fs():
+        """systemd-remount-fs.service's ActiveState and Result."""
+        kv = dict(ln.split("=", 1) for ln in (out("systemctl show -p ActiveState -p Result "
+                                                  "systemd-remount-fs.service") or "").splitlines() if "=" in ln)
+        return kv.get("ActiveState", "?"), kv.get("Result", "?")
 
     # ---- first boot: the normal entry ----------------------------------------------------
     deadline = t0 + a.timeout
@@ -269,6 +281,18 @@ def main():
         dm = (out("systemctl is-active display-manager.service") or "").strip()
         if dm != "active":
             problems.append(f"the display manager (login screen) is not running: display-manager.service {dm or '?'}")
+        # / from the kernel command line (rootflags=subvol=/@), then fstab's
+        # options applied by systemd-remount-fs, which the snapshot-boot drop-in
+        # (build note 57) must leave running on a normal boot.
+        root = (out("findmnt -n -o FSTYPE,OPTIONS --mountpoint /") or "").split()
+        if len(root) != 2 or root[0] != "btrfs" or "subvol=/@" not in root[1].split(","):
+            problems.append(f"/ is not btrfs subvol=/@: {' '.join(root) or '?'}")
+        else:
+            say(f"/ is btrfs {root[1]}")
+        rfs = remount_fs()
+        if rfs != ("active", "success"):
+            problems.append("systemd-remount-fs.service did not run on the normal boot (fstab's options for / not "
+                            f"applied): ActiveState={rfs[0]} Result={rfs[1]}")
         boot_health("first boot", True)
 
         # Snapper's first snapshot and limine-snapper-sync's entry for it.
@@ -378,6 +402,7 @@ def main():
         else:
             say("snapshot boot: multi-user.target reached")
         say("snapshot boot: / is " + (out("findmnt -n -o FSTYPE,SOURCE /") or "?").strip())
+        say("snapshot boot: systemd-remount-fs.service ActiveState=%s Result=%s" % remount_fs())
         boot_health("snapshot boot", False)
     except ConnectionError as e:
         problems.append(str(e))
