@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Fake ps for the live session's watchdog (INVICTUS_PS): `-o uid= -p PID`
+# gives another uid than the caller's for the pids in $FAKE_STATE/root.pids
+# (root's installer under sudo; the suite may itself run as root, so "0" would
+# read as the caller's own); everything else goes to the real ps.
+if [[ "$1 $2 $3" == "-o uid= -p" && -f "$FAKE_STATE/root.pids" ]] && grep -qw -- "$4" "$FAKE_STATE/root.pids"; then
+    if [[ "$(id -u)" == 0 ]]; then echo "65534"; else echo "    0"; fi
+    exit 0
+fi
+for p in /usr/bin/ps /bin/ps; do [[ -x "$p" ]] && exec "$p" "$@"; done
+exit 127

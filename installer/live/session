@@ -31,6 +31,8 @@ LOG="${XDG_RUNTIME_DIR:-/tmp}/invictus-live-session.log"
 HYPR_TIMEOUT="${INVICTUS_HYPR_TIMEOUT:-90}"
 POLL="${INVICTUS_HYPR_POLL:-1}"
 HYPRCTL="${INVICTUS_HYPRCTL:-hyprctl}"
+PS="${INVICTUS_PS:-ps}"
+SUDO="${INVICTUS_SUDO:-sudo}"
 
 kiosk() {
     echo "starting the installer in cage ($1)" >>"$LOG"
@@ -59,15 +61,40 @@ tree() {  # tree PID: PID and every process under it, children first
     echo "$1"
 }
 
+# invictus-install re-executes itself under sudo, so the installer and the
+# sudo above it in Hyprland's tree are root's: a plain kill from liber fails
+# on them, and cage's Calamares would then refuse to start as a second
+# instance (Minerva, release review F1). liber has passwordless sudo on the
+# live image, so root's members are signalled through it.
+signal() {  # signal SIG PID...: our own processes directly, root's through sudo
+    local sig="$1" p uid me mine=() theirs=()
+    shift
+    me="$(id -u)"
+    for p in "$@"; do
+        uid="$("$PS" -o uid= -p "$p" 2>/dev/null)" || continue
+        uid="${uid//[[:space:]]/}"
+        if [[ "$uid" == "$me" ]]; then mine+=("$p"); else theirs+=("$p"); fi
+    done
+    ((${#mine[@]})) && kill "-$sig" "${mine[@]}" 2>/dev/null
+    ((${#theirs[@]})) && "$SUDO" -n kill "-$sig" "${theirs[@]}" 2>/dev/null
+    return 0
+}
+
+alive() {  # alive PID...: any of them still running (not a zombie)? kill -0
+    # cannot tell: it fails on root's processes as liber.
+    local IFS=,
+    "$PS" -o stat= -p "$*" 2>/dev/null | grep -qv '^Z'
+}
+
 stop_hyprland() {  # stop_hyprland PID: TERM the whole tree, KILL what is left after 5 s
     local pids i
     mapfile -t pids < <(tree "$1")
-    kill -TERM "${pids[@]}" 2>/dev/null
+    signal TERM "${pids[@]}"
     for ((i = 0; i < 50; i++)); do
-        kill -0 "${pids[@]}" 2>/dev/null || break
+        alive "${pids[@]}" || break
         sleep 0.1
     done
-    kill -KILL "${pids[@]}" 2>/dev/null
+    signal KILL "${pids[@]}"
     wait "$1" 2>/dev/null
 }
 

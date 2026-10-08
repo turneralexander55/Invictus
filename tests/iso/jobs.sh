@@ -465,6 +465,21 @@ took=$SECONDS
 check "watchdog: a Hyprland that ignores SIGTERM is killed" gone
 check "watchdog: ... and the kiosk still starts, about 5 s later" bash -c "grep -q '^cage' '$T/session.log' && (($took >= 5 && $took < 20))"
 
+# F1 (Minerva, release review): the installer under invictus-install's sudo
+# is root's, and liber's plain kill fails on it; cage's Calamares would then
+# be refused as a second instance. Root's members go through sudo.
+CLIENTS="$OTHER" session INVICTUS_CMDLINE="$T/cmdline-plain" INVICTUS_RENDER_GLOB="$T/dri/renderD*" \
+    INVICTUS_HYPR_TIMEOUT=1 FAKE_HANG_start_hyprland=1 FAKE_ROOT_CHILD=1 \
+    INVICTUS_PS="$HERE/fakes/fake-ps" INVICTUS_SUDO="$HERE/fakes/fake-sudo"
+rootpid="$(cat "$T/sess-state/root.pids" 2>/dev/null)"
+check "F1 watchdog: the root installer in Hyprland's tree gets TERM through sudo, before the kiosk" \
+    bash -c "[[ -n '$rootpid' ]] && grep -qx 'sudo -n kill -TERM $rootpid' '$T/session.log' \
+        && (( \$(grep -n '^calamares: TERM' '$T/session.log' | cut -d: -f1) < \$(grep -n '^cage' '$T/session.log' | cut -d: -f1) ))"
+read -ra ownpids <"$T/sess-state/hypr.pids"
+check "F1 watchdog: liber's own processes are not sent through sudo" \
+    bash -c "! grep -E '^sudo .* (${ownpids[0]}|${ownpids[1]})( |\$)' '$T/session.log'"
+check "F1 watchdog: the whole tree is gone" gone
+
 CLIENTS="$CAL" session INVICTUS_CMDLINE="$T/cmdline-plain" INVICTUS_RENDER_GLOB="$T/dri/renderD*" \
     INVICTUS_HYPR_TIMEOUT=1 FAKE_RUN_start_hyprland=3
 check "watchdog: installer window up -> Hyprland keeps running past the timeout" grep -q '^start-hyprland exiting' "$T/session.log"

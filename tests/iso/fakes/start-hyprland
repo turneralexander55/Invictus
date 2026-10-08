@@ -6,6 +6,10 @@
 #                             real Hyprland under start-hyprland; both pids
 #                             go to $FAKE_STATE/hypr.pids
 #   FAKE_IGNORE_TERM          1: ignore SIGTERM (a Hyprland stuck in the GPU)
+#   FAKE_ROOT_CHILD           1 (with HANG): also a stand-in for the root
+#                             Calamares under invictus-install's sudo; it ends
+#                             on TERM, logs it, and its pid goes to
+#                             $FAKE_STATE/root.pids (fake-ps calls it root's)
 echo "start-hyprland $* WLR_RENDERER=${WLR_RENDERER:-}" >>"$FAKE_LOG"
 if [[ "${FAKE_IGNORE_TERM:-}" == 1 ]]; then trap '' TERM; fi
 if [[ "${FAKE_HANG_start_hyprland:-}" == 1 ]]; then
@@ -14,7 +18,13 @@ if [[ "${FAKE_HANG_start_hyprland:-}" == 1 ]]; then
     else
         sleep 1000 &
     fi
-    echo "$$ $!" >"$FAKE_STATE/hypr.pids"
+    pids="$$ $!"
+    if [[ "${FAKE_ROOT_CHILD:-}" == 1 ]]; then
+        bash -c "trap 'echo \"calamares: TERM\" >>\"\$FAKE_LOG\"; exit 0' TERM; while :; do sleep 0.1; done" &
+        echo "$!" >"$FAKE_STATE/root.pids"
+        pids+=" $!"
+    fi
+    echo "$pids" >"$FAKE_STATE/hypr.pids"
     while true; do wait; sleep 0.1; done
 fi
 sleep "${FAKE_RUN_start_hyprland:-0}"
