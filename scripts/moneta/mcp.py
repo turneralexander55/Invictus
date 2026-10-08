@@ -126,9 +126,12 @@ def child_env():
     if os.path.isdir(rundir):
         e["XDG_RUNTIME_DIR"] = rundir
         e["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={rundir}/bus"
-    for name in ("WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE"):
-        if socket_name(os.environ.get(name, "")):
-            e[name] = os.environ[name]
+    wl = socket_name(os.environ.get("WAYLAND_DISPLAY", ""))
+    if wl:
+        e["WAYLAND_DISPLAY"] = wl
+    his = socket_name(os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", ""))
+    if his:
+        e["HYPRLAND_INSTANCE_SIGNATURE"] = his
     e["INVICTUS_THREAD"] = THREAD  # checked above
     if not INSTALLED:  # a checkout: the tests' fakes and overrides; never an installed copy
         e.update({k: v for k, v in os.environ.items()  # not an override (checkout only)
