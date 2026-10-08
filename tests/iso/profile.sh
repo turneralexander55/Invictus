@@ -294,6 +294,19 @@ upload = next(i for i, st in enumerate(steps) if "upload-artifact" in st.get("us
 assert upload < smoke, "boot smoke before the upload"
 assert "/dev/kvm" in steps[smoke]["run"]' "$REPO/.github/workflows/iso.yml" 2>"$T/smoke-step.err"
 check "iso.yml: the build boots the ISO with boot-smoke.sh after uploading it, and needs KVM" test $? -eq 0
+python3 -c 'import sys, yaml
+steps = yaml.safe_load(open(sys.argv[1]))["jobs"]["build"]["steps"]
+at = lambda s: next(i for i, st in enumerate(steps) if s in st.get("run", ""))
+build, e2e, disk = at("scripts/build-iso.sh"), at("tests/iso/e2e-jobs.sh"), at("tests/iso/disk-boot.sh")
+assert build < e2e < disk, "order: build, e2e (install), disk boot"
+assert "if" not in steps[e2e], "the install runs for every kind of build"
+assert "--keep" in steps[e2e]["run"] and "--iso" in steps[e2e]["run"], "e2e installs the ISO and keeps the disk"
+assert "/dev/kvm" in steps[disk]["run"], "disk boot needs KVM"
+logs = [st for st in steps[disk:] if "upload-artifact" in st.get("uses", "") and st.get("if") == "failure()"]
+assert logs and "out/disk-boot" in logs[0]["with"]["path"], "disk-boot logs uploaded on failure"
+assert "disk.img" not in logs[0]["with"]["path"] and "out/disk\n" not in logs[0]["with"]["path"] + "\n", "not the image"
+' "$REPO/.github/workflows/iso.yml" 2>"$T/disk-step.err"
+check "iso.yml: the ISO is installed onto a kept disk (e2e-jobs --keep) that disk-boot.sh then boots with KVM, logs uploaded on failure" test $? -eq 0
 check "iso.yml: the build no longer claims a 2 GiB failure" bash -c "! grep -q 'so an ISO that gets here is under it' '$REPO/.github/workflows/iso.yml'"
 
 # ---- 9. Plymouth theme --------------------------------------------------------------------------
