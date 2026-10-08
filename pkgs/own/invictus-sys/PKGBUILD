@@ -31,6 +31,9 @@
 #                                              have this package and never invictus-base
 #                                              (Janus I-2). The installer no longer
 #                                              writes it (installer/jobs/settings.sh).
+#   /usr/lib/systemd/system/systemd-remount-fs.service.d/invictus-snapshot-overlay.conf
+#                                              a snapshot boot (rollback) skips the
+#                                              remount of its overlay root (note 59)
 #
 # Reference: docs/invictus-sys.md.
 
@@ -71,4 +74,6 @@ package() {
     "$root/scripts/sys/services.allow" "$root/scripts/sys/protected-packages"
   install -d -m755 "$pkgdir/etc/systemd/system-generators"
   ln -s /dev/null "$pkgdir/etc/systemd/system-generators/systemd-ssh-generator"
+  install -Dm644 "$root/scripts/systemd/remount-fs-snapshot-overlay.conf" \
+    "$pkgdir/usr/lib/systemd/system/systemd-remount-fs.service.d/invictus-snapshot-overlay.conf"
 }

@@ -182,7 +182,9 @@ check "cleanup: root is locked" bash -c "awk -F: '\$1 == \"root\" { exit (\$2 ~ 
 check "cleanup: the live mkinitcpio drop-in is gone" test ! -e "$T/etc/mkinitcpio.conf.d/archiso.conf"
 
 # ---- fstab (Calamares module: by UUID, the mount options, no subvolid) -------------
-# genfstab would add subvolid=, which a snapshot boot's remount of / fails on.
+# genfstab would add subvolid=; Calamares does not. On a snapshot boot / is an
+# overlay that refuses every btrfs option on a remount, so invictus-sys skips
+# systemd-remount-fs there (design.md build note 59); checked below.
 uuid="$(findmnt -n -o UUID --mountpoint "$T")"
 esp_uuid="$(blkid -o value -s UUID "$esp")"
 {
@@ -286,6 +288,12 @@ check "no nested .snapshots subvolume left in @home" bash -c "! grep -Eq 'path @
 arch-chroot "$T" snapper --no-dbus -c root list >"$L/root-list" 2>&1 || true
 check "snapshot 1 of / is Fresh install" grep -q 'Fresh install' "$L/root-list"
 check "snapshot 1 lives in @snapshots" test -d "$T/.snapshots/1/snapshot/etc"
+# Build note 59: a rollback boots this snapshot under an overlay; its
+# systemd-remount-fs must skip the overlay root, so the drop-in must be in it.
+check "fstab: one / line, subvol=/@ and no subvolid= (the line the snapshot boot's remount reads)" \
+    bash -c "[[ \$(awk '\$2 == \"/\"' '$T/etc/fstab' | wc -l) == 1 ]] && awk '\$2 == \"/\" { exit (\$4 ~ /(^|,)subvol=\\/@(,|\$)/ && \$4 !~ /subvolid=/) ? 0 : 1 }' '$T/etc/fstab'"
+check "snapshot 1 has invictus-sys's remount-fs drop-in for its overlay root" \
+    test -f "$T/.snapshots/1/snapshot/usr/lib/systemd/system/systemd-remount-fs.service.d/invictus-snapshot-overlay.conf"
 # Read the config files: snapper's get-config table uses box-drawing
 # separators in newer versions, so grepping its table is brittle.
 hc="$T/etc/snapper/configs/home"; rc_="$T/etc/snapper/configs/root"

@@ -376,6 +376,65 @@ if [[ -x "$ALL/usr/bin/invictus-sys" && -x "$ALL/usr/lib/invictus/invictus-sys" 
     if grep -q '^\[Install\]' "$ALL/usr/lib/systemd/system/invictus-guardrails.service"; then sfail "invictus-guardrails.service has an [Install] section"
     else ok "invictus-sys and invictus-guardrails install their files; the boot service is static and always wanted; the tier 1 rule is not packaged in /etc"; fi
 else sfail "package trees incomplete"; fi
+# remount-fs (design.md build note 59): a snapshot boot runs from an overlay
+# root, which refuses fstab's btrfs options on a remount, so invictus-sys
+# skips systemd-remount-fs exactly when / is an overlay. ExecCondition: exit
+# 0 runs the unit, 1 to 254 skips it (not failed), 255 is a failure.
+ro="$ALL/usr/lib/systemd/system/systemd-remount-fs.service.d/invictus-snapshot-overlay.conf"
+cond="$(sed -n 's/^ExecCondition=//p' "$ro" 2>/dev/null || true)"
+run_cond() {  # run_cond COMMAND-LINE: the unit's command, word-split as systemd does for this line
+    local c rc=0; c="$1"; eval "$c" >/dev/null 2>&1 || rc=$?; echo "$rc"
+}
+mkdir -p "$TMP/rfs"
+cat > "$TMP/rfs/findmnt" <<'EOF'
+#!/bin/bash
+# findmnt for one mount table: / is $FAKE_ROOT_FS. Only the query the drop-in makes.
+[[ "$*" == "--noheadings --mountpoint / --types overlay" ]] || { echo "findmnt: unexpected $*" >&2; exit 2; }
+[[ "$FAKE_ROOT_FS" == overlay ]] && { echo "/ overlay overlay rw"; exit 0; }
+exit 1
+EOF
+chmod 755 "$TMP/rfs/findmnt"
+fake_cond="${cond//\/usr\/bin\/findmnt/$TMP/rfs/findmnt}"
+host_fs="$(findmnt -n -o FSTYPE --mountpoint / 2>/dev/null || true)"
+r_btrfs="$(FAKE_ROOT_FS=btrfs run_cond "$fake_cond")"; r_ov="$(FAKE_ROOT_FS=overlay run_cond "$fake_cond")"
+r_host="$(run_cond "$cond")"; r_host_as="$(run_cond "${cond//--types overlay/--types $host_fs}")"
+want_host=0; [[ "$host_fs" == overlay ]] && want_host=1
+if [[ ! -f "$ro" ]] || [[ "$(grep -c '^ExecCondition=' "$ro")" != 1 ]] || ! grep -qx '\[Service\]' "$ro"; then
+    sfail "remount-fs: invictus-sys has no drop-in with one ExecCondition for systemd-remount-fs.service"
+elif grep -Eq '^(ExecStart|ExecStartPre|Condition|Assert)' "$ro"; then
+    sfail "remount-fs: the drop-in changes more than the condition: $(grep -E '^(ExecStart|Condition|Assert)' "$ro")"
+elif [[ "$cond" != /usr/bin/* || "$fake_cond" == "$cond" ]]; then
+    sfail "remount-fs: the condition must call /usr/bin/findmnt by its absolute path: $cond"
+elif [[ $r_btrfs != 0 ]]; then
+    sfail "remount-fs: a btrfs root (a normal boot) skips systemd-remount-fs (condition exit $r_btrfs, want 0)"
+elif ((r_ov < 1 || r_ov > 254)); then
+    sfail "remount-fs: an overlay root (a snapshot boot) does not skip systemd-remount-fs (condition exit $r_ov, want 1 to 254)"
+elif [[ -n "$host_fs" ]] && { [[ $r_host != "$want_host" ]] || [[ $r_host_as != 1 ]]; }; then
+    sfail "remount-fs: with the real findmnt on this $host_fs root the condition exits $r_host (want $want_host), asked for $host_fs it exits $r_host_as (want 1)"
+else
+    ok "remount-fs: invictus-sys skips systemd-remount-fs when / is an overlay (snapshot boot, exit $r_ov) and runs it on a btrfs root (exit 0); the real findmnt agrees on this $host_fs root"
+fi
+# The same command on a real overlay root, where this user may build one.
+if [[ $EUID == 0 && -n "$cond" ]] && unshare -m true 2>/dev/null; then
+    cat > "$TMP/rfs/ovroot.sh" <<'EOF'
+#!/bin/bash
+# In a private mount namespace: / as an overlay over this machine's /, then the condition inside it.
+w="$1"; shift
+mount -t tmpfs rfs "$w" && mkdir -p "$w/u" "$w/w" "$w/m" \
+    && mount -t overlay overlay -o "lowerdir=/,upperdir=$w/u,workdir=$w/w" "$w/m" \
+    && mount -t proc proc "$w/m/proc" || exit 99
+[[ "$(chroot "$w/m" /usr/bin/findmnt -n -o FSTYPE --mountpoint /)" == overlay ]] || exit 98
+rc=0; chroot "$w/m" /usr/bin/sh -c "$1" || rc=$?
+exit "$rc"
+EOF
+    mkdir -p "$TMP/rfs/ov"; c_inner="$(eval "set -- $cond"; echo "$3")"
+    rc=0; unshare -m --propagation private bash "$TMP/rfs/ovroot.sh" "$TMP/rfs/ov" "$c_inner" || rc=$?
+    if ((rc == 98 || rc == 99)); then echo "skip  remount-fs: no overlay root could be built here (exit $rc)"
+    elif ((rc >= 1 && rc <= 254)); then ok "remount-fs: on a real overlay root the drop-in's command skips the unit (exit $rc)"
+    else sfail "remount-fs: on a real overlay root the drop-in's command exits $rc (want 1 to 254)"; fi
+else
+    echo "skip  remount-fs: the real overlay root needs root and unshare (the fake findmnt checks above still ran)"
+fi
 hook="$ALL/usr/share/libalpm/hooks/40-invictus-hold.hook"
 if [[ "$(grep -c '^Target = ' "$hook")" == "$(grep -cv '^[[:space:]]*\(#\|$\)' "$SYS/protected-packages")" ]] \
    && grep -qx 'Target = invictus-desktop' "$hook" && grep -qx 'When = PreTransaction' "$hook"; then
