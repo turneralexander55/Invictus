@@ -53,6 +53,7 @@ new_target() {
     echo 'liber ALL=(ALL:ALL) NOPASSWD: ALL' >"$ROOTDIR/etc/sudoers.d/liber"
     echo 'HOOKS=(base udev archiso)' >"$ROOTDIR/etc/mkinitcpio.conf.d/archiso.conf"
     echo '[Service]' >"$ROOTDIR/etc/systemd/system/getty@tty1.service.d/autologin.conf"
+    ln -sfn /dev/null "$ROOTDIR/etc/systemd/system/systemd-firstboot.service"
     echo 'version=x' >"$ROOTDIR/etc/invictus/iso-release"
     echo 'invictus' >"$ROOTDIR/etc/hostname"
     printf 'passwd: files systemd\nhosts: mymachines resolve [!UNAVAIL=return] files myhostname dns\n' >"$ROOTDIR/etc/nsswitch.conf"
@@ -83,6 +84,7 @@ run_job cleanup-live.sh "$ROOTDIR"; rc=$?
 check "cleanup: exits 0" test "$rc" -eq 0
 check "cleanup: live sudo rule gone" test ! -e "$ROOTDIR/etc/sudoers.d/liber"
 check "cleanup: tty1 autologin gone" test ! -e "$ROOTDIR/etc/systemd/system/getty@tty1.service.d/autologin.conf"
+check "cleanup: the live image's systemd-firstboot mask is gone" test ! -L "$ROOTDIR/etc/systemd/system/systemd-firstboot.service"
 check "cleanup: archiso mkinitcpio drop-in gone" test ! -e "$ROOTDIR/etc/mkinitcpio.conf.d/archiso.conf"
 check "cleanup: the ISO release file is not left in the target" test ! -e "$ROOTDIR/etc/invictus/iso-release"
 check "cleanup: kept files stay (hostname, passwd)" test -f "$ROOTDIR/etc/hostname" -a -f "$ROOTDIR/etc/passwd"
