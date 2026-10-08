@@ -115,7 +115,7 @@ echo n > "$PR/t/notes.md"; echo m > "$PR/m/m.py"
 pi() { python3 -I "$PI" --repo "$PR" "$@"; }
 p_fail=0
 pibad() { bad "1b toy: $1"; p_fail=1; }
-pi --update >/dev/null 2>&1 && pi --check >/dev/null || pibad "a fresh lock does not check"
+{ pi --update >/dev/null 2>&1 && pi --check >/dev/null; } || pibad "a fresh lock does not check"
 for f in s/a.sh t/one.toml s/w/x.sh m/m.py pkgs/own/toy/PKGBUILD; do
     cp "$PR/$f" "$PR/$f.orig"; echo changed >> "$PR/$f"
     out="$(pi --check 2>&1)" && pibad "$f changed, --check passed"
@@ -130,10 +130,10 @@ done
 sed -i 's/^pkgrel=1$/pkgrel=2/' "$PR/pkgs/own/toy/PKGBUILD"; echo changed >> "$PR/s/a.sh"
 out="$(pi --check 2>&1)" && pibad "bumped, lock not updated, --check passed"
 grep -q "run .* --update" <<< "$out" || pibad "bumped: $out"
-pi --update >/dev/null 2>&1 && pi --check >/dev/null || pibad "bumped and re-locked, --check still fails"
+{ pi --update >/dev/null 2>&1 && pi --check >/dev/null; } || pibad "bumped and re-locked, --check still fails"
 echo again >> "$PR/s/a.sh"
 pi --update --rehash other >/dev/null 2>&1 && pibad "--rehash of another package re-locked toy"
-pi --update --rehash toy >/dev/null 2>&1 && pi --check >/dev/null || pibad "--rehash toy did not re-lock toy"
+{ pi --update --rehash toy >/dev/null 2>&1 && pi --check >/dev/null; } || pibad "--rehash toy did not re-lock toy"
 [[ $p_fail == 0 ]] && ok "1b: a changed input (plain path, glob, variable path, \$root local, the PKGBUILD) fails --check and --update until pkgrel moves (or an unpublished bump is re-hashed by name); other files and packages do not"
 echo
 
