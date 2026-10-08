@@ -381,8 +381,9 @@ session() {
 SLOG="$T/invictus-live-session.log"
 gone() {  # gone: every pid the hanging fake Hyprland wrote has exited (a zombie
     # waiting for init to reap it counts as exited)
-    local p st
-    for p in $(cat "$T/sess-state/hypr.pids"); do
+    local p st pids
+    read -ra pids <"$T/sess-state/hypr.pids"
+    for p in "${pids[@]}"; do
         st="$(ps -o stat= -p "$p" 2>/dev/null)"
         [[ -z "$st" || "$st" == Z* ]] || return 1
     done
@@ -433,6 +434,7 @@ check "watchdog: installer window up -> no kiosk" bash -c "! grep -q '^cage' '$T
 CLIENTS="$CAL" session INVICTUS_CMDLINE="$T/cmdline-plain" INVICTUS_RENDER_GLOB="$T/dri/renderD*" \
     FAKE_RUN_start_hyprland=1
 check "watchdog: default timeout is 90 s (a quick normal start is untouched)" bash -c "grep -q '^start-hyprland exiting' '$T/session.log' && ! grep -q '^cage' '$T/session.log'"
+# shellcheck disable=SC2016  # a literal line of the script
 check "watchdog: default timeout is 90 s" grep -q 'HYPR_TIMEOUT="${INVICTUS_HYPR_TIMEOUT:-90}"' "$S"
 
 echo
