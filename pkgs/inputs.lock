@@ -1,0 +1,18 @@
+# name version sha256-of-inputs: scripts/dev/pkg-inputs.py --update after a bump;
+# tests/pkgs/run.sh group 1b fails when a package's inputs change and its version does not.
+invictus-branding 0.1.0-1 0e92cc673d4828015bfdd22949cd733c4bc6630f82471418be528532bc45f637
+invictus-guardrails 0.2.0-6 103cbf0305540c91c928738d38dd08130d5d8e21de2a262a2b52d6da43bdbcdf
+invictus-keyring 20260930-1 639ba14e858c4149a6ae8f1fa6126288328b44ad477f1e8e496274f71f44f04b
+invictus-sys 0.2.0-6 af6a809da3637ead80b1d5ac80b6b058a5c10ff04eabae26e59ce866a092e11a
+invictus-tools 0.1.0-9 51dfac29a673fdc4888ada2cd557df13caf07971746946f68060cb7e01d74bc9
+invictus-tribune 0.2.0-3 ccb2c0eb0f5d80abfb5e275bdb27d2fde7758d150308d958fe8388fc86414f8d
+invictus-atrium 0.2.0-1 064faa7e1865ffefba17f6c2fefe32d30da0a861ecd7a29679017a8ca6f60d01
+invictus-base 0.3.0-2 4e5e1da1ee3e7d7cb458f91752d49d60c9c8b482645c6be2754587ed9591ac80
+invictus-desktop 0.3.0-4 5eaa488e812939d755e74e8a774b7cec22fae94df1d9aa077a4b2e422f1061b4
+invictus-dev 0.3.0-2 2065edc7a6394f1f8e5a7b9e75c72c79779097a2177eb975f0456c0ec4a70731
+invictus-gaming 0.2.0-1 290a801f9e4bc3a2a751d9eaf872a63e3bda6f7b6f0f4b31f77b0b2b41c3b421
+invictus-moneta 0.1.0-2 5493a124cf7114f197f58bf91014ff53bfe60859c4bb6295857d461e5feaf01a
+invictus-office 0.1.0-1 2754c0b083bd58ca4dc947e37c68e99216aaa8c80690ec6d19e96e066de3df9c
+invictus-tessera 0.1.0-1 7fe2be5cf096e70560ee801bdaf7566e4ea648863c7a13bc43b7767b7d2899b1
+invictus-voice 0.1.0-1 d5ba87799eca8b2367d05f1014533f833ad6af5712c8d5d4ea4c7011aa5b1b57
+invictus-windows 0.1.0-1 d1483a0156f6abcb8292083da4a96ff5b1a42aabbd72895c99dcc8674beb78fc

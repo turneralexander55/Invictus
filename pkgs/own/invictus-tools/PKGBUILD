@@ -19,7 +19,7 @@
 
 pkgname=invictus-tools
 pkgver=0.1.0
-pkgrel=8
+pkgrel=9
 pkgdesc='Invictus commands: theme, motion, update, doctor, and the scripts the desktop runs'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
@@ -30,7 +30,7 @@ depends=(
   # guardrails-state}.sh; Settings and the desktop call invictus-sys;
   # invictus-first-boot and invictus-theme load lib/invictus_env.py (0.2.0-4);
   # 0.2.0-5 owns the systemd-ssh-generator mask, so adopted installs get it
-  'invictus-sys>=0.2.0-5'
+  'invictus-sys>=0.2.0-6'
   # waybar modules (checkupdates, free), the cheatsheet and pickers
   # (rofi, notify-send), pkill, gsettings for the GTK look
   'pacman-contrib' 'libnotify' 'rofi' 'util-linux' 'procps-ng' 'glib2'
