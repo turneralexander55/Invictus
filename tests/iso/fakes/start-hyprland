@@ -1,4 +1,22 @@
 #!/usr/bin/env bash
 # Fake start-hyprland: logs how it was started.
+#   FAKE_EXIT_start_hyprland  exit status (default 0)
+#   FAKE_RUN_start_hyprland   seconds to run before exiting (default 0)
+#   FAKE_HANG_start_hyprland  1: never exit, with a child process like the
+#                             real Hyprland under start-hyprland; both pids
+#                             go to $FAKE_STATE/hypr.pids
+#   FAKE_IGNORE_TERM          1: ignore SIGTERM (a Hyprland stuck in the GPU)
 echo "start-hyprland $* WLR_RENDERER=${WLR_RENDERER:-}" >>"$FAKE_LOG"
+if [[ "${FAKE_IGNORE_TERM:-}" == 1 ]]; then trap '' TERM; fi
+if [[ "${FAKE_HANG_start_hyprland:-}" == 1 ]]; then
+    if [[ "${FAKE_IGNORE_TERM:-}" == 1 ]]; then
+        bash -c "trap '' TERM; exec sleep 1000" &
+    else
+        sleep 1000 &
+    fi
+    echo "$$ $!" >"$FAKE_STATE/hypr.pids"
+    while true; do wait; sleep 0.1; done
+fi
+sleep "${FAKE_RUN_start_hyprland:-0}"
+echo "start-hyprland exiting" >>"$FAKE_LOG"
 exit "${FAKE_EXIT_start_hyprland:-0}"
