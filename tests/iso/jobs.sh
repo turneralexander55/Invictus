@@ -139,15 +139,22 @@ check "settings: release file drops a line with shell in it" bash -c "! grep -q 
 check "settings: says guard rails not applied while invictus-sys is missing" out_has "invictus-sys is not installed yet"
 check "settings: mdns_minimal before resolve on the hosts line" grep -qx 'hosts: mymachines mdns_minimal \[NOTFOUND=return\] resolve \[!UNAVAIL=return\] files myhostname dns' "$ROOTDIR/etc/nsswitch.conf"
 check "settings: other nsswitch lines untouched" grep -qx 'passwd: files systemd' "$ROOTDIR/etc/nsswitch.conf"
+# The generator mask is invictus-sys's file (Janus I-2): the job must not
+# write it (pacman would refuse the package over an unowned copy), and says
+# when it is missing.
 gm="$ROOTDIR/etc/systemd/system-generators/systemd-ssh-generator"
-check "settings: systemd-ssh-generator is masked, so no local sshd socket (design-simple-mode 1.3)" \
-    bash -c "[[ -L '$gm' && \"\$(readlink '$gm')\" == /dev/null ]]"
+check "settings: does not write the systemd-ssh-generator mask (invictus-sys owns it)" bash -c "[[ ! -e '$gm' && ! -L '$gm' ]]"
+check "settings: warns when the generator is not masked (no invictus-sys in the target)" out_has "systemd-ssh-generator is not masked"
 
 touch "$FAKE_STATE/has-invictus-sys"
 run_job settings.sh "$ROOTDIR" maria tessera libertas
 check "settings: Advanced values written (tessera, libertas)" bash -c "[[ \$(cat '$ROOTDIR/home/maria/.config/invictus/flavor') == tessera && \$(cat '$ROOTDIR/etc/invictus/guardrails') == libertas ]]"
 check "settings: runs invictus-sys guardrails apply when present" logged "chroot invictus-sys guardrails apply"
-check "settings: a second run keeps the generator mask" bash -c "[[ -L '$gm' && \"\$(readlink '$gm')\" == /dev/null ]]"
+check "settings: still writes no generator mask" bash -c "[[ ! -e '$gm' && ! -L '$gm' ]]"
+mkdir -p "$(dirname "$gm")"; ln -s /dev/null "$gm"   # as invictus-sys installs it
+run_job settings.sh "$ROOTDIR" maria tessera libertas
+check "settings: with invictus-sys's mask in place, says masked and leaves the link as it is" \
+    bash -c "grep -q 'systemd-ssh-generator masked (invictus-sys)' '$T/out' && [[ -L '$gm' && \"\$(readlink '$gm')\" == /dev/null ]]"
 check "settings: a second run does not add mdns_minimal twice" test "$(grep -o mdns_minimal "$ROOTDIR/etc/nsswitch.conf" | wc -l)" -eq 1
 check "settings: hostname untouched without --hostname-from-user" test "$(cat "$ROOTDIR/etc/hostname")" = maria-invictus
 
@@ -304,6 +311,14 @@ for badpick in "linux" "invictus-moneta" "--config=/tmp/x" "invictus-office;rebo
     check "F4: extras: the warning for '$badpick' is in the output, the name never reaches pacman" \
         bash -c "grep -q 'warning: skipping' '$T/out' && ! grep -F -- '$badpick' '$FAKE_LOG'"
 done
+# Janus I-4: a name with U+202E (right-to-left override), U+2066 (left-to-right
+# isolate) and U+200B (zero width space), under a UTF-8 locale: the warning
+# shows each as '?', and nothing outside printable ASCII reaches the output.
+extras_target extras-bidi
+bidi="a$(printf '\342\200\256')b$(printf '\342\201\246')c$(printf '\342\200\213')d"
+LC_ALL=C.UTF-8 run_job extras.sh "$ROOTDIR" invictus-office "$bidi"; rc=$?
+check "I-4: extras: U+202E, U+2066 and U+200B in a name are each shown as '?' (C.UTF-8)" \
+    bash -c "[[ $rc -eq 0 ]] && grep -qF \"skipping 'a?b?c?d'\" '$T/out' && ! LC_ALL=C grep -q \$'[\\x80-\\xff]' '$T/out'"
 extras_target extras-all-bad
 run_job extras.sh "$ROOTDIR" linux "--config=/tmp/x"; rc=$?
 check "F4: extras: only unknown names: exits 0, warns, runs no pacman" bash -c "[[ $rc -eq 0 ]] && grep -q 'warning: skipping' '$T/out' && ! grep -q pacman '$FAKE_LOG'"

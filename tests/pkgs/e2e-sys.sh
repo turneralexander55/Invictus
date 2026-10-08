@@ -60,6 +60,28 @@ if pacman -U --noconfirm "$WORK"/out/invictus-sys-*.pkg.tar.zst "$WORK"/out/invi
 else
     bad "install: $(tail -5 "$WORK/install.log")"; exit 1
 fi
+# sshd off on every machine, adopted ones too (design-simple-mode 1.3, SM2;
+# Janus I-2): invictus-sys owns the systemd-ssh-generator mask.
+gm=/etc/systemd/system-generators/systemd-ssh-generator
+if [[ -L "$gm" && "$(readlink "$gm")" == /dev/null ]] && [[ "$(pacman -Qqo "$gm" 2>/dev/null)" == invictus-sys ]]; then
+    ok "SM2: invictus-sys owns $gm -> /dev/null (pacman -Qo), so an adopted install gets the mask too"
+else
+    bad "SM2: $gm: $(ls -l "$gm" 2>&1) owner: $(pacman -Qo "$gm" 2>&1)"
+fi
+# Janus N-L1: the hook the profiles call is the /bin/sh wrapper; the guard
+# beside it is 0644 (nothing runs it without the wrapper). Run as tester:
+# a denied file gives 2, an allowed one 0.
+G=/usr/lib/invictus/claude-config-guard
+tg="$(getent passwd tester | cut -d: -f6)"
+mkdir -p "$tg/.config/waybar"; chown -R tester "$tg/.config"
+g_deny="$(printf '{"tool_input": {"file_path": "%s/.bashrc"}}' "$tg" | sudo -u tester "$G" pre fixed >/dev/null 2>&1; echo $?)"
+g_ok="$(printf '{"tool_input": {"file_path": "%s/.config/waybar/x.css"}}' "$tg" | sudo -u tester "$G" pre fixed >/dev/null 2>&1; echo $?)"
+if [[ "$(head -1 "$G")" == "#!/bin/sh" && "$(stat -c '%U %a' "$G")" == "root 755" && "$(stat -c '%U %a' "$G.py")" == "root 644" \
+      && "$g_deny" == 2 && "$g_ok" == 0 ]]; then
+    ok "N-L1: the installed hook is the /bin/sh wrapper (0755) around claude-config-guard.py (0644); as tester ~/.bashrc 2, waybar/x.css 0"
+else
+    bad "N-L1 installed guard: $(head -1 "$G") $(stat -c '%U %a %n' "$G" "$G.py" 2>&1 | paste -sd' '), deny $g_deny, allow $g_ok"
+fi
 
 # 1. The install hook applied Custodia (no guardrails file yet: custodia).
 if [[ "$(cat /etc/invictus/guardrails)" == custodia && -f /etc/sudoers.d/40-invictus-guardrails \

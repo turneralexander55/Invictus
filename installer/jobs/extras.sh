@@ -43,10 +43,13 @@ want=()
 add() { one_of "$1" "${want[*]:-}" || want+=("$1"); }
 # A name the list does not know is skipped with a warning, not fatal: an
 # extra missing from this build must not stop the whole install. Only names
-# on the list ever reach pacman (Janus F4).
+# on the list ever reach pacman (Janus F4). The warning shows the name with
+# every character outside the package-name set as '?' (Janus I-4):
+# [:print:] lets direction overrides and zero-width characters through
+# under a UTF-8 locale.
 for n in "$@"; do
     if [[ ! "$n" =~ ^[a-z0-9][a-z0-9@._+-]*$ ]] || ! one_of "$n" "$allowed"; then
-        say "warning: skipping '${n//[^[:print:]]/?}': not an extra (see /usr/share/invictus/extras.list)"
+        say "warning: skipping '${n//[^a-zA-Z0-9@._+-]/?}': not an extra (see /usr/share/invictus/extras.list)"
         continue
     fi
     add "$n"

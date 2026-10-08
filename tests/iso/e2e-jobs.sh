@@ -107,7 +107,7 @@ Include = /etc/pacman.d/mirrorlist
 Include = /etc/pacman.d/mirrorlist
 EOF
 pacstrap -C "$W/pacman.conf" -K "$T" base linux-cachyos mkinitcpio btrfs-progs snapper limine \
-    limine-mkinitcpio-hook limine-snapper-sync efibootmgr acl openssh >"$W/pacstrap.log" 2>&1 \
+    limine-mkinitcpio-hook limine-snapper-sync efibootmgr acl openssh invictus-guardrails >"$W/pacstrap.log" 2>&1 \
     || { tail -30 "$W/pacstrap.log"; exit 1; }
 # What Calamares' machineid, fstab, users and initcpiocfg would have done.
 systemd-machine-id-setup --root="$T" >/dev/null
@@ -189,6 +189,11 @@ check "settings job exits 0" test "$rc" -eq 0
 [[ $rc -eq 0 ]] || tail -20 "$W/settings.log"
 gm="$T/etc/systemd/system-generators/systemd-ssh-generator"
 check "settings: systemd-ssh-generator masked (a link to /dev/null)" bash -c "[[ -L '$gm' && \"\$(readlink '$gm')\" == /dev/null ]]"
+# Janus I-2: the mask is invictus-sys's file (pacstrapped above, as the live
+# image has it through invictus-base), not one the job wrote.
+check "settings: pacman says invictus-sys owns the generator mask" \
+    bash -c "[[ \"\$(arch-chroot '$T' pacman -Qqo /etc/systemd/system-generators/systemd-ssh-generator)\" == invictus-sys ]]"
+check "settings: the job says the mask came from invictus-sys" grep -q 'systemd-ssh-generator masked (invictus-sys)' "$W/settings.log"
 check "settings: /etc/systemd/system-generators is searched before /usr/lib/systemd/system-generators" \
     bash -c "arch-chroot '$T' systemd-path systemd-search-system-generator | grep -q '/etc/systemd/system-generators:.*/usr/lib/systemd/system-generators'"
 check "settings: sshd.service not enabled" bash -c "! arch-chroot '$T' systemctl is-enabled sshd.service >/dev/null 2>&1"

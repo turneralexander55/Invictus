@@ -66,14 +66,19 @@ if [[ -e "$ROOT/usr/lib/systemd/system/sshd.service" ]]; then
 fi
 # systemd-ssh-generator (systemd 256 and later) binds sshd to a local
 # AF_UNIX socket, /run/ssh-unix-local/socket (and AF_VSOCK port 22 in a VM),
-# whenever sshd is installed, whatever sshd.service says. Masked the way
-# systemd.generator(7) documents (a link to /dev/null in
+# whenever sshd is installed, whatever sshd.service says. It is masked the
+# way systemd.generator(7) documents (a link to /dev/null in
 # /etc/systemd/system-generators/), which also drops what
 # systemd.ssh_auto=no would leave: systemd.ssh_listen= and the ssh.listen
-# credential. Written whether or not openssh is there today.
-install -d -m 755 "$ROOT/etc/systemd/system-generators"
-ln -sfn /dev/null "$ROOT/etc/systemd/system-generators/systemd-ssh-generator"
-say "systemd-ssh-generator masked"
+# credential. invictus-sys owns that link, so adopted installs have it too
+# (Janus I-2). This job only reports: a copy written here before the
+# package was installed would make pacman refuse it ("exists in filesystem").
+gm="$ROOT/etc/systemd/system-generators/systemd-ssh-generator"
+if [[ -L "$gm" && "$(readlink "$gm")" == /dev/null ]]; then
+    say "systemd-ssh-generator masked (invictus-sys)"
+else
+    say "warning: systemd-ssh-generator is not masked: invictus-sys is missing from the target"
+fi
 
 # ---- machine: mDNS names (docs/packages.md, "For the ISO") -------------------
 # Driverless printers and scanners are found by .local names: nss-mdns

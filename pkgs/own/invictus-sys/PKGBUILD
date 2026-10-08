@@ -22,12 +22,21 @@
 #   /usr/share/polkit-1/actions/org.invictus.sys.policy   one action per verb
 #   /usr/share/invictus/sys/services.allow     units the service verb may change
 #   /usr/share/invictus/sys/protected-packages never removed; Custodia's HoldPkg
+#   /etc/systemd/system-generators/systemd-ssh-generator -> /dev/null
+#                                              sshd off (design-simple-mode 1.3, SM2):
+#                                              systemd 256+ binds sshd to a local socket
+#                                              whenever openssh is installed; the mask
+#                                              (systemd.generator(7)) stops it. Here, not
+#                                              in invictus-base, because adopted installs
+#                                              have this package and never invictus-base
+#                                              (Janus I-2). The installer no longer
+#                                              writes it (installer/jobs/settings.sh).
 #
 # Reference: docs/invictus-sys.md.
 
 pkgname=invictus-sys
 pkgver=0.2.0
-pkgrel=4
+pkgrel=5
 pkgdesc='Invictus system helper: the fixed verbs that change the system, each behind its own polkit prompt'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
@@ -60,4 +69,6 @@ package() {
     "$pkgdir/usr/share/polkit-1/actions/org.invictus.sys.policy"
   install -Dm644 -t "$pkgdir/usr/share/invictus/sys" \
     "$root/scripts/sys/services.allow" "$root/scripts/sys/protected-packages"
+  install -d -m755 "$pkgdir/etc/systemd/system-generators"
+  ln -s /dev/null "$pkgdir/etc/systemd/system-generators/systemd-ssh-generator"
 }
