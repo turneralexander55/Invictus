@@ -479,11 +479,93 @@ sys.exit(1)
 EOF
 python3 "$HERE/lib/env-ast.py" "$TMP/envast-hook/scripts/guardrails/claude/hook.py" "$TMP/envast-hook/scripts/tool/loader.py" > "$TMP/envast-hook.out"
 n_hook="$(grep -c 'hook.py:.*without the literal 2' "$TMP/envast-hook.out")"
+n_exit="$(grep -c 'hook.py:.*exit (forbidden in a hook' "$TMP/envast-hook.out")"
+n_eh="$(grep -c 'hook.py: a hook must set an exit-2 sys.excepthook' "$TMP/envast-hook.out")"
 n_load="$(grep -c 'loader.py:.*_invictus_env exits' "$TMP/envast-hook.out")"
 n_all="$(wc -l < "$TMP/envast-hook.out")"
-[[ "$n_hook" == 7 && "$n_load" == 1 && "$n_all" == 8 ]] \
-    && ok "ruling 5: the check catches a hook exit that is not the literal 2 (7 of 7: main(), 1, none, bare and 0 SystemExit, os._exit, exit) and a loader that exits; sys.exit(2) and a tool's own exit 1 pass" \
-    || bad "ruling 5: env-ast found $n_hook of 7 hook exits, $n_load of 1 loader exits, $n_all lines: $(head -10 "$TMP/envast-hook.out")"
+[[ "$n_hook" == 6 && "$n_exit" == 1 && "$n_eh" == 1 && "$n_load" == 1 && "$n_all" == 9 ]] \
+    && ok "ruling 5: the check catches a hook exit that is not the literal 2 (6 of 6: main(), 1, none, bare and 0 SystemExit, os._exit), the builtin exit, a hook with no excepthook, and a loader that exits; sys.exit(2) and a tool's own exit 1 pass" \
+    || bad "ruling 5: env-ast found $n_hook of 6 hook exits, $n_exit of 1 builtin exit, $n_eh of 1 missing excepthook, $n_load of 1 loader exits, $n_all lines: $(head -10 "$TMP/envast-hook.out")"
+# Janus J-L2: the rule is a shape, not a list of exits. Each planted hook
+# below exits non-2 (or could) and must be named by the lint; the good one
+# must pass. The first eight carry a correct excepthook, so only the shape
+# itself can be what the lint catches.
+JL2="$TMP/envast-jl2/scripts/guardrails/claude"
+rm -rf "$TMP/envast-jl2"; mkdir -p "$JL2"
+hdr='import os
+import sys
+
+
+def _block(*_):
+    try:
+        sys.stderr.write("blocked\n")
+    finally:
+        os._exit(2)
+
+
+sys.excepthook = _block
+'
+plant_hook() {  # plant_hook NAME HEADER(yes|no) BODY
+    { [[ "$2" == yes ]] && printf '%s' "$hdr"; printf '%s\n' "$3"; } >"$JL2/$1.py"
+}
+plant_hook alias-sys yes 'import sys as s
+s.exit(1)'
+plant_hook from-exit yes 'from sys import exit as bye
+bye(1)'
+plant_hook abort yes 'os.abort()'
+plant_hook kill yes 'os.kill(os.getpid(), 9)'
+plant_hook getattr yes 'getattr(sys, "exit")(1)'
+plant_hook alias-systemexit yes 'E = SystemExit
+raise E(1)'
+plant_hook subclass yes 'class Out(SystemExit):
+    pass
+
+
+raise Out(1)'
+plant_hook builtins-exit yes 'import builtins
+builtins.exit(1)'
+plant_hook loader-no-try no 'import os, sys
+def _invictus_env():
+    raise ImportError("helper missing")
+env = _invictus_env()'
+plant_hook module-raise no 'import os
+import pwd
+HOME = pwd.getpwuid(os.getuid()).pw_dir'
+plant_hook hook-late no 'import os, sys
+import json
+sys.excepthook = lambda *a: os._exit(2)'
+plant_hook hook-exits-1 no 'import os, sys
+sys.excepthook = lambda *a: os._exit(1)'
+plant_hook hook-undone yes 'sys.excepthook = sys.__excepthook__'
+plant_hook good yes 'def main():
+    return 2
+
+
+if main() != 0:
+    sys.exit(2)
+raise SystemExit(2) from None'
+printf '#!/bin/sh\nexit 1\n' >"$JL2/shell-hook.sh"
+ln -s good.py "$JL2/link.py"
+python3 "$HERE/lib/env-ast.py" --hook-dir "$JL2" >"$TMP/envast-jl2.out"; jl2_rc=$?
+jl2_missed=()
+for f in alias-sys from-exit abort kill getattr alias-systemexit subclass builtins-exit \
+         loader-no-try module-raise hook-late hook-exits-1 hook-undone; do
+    grep -q "^$JL2/$f.py" "$TMP/envast-jl2.out" || jl2_missed+=("$f")
+done
+grep -q "^$JL2/shell-hook.sh: not a .py or .json file" "$TMP/envast-jl2.out" || jl2_missed+=(shell-hook.sh)
+grep -q "^$JL2/link.py: not a .py or .json file" "$TMP/envast-jl2.out" || jl2_missed+=(link.py)
+grep -q "^$JL2/good.py" "$TMP/envast-jl2.out" && jl2_missed+=("good.py was flagged")
+if [[ $jl2_rc == 1 && ${#jl2_missed[@]} == 0 ]]; then
+    ok "J-L2: the hook lint catches all 15 planted shapes (sys and exit aliases, os.abort, os.kill, getattr, a SystemExit alias and subclass, builtins.exit, an unwrapped loader, a module-level raise, a late, exit-1 or undone excepthook, a shell hook, a symlink) and passes the good hook"
+else
+    bad "J-L2: env-ast rc $jl2_rc, missed: ${jl2_missed[*]}"
+fi
+# ... and the real hook folder: Python hooks and JSON profiles only, every hook in the good shape
+if python3 "$HERE/lib/env-ast.py" --hook-dir "$REPO/scripts/guardrails/claude" >"$TMP/envast-dir.out"; then
+    ok "J-L2: scripts/guardrails/claude holds only .py and .json files and every hook sets the exit-2 excepthook first"
+else
+    bad "J-L2: the hook folder: $(head -5 "$TMP/envast-dir.out")"
+fi
 # ... and the block the helper's docstring tells every script to copy passes the same check
 if python3 - "$REPO/scripts/lib/invictus_env.py" "$TMP/envast-doc.py" <<'EOF'
 import ast, sys, textwrap
