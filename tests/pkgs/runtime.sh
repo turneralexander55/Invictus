@@ -246,6 +246,26 @@ if [[ $EUID -eq 0 ]]; then
 fi
 echo
 
+# Janus F3: the doctor reports extras still pending, and loudly once
+# pending-extras gave up. A system check: it runs under --system (as root).
+rm -f "$TMP/dx-pending" "$TMP/dx-pending.tries"
+INVICTUS_EXTRAS_PENDING="$TMP/dx-pending" doctor "$H" --system > "$TMP/doc.log" 2>&1; rc=$?
+if [[ $rc == 0 ]] && grep -q 'ok    extras: nothing waiting' "$TMP/doc.log"; then ok "F3-doctor: no pending extras is ok (a system check)"
+else bad "F3-doctor none: rc $rc: $(grep extras "$TMP/doc.log")"; fi
+# shellcheck disable=SC2016  # a literal $(reboot) that must never be run or shown
+printf 'invictus-office\n$(reboot)\n' > "$TMP/dx-pending"; echo "boot-2 2" > "$TMP/dx-pending.tries"
+INVICTUS_EXTRAS_PENDING="$TMP/dx-pending" doctor "$H" --system > "$TMP/doc.log" 2>&1; rc=$?
+if [[ $rc == 0 ]] && grep -q 'note  extras: still to install when there is internet: invictus-office$' "$TMP/doc.log" && ! grep extras "$TMP/doc.log" | grep -q 'reboot'; then
+    ok "F3-doctor: pending extras are a note, names only"
+else bad "F3-doctor pending: rc $rc: $(grep extras "$TMP/doc.log")"; fi
+echo "boot-5 5" > "$TMP/dx-pending.tries"
+INVICTUS_EXTRAS_PENDING="$TMP/dx-pending" doctor "$H" --system > "$TMP/doc.log" 2>&1; rc=$?
+if [[ $rc == 0 ]] && grep -q 'warn  extras: Extras not installed: invictus-office\.' "$TMP/doc.log"; then
+    ok "F3-doctor: extras that pending-extras gave up on are a warning with the way to try again"
+else bad "F3-doctor gave up: rc $rc: $(grep extras "$TMP/doc.log")"; fi
+rm -f "$TMP/dx-pending" "$TMP/dx-pending.tries"
+echo
+
 # ---- 8. invictus-update --------------------------------------------------------------
 echo "== invictus-update"
 UPD="$REPO/scripts/invictus-update.sh"
@@ -568,8 +588,10 @@ else
 fi
 unit="$REPO/scripts/systemd/invictus-extras.service"
 if grep -qx 'ConditionPathExists=/var/lib/invictus/pending-extras' "$unit" && grep -qx 'After=network-online.target' "$unit" \
-   && grep -qx 'ExecStart=/usr/lib/invictus/pending-extras' "$unit" && grep -qx 'RestartPreventExitStatus=2' "$unit"; then
-    ok "the service runs only with something pending, after the network, and does not retry a bad file"
+   && grep -qx 'ExecStart=/usr/lib/invictus/pending-extras' "$unit" && grep -qx 'RestartPreventExitStatus=2' "$unit" \
+   && grep -qx 'ConditionPathIsSymbolicLink=!/var/lib/invictus/pending-extras' "$unit" && grep -qx 'Nice=10' "$unit" \
+   && grep -qx 'IOSchedulingClass=idle' "$unit" && ! grep -Eq '^Protect(System|Home)' "$unit"; then
+    ok "F5: the service runs only with something pending (never a symlink), after the network, at low priority, and does not retry a bad file"
 else
     bad "invictus-extras.service conditions wrong"
 fi
@@ -583,15 +605,18 @@ echo "inhibit" >> "$FAKE_LOG"
 exec "$@"
 EOF
 chmod +x "$TMP/fake/sysctl" "$TMP/fake/inhibit"
+# The pending file must be root's; tests run as anyone, so the expected owner is ours.
+echo boot-1 > "$TMP/px-boot"
 pending() {
     FAKE_LOG="$TMP/px.log" INVICTUS_PACMAN="$TMP/fake/pacman" INVICTUS_SYSTEMCTL="$TMP/fake/sysctl" \
         INVICTUS_INHIBIT="$TMP/fake/inhibit" INVICTUS_EXTRAS_PENDING="$TMP/px-pending" \
+        INVICTUS_EXTRAS_OWNER="${PX_OWNER:-$(id -u)}" INVICTUS_BOOT_ID="$TMP/px-boot" INVICTUS_DOCTOR="$TMP/fake/doctor" \
         INVICTUS_EXTRAS_LIST="$REPO/scripts/lib/extras.list" INVICTUS_LIB="$REPO/scripts" bash "$PX" >"$TMP/px.out" 2>&1
 }
 printf 'invictus-office\ninvictus-gaming\n' > "$TMP/px-pending"; rm -f "$TMP/px.log"; rc=0; pending || rc=$?
-if [[ $rc == 0 && "$(cat "$TMP/px.log")" == "$(printf 'inhibit\n-Syu --needed --noconfirm -- invictus-office invictus-gaming\nsystemctl disable invictus-extras.service')" \
-      && ! -e "$TMP/px-pending" ]]; then
-    ok "pending extras: one pacman -Syu --needed under a shutdown inhibitor, then the file goes and the service is disabled"
+if [[ $rc == 0 && "$(cat "$TMP/px.log")" == "$(printf 'inhibit\n-Syu --needed --noconfirm -- invictus-office invictus-gaming\nsystemctl disable invictus-extras.service\ndoctor --system')" \
+      && ! -e "$TMP/px-pending" && ! -e "$TMP/px-pending.tries" ]]; then
+    ok "F1: pending extras: one pacman -Syu --needed under a shutdown inhibitor, then the file goes, the service is disabled and invictus-doctor --system runs (never a home, H1)"
 else
     bad "pending extras run: rc $rc: $(paste -sd'|' "$TMP/px.log")"
 fi
@@ -606,6 +631,38 @@ for evil in "linux" "invictus-moneta" "--config=/tmp/x" "a b"; do
     if [[ $rc == 2 && ! -s "$TMP/px.log" ]]; then :; else bad "pending extras accepted '$evil' (rc $rc)"; fi
 done
 ok "pending extras: a name not in extras.list stops it before pacman (exit 2)"
+# Janus F2: the pending file must be a plain file owned by root; a bad line is reported by number, never echoed.
+printf 'invictus-office\n' > "$TMP/px-pending"; rm -f "$TMP/px.log"; rc=0; PX_OWNER=$(($(id -u) + 1)) pending || rc=$?
+if [[ $rc == 2 && ! -s "$TMP/px.log" ]] && grep -q 'not a plain file owned by root' "$TMP/px.out"; then
+    ok "F2: pending extras: a pending file owned by someone else is refused (exit 2), no pacman"
+else bad "F2 pending extras wrong owner: rc $rc, $(cat "$TMP/px.out")"; fi
+printf 'invictus-office\n' > "$TMP/px-real"; rm -f "$TMP/px-pending" "$TMP/px.log"; ln -s "$TMP/px-real" "$TMP/px-pending"; rc=0; pending || rc=$?
+if [[ $rc == 2 && ! -s "$TMP/px.log" ]]; then ok "F2: pending extras: a symlink is refused (exit 2), no pacman"
+else bad "F2 pending extras symlink: rc $rc, $(cat "$TMP/px.out")"; fi
+rm -f "$TMP/px-pending" "$TMP/px-real"
+# shellcheck disable=SC2016  # a literal $(reboot) that must never be run or shown
+printf 'invictus-office\nSECRET-$(reboot)\n' > "$TMP/px-pending"; rc=0; pending || rc=$?
+if [[ $rc == 2 ]] && grep -q 'bad line 2' "$TMP/px.out" && ! grep -q 'SECRET' "$TMP/px.out"; then ok "F2: pending extras: a bad line is logged as 'bad line N', its text is not echoed"
+else bad "F2 pending extras bad line message: $(cat "$TMP/px.out")"; fi
+# Janus F3: five boots at most, counted per boot, then one clear line and the file stays.
+rm -f "$TMP/px-pending" "$TMP/px-pending.tries"; printf 'invictus-office\ninvictus-gaming\n' > "$TMP/px-pending"
+for b in 1 2 3 4 5; do
+    echo "boot-$b" > "$TMP/px-boot"; rm -f "$TMP/px.log"; rc=0; FAKE_PACMAN_RC=1 pending || rc=$?
+    [[ $rc == 1 && "$(grep -c -- '-Syu' "$TMP/px.log")" == 1 ]] || bad "F3 pending extras boot $b: rc $rc, $(paste -sd'|' "$TMP/px.log")"
+done
+rm -f "$TMP/px.log"; rc=0; FAKE_PACMAN_RC=1 pending || rc=$?   # a retry inside boot 5 still tries
+if [[ $rc == 1 && "$(grep -c -- '-Syu' "$TMP/px.log")" == 1 && "$(awk '{print $2}' "$TMP/px-pending.tries")" == 5 ]]; then
+    ok "F3: pending extras: retries within one boot do not use up an attempt; boots 1 to 5 each try"
+else bad "F3 pending extras retry inside a boot: rc $rc, tries $(cat "$TMP/px-pending.tries")"; fi
+if grep -q 'Extras not installed: invictus-office invictus-gaming' "$TMP/px.out"; then
+    ok "F3: pending extras: the fifth failed boot logs 'Extras not installed: <names>'"
+else bad "F3 pending extras 5th boot message: $(cat "$TMP/px.out")"; fi
+echo boot-6 > "$TMP/px-boot"; rm -f "$TMP/px.log"; rc=0; pending || rc=$?
+if [[ $rc == 0 && "$(paste -sd'|' "$TMP/px.log")" == "systemctl disable invictus-extras.service" ]] \
+   && grep -q 'Extras not installed: invictus-office invictus-gaming' "$TMP/px.out" && [[ -s "$TMP/px-pending" ]]; then
+    ok "F3: pending extras: from the sixth boot no pacman, the file stays, one log line, service disabled, exit 0"
+else bad "F3 pending extras sixth boot: rc $rc, log $(paste -sd'|' "$TMP/px.log" 2>/dev/null), $(cat "$TMP/px.out")"; fi
+rm -f "$TMP/px-pending" "$TMP/px-pending.tries"; echo boot-1 > "$TMP/px-boot"
 rm -f "$TMP/px-pending" "$TMP/px.log"; rc=0; pending || rc=$?
 if [[ $rc == 0 && ! -s "$TMP/px.log" ]]; then ok "pending extras: nothing pending does nothing"
 else bad "pending extras with no file: rc $rc"; fi

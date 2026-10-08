@@ -2,6 +2,8 @@
 Description=Invictus: install the extras picked during an install that had no internet
 Documentation=file:///usr/lib/invictus/pending-extras
 ConditionPathExists=/var/lib/invictus/pending-extras
+# A symlink here is never ours (the script refuses it too).
+ConditionPathIsSymbolicLink=!/var/lib/invictus/pending-extras
 Wants=network-online.target
 After=network-online.target
 # Wi-Fi often comes up only after someone logs in and picks a network:
@@ -12,6 +14,9 @@ StartLimitBurst=12
 [Service]
 Type=oneshot
 ExecStart=/usr/lib/invictus/pending-extras
+# A big install in the background must not slow the desktop.
+Nice=10
+IOSchedulingClass=idle
 Restart=on-failure
 RestartSec=10min
 # 2: the pending file names something that is not an extra; retrying will not help.

@@ -6,7 +6,8 @@
 #   invictus-doctor                 all checks
 #   invictus-doctor --post-update   all checks, plus what to do if one fails
 #   invictus-doctor --system        only the system checks (pinned, repo,
-#                                   snapshots, guardrails, kernel)
+#                                   snapshots, guardrails, kernel,
+#                                   extras)
 #   invictus-doctor --user          only the checks on your own files
 #                                   (hypr, defaults)
 #                                   (--post-update combines with either)
@@ -26,6 +27,8 @@
 #             whether the derived files match the setting
 #   kernel    each installed kernel has its image, initramfs and a boot
 #             entry; the running kernel's modules still exist
+#   extras    extras picked at install that are still not installed
+#             (pending-extras gave up after 5 boots, or is still waiting)
 #   defaults  your copies of the shipped defaults: which changed upstream
 #             since first login (never overwritten, only listed)
 #
@@ -49,6 +52,7 @@ BOOT="${INVICTUS_BOOT:-/boot}"
 MODULES="${INVICTUS_MODULES:-/usr/lib/modules}"
 PACMAN_CONF="${INVICTUS_PACMAN_CONF:-/etc/pacman.conf}"
 GUARDRAILS="${INVICTUS_GUARDRAILS:-/usr/lib/invictus/guardrails}"
+EXTRAS_PENDING="${INVICTUS_EXTRAS_PENDING:-/var/lib/invictus/pending-extras}"
 # INVICTUS_DOCTOR_AS_ROOT (tests, from a checkout only): 1 makes a
 # person's run behave like root's; 0 lets the test suite, which also runs
 # as root, check the per-user code. The installed copy ignores it.
@@ -72,7 +76,7 @@ while (($#)); do
         --user) PART=user; shift ;;
         --hypr) MODE="hypr"; shift ;;
         --diff) MODE="diff"; DIFF_PATH="${2:?--diff needs a path}"; shift 2 ;;
-        -h|--help) sed -n '2,37p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,40p' "$0"; exit 0 ;;
         *) echo "invictus-doctor: unknown argument $1" >&2; exit 2 ;;
     esac
 done
@@ -224,6 +228,22 @@ check_guardrails() {
     else warn "guard rails: the derived files do not match (sudo invictus-sys guardrails apply)"; fi
 }
 
+# ---- extras --------------------------------------------------------------------
+# Names only (a pending file could hold anything); the count is the second
+# word of pending-extras' PENDING.tries, "boot-id count".
+check_extras() {
+    local names count=0
+    [[ -e "$EXTRAS_PENDING" || -L "$EXTRAS_PENDING" ]] || { ok "extras: nothing waiting to install"; return; }
+    names="$(grep -E '^[a-z0-9][a-z0-9@._+-]*$' "$EXTRAS_PENDING" 2>/dev/null | paste -sd' ')"
+    if [[ -f "$EXTRAS_PENDING.tries" ]]; then count="$(awk 'NR == 1 { print $2 }' "$EXTRAS_PENDING.tries")"; fi
+    [[ "$count" =~ ^[0-9]+$ ]] || count=0
+    if ((count >= 5)); then
+        warn "extras: Extras not installed: ${names:-(unreadable list)}. It gave up after 5 boots. To try again: sudo rm $EXTRAS_PENDING.tries && sudo systemctl enable --now invictus-extras.service"
+    else
+        note "extras: still to install when there is internet: ${names:-(unreadable list)}"
+    fi
+}
+
 # ---- defaults ------------------------------------------------------------------
 check_defaults() {
     local rel user shipped rec u s n=0 changed=() both=() missing=()
@@ -268,7 +288,7 @@ case "$MODE" in
     *)
         if ((AS_ROOT)); then note "per-user checks skipped as root (your Hyprland config and defaults: run invictus-doctor --user as yourself)"; fi
         [[ "$PART" == system ]] || check_hypr
-        [[ "$PART" == user ]] || { check_pinned; check_repo; check_snapshots; check_guardrails; check_kernel; }
+        [[ "$PART" == user ]] || { check_pinned; check_repo; check_snapshots; check_guardrails; check_kernel; check_extras; }
         [[ "$PART" == system ]] || check_defaults ;;
 esac
 

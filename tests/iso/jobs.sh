@@ -299,8 +299,14 @@ check "extras: an NVIDIA non-graphics device adds nothing" bash -c "! grep -q pa
 for badpick in "linux" "invictus-moneta" "--config=/tmp/x" "invictus-office;reboot" "../etc/passwd"; do
     extras_target extras-bad
     run_job extras.sh "$ROOTDIR" invictus-office "$badpick"; rc=$?
-    check "extras: refuses '$badpick' and runs no pacman" bash -c "[[ $rc -ne 0 ]] && ! grep -q pacman '$FAKE_LOG'"
+    check "F4: extras: skips '$badpick' with a warning and installs the rest" \
+        bash -c "[[ $rc -eq 0 ]] && grep -qx 'chroot pacman -Syu --needed --noconfirm invictus-office' '$FAKE_LOG'"
+    check "F4: extras: the warning for '$badpick' is in the output, the name never reaches pacman" \
+        bash -c "grep -q 'warning: skipping' '$T/out' && ! grep -F -- '$badpick' '$FAKE_LOG'"
 done
+extras_target extras-all-bad
+run_job extras.sh "$ROOTDIR" linux "--config=/tmp/x"; rc=$?
+check "F4: extras: only unknown names: exits 0, warns, runs no pacman" bash -c "[[ $rc -eq 0 ]] && grep -q 'warning: skipping' '$T/out' && ! grep -q pacman '$FAKE_LOG'"
 extras_target extras-nolist
 rm "$ROOTDIR/usr/share/invictus/extras.list"
 run_job extras.sh "$ROOTDIR" invictus-office; rc=$?
