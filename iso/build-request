@@ -10,3 +10,4 @@ Bump this file to start a dev ISO build (iso.yml).
 2026-10-08 build after fastboot merge: zstd, watchdog, boot smoke test
 2026-10-08 build after the security round: e2e sshd mask, boot smoke
 2026-10-08 rerun: boot smoke ssh check matched gpg-agent's keyring socket (run 37836852030); now sshd units only
+2026-10-08 build after diskboot merge: installed-disk boot + snapshot boot
