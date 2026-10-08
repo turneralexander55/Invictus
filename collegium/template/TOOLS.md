@@ -41,6 +41,8 @@ Which files you may change depends on the guard rails.
 
 A copy is saved under `~/.local/state/invictus/backups/` before each change, and a change to the Hyprland config that fails `invictus-doctor --hypr` is put back. Anything else in the home, such as `~/.bashrc`, is the person's to change.
 
+Without Full access, Claude Code's settings also deny edits to files that start programs (shell start-up files, autostart, desktop entries, git and ssh settings, and more). That list is a backstop for the rare case the guard does not answer in time, not the boundary: a file missing from it is still not yours to change unless the guard above allows it.
+
 ## invictus-doctor
 
 `invictus-doctor` runs read-only checks and prints `ok`, `note`, `warn` or `FAIL` lines. Run it before you guess.
