@@ -53,9 +53,12 @@
       "Edit(~/.config/git/**)",
       "Edit(~/.ssh/**)",
       "Edit(~/.local/lib/**)",
-      "Edit(~/.claude.json)"
+      "Edit(~/.claude.json)",
+      "Edit(~/.claude/**)",
+      "Edit(~/.mcp.json)"
     ]
   },
+  "strictPluginOnlyCustomization": ["agents", "mcp"],
   "disableAutoMode": "disable",
   "allowManagedHooksOnly": true,
   "allowManagedMcpServersOnly": true,

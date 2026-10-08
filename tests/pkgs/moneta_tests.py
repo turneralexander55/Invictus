@@ -529,6 +529,47 @@ check(out.get(0, {}).get("result", {}).get("serverInfo", {}).get("name") == "inv
       "MCP: initialize, then exactly nine tools; none for the guard rails, Full access or AI on/off (SM26)", f"tools {names}")
 
 
+# Janus P-L1: a server entry with our exact (allowlisted) command can still
+# carry `env`. BASH_ENV pointing at a theme file (the one kind of file Moneta
+# may write under fixed) made the bash doctor source it. The tools' children
+# now get an environment the server builds itself.
+PL1 = os.path.join(W, "pl1")
+os.makedirs(PL1, exist_ok=True)
+marker = os.path.join(PL1, "marker")
+payload = os.path.join(PL1, "x.toml")
+with open(payload, "w") as f:
+    f.write(f"touch {marker}\n")
+reset_logs()
+mcp([("tools/call", {"name": "doctor", "arguments": {}})], BASH_ENV=payload, ENV=payload)
+check(not os.path.exists(marker) and "doctor" in read(f"{LOG}.doctor"),
+      "P-L1: the doctor tool runs, and a BASH_ENV/ENV in the server's environment is not sourced (no marker)",
+      f"P-L1 BASH_ENV marker: exists={os.path.exists(marker)} doctor log {read(f'{LOG}.doctor')!r}")
+subprocess.run([os.path.join(FAKE, "doctor")], env={"BASH_ENV": payload, "PATH": "/usr/bin:/bin", "FAKE_LOG": LOG},
+               capture_output=True, timeout=30)
+check(os.path.exists(marker), "P-L1 control: the same doctor started with that BASH_ENV does source the file (the proof is real)",
+      "P-L1 control: BASH_ENV did not create the marker, so the check above proves nothing")
+dump = script("envdump", f'env > "{PL1}/child.env"\n')
+planted = {"BASH_ENV": payload, "ENV": payload, "LD_PRELOAD": "/nonexistent-pl1.so", "LD_LIBRARY_PATH": PL1,
+           "PYTHONPATH": PL1, "PYTHONSTARTUP": payload, "SHELLOPTS": "xtrace", "BASHOPTS": "extdebug",
+           "PERL5OPT": "-d", "NODE_OPTIONS": "--require /x", "GIT_CONFIG_GLOBAL": payload, "XDG_DATA_DIRS": PL1,
+           "LANG": "en_US.UTF-8; touch /x", "WAYLAND_DISPLAY": "../../tmp/evil"}
+mcp([("tools/call", {"name": "doctor", "arguments": {}})], INVICTUS_DOCTOR=dump, **planted)
+child = {}
+for line in read(os.path.join(PL1, "child.env")).splitlines():
+    if "=" in line:
+        k, v = line.split("=", 1)
+        child[k] = v
+ALLOWED = {"PATH", "LANG", "HOME", "USER", "LOGNAME", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "WAYLAND_DISPLAY",
+           "HYPRLAND_INSTANCE_SIGNATURE", "INVICTUS_THREAD", "XDG_CONFIG_HOME", "PWD", "SHLVL", "_", "OLDPWD"}
+extra = sorted(k for k in child if k not in ALLOWED and not k.startswith(("INVICTUS_", "FAKE_")))
+check(child and not extra and child.get("PATH") == "/usr/bin:/bin" and child.get("LANG") == "C.UTF-8"
+      and "WAYLAND_DISPLAY" not in child and child.get("INVICTUS_THREAD") == "t-mcp-1",
+      "P-L1: a tool's child gets only PATH=/usr/bin:/bin, HOME, USER, LANG (checked), the runtime folder and thread id; "
+      "none of BASH_ENV, ENV, LD_*, PYTHON*, SHELLOPTS, BASHOPTS, PERL5OPT, NODE_OPTIONS, GIT_CONFIG_*, XDG_DATA_DIRS",
+      f"P-L1 child env: extra {extra}, PATH {child.get('PATH')!r}, LANG {child.get('LANG')!r}, "
+      f"WAYLAND_DISPLAY {child.get('WAYLAND_DISPLAY')!r}")
+
+
 def text_of(m):
     return "".join(c.get("text", "") for c in m.get("result", {}).get("content", []))
 

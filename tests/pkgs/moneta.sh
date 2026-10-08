@@ -75,8 +75,12 @@ A7 = ["Bash(sudo *)", "Bash(rm -rf *)", "Bash(dd *)", "Bash(mkfs*)", "Bash(btrfs
       "Edit(//etc/**)", "Edit(//boot/**)", "Edit(//usr/**)"]
 # allowManagedMcpServersOnly, allowedMcpServers: https://code.claude.com/docs/en/managed-mcp
 # ("Restrict the allowlist to managed settings only", "How serverCommand entries match"), read 2026-10-08
+# strictPluginOnlyCustomization: https://code.claude.com/docs/en/settings-reference
+# ("strictPluginOnlyCustomization", ".agents", ".mcp"), read 2026-10-08: managed only; "agents"
+# stops ~/.claude/agents, "mcp" stops ~/.claude.json and .mcp.json servers; plugin agents and
+# plugin MCP servers keep loading
 VERIFIED_TOP = {"permissions", "disableAutoMode", "env", "hooks", "allowManagedHooksOnly",
-                "allowManagedMcpServersOnly", "allowedMcpServers"}
+                "allowManagedMcpServersOnly", "allowedMcpServers", "strictPluginOnlyCustomization"}
 VERIFIED_PERM = {"defaultMode", "disableBypassPermissionsMode", "deny"}
 for path in sys.argv[1:]:
     kind = "fixed" if path.endswith("fixed.json") else "full"
@@ -122,10 +126,17 @@ for path in sys.argv[1:]:
         want = [{"serverCommand": [MCP["command"]] + MCP["args"]}]
         assert d.get("allowedMcpServers") == want, ("I-1b allowlist", d.get("allowedMcpServers"), want)
         assert want == [{"serverCommand": ["/usr/bin/python3", "-I", "/usr/lib/invictus/moneta/mcp.py"]}], want
+        # Janus P-L1: the allowlist does not compare env, so no server or agent may come from the
+        # home at all: user agents (inline mcpServers) and user/project MCP files are not loaded,
+        # and Claude's edit tools may not write them (deny rules bind Claude's tools only, not
+        # Claude Code's own writes of its state)
+        assert d.get("strictPluginOnlyCustomization") == ["agents", "mcp"], ("P-L1", d.get("strictPluginOnlyCustomization"))
+        for r in ("Edit(~/.claude/**)", "Edit(~/.mcp.json)"):
+            assert r in p["deny"], ("P-L1", path, r)
     else:
         assert "Bash" not in p["deny"], path
 PY
-then ok "A7/A8: both profiles carry every A7 deny rule, bypass and auto mode off, updates off and the A6 guard; only documented keys; fixed also denies Edit on hypr, waybar's config, theme hooks, shell startup files, systemd user units, autostart, environment.d, ~/.local/bin, kitty and quickshell (I-1), and zshenv, fish, uwsm, desktop entries, D-Bus services, git config, ~/.ssh, ~/.local/lib and ~/.claude.json (I-1b); only our MCP server's exact command may run (managed allowlist, locked)"
+then ok "A7/A8: both profiles carry every A7 deny rule, bypass and auto mode off, updates off and the A6 guard; only documented keys; fixed also denies Edit on hypr, waybar's config, theme hooks, shell startup files, systemd user units, autostart, environment.d, ~/.local/bin, kitty and quickshell (I-1), and zshenv, fish, uwsm, desktop entries, D-Bus services, git config, ~/.ssh, ~/.local/lib and ~/.claude.json (I-1b); only our MCP server's exact command may run (managed allowlist, locked); no agents or MCP servers from the home, ~/.claude/** and ~/.mcp.json denied (P-L1)"
 else bad "A7/A8: the managed profiles (see the assertion above)"; fi
 
 # Janus L1: every print or write in the panel that interpolates a value goes

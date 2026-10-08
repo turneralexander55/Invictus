@@ -24,7 +24,7 @@
 
 pkgname=invictus-tribune
 pkgver=0.2.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Invictus Moneta panel: Super+A, any AI agent or chat service behind it, the Invictus plugin (AI; opt-in)'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'

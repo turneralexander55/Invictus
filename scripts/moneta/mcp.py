@@ -89,9 +89,55 @@ MEANING = {0: "done", 1: "the change failed", 2: "invictus-sys did not accept th
            127: "this account is not allowed to do that; stop and say so"}
 
 
+INSTALLED = os.path.realpath(__file__).startswith("/usr/")
+LANG_RE = re.compile(r"[A-Za-z]{1,8}(_[A-Za-z]{2,3})?(\.[A-Za-z0-9-]{1,16})?(@[A-Za-z]{1,16})?")
+SOCKET_RE = re.compile(r"[A-Za-z0-9._-]{1,128}")
+
+
+def child_env():
+    """The whole environment of every program a tool runs (Janus P-L1).
+
+    Built here, never inherited: this server's own environment comes from
+    whatever server entry started it, and an entry with our exact command can
+    still carry `env` (the managed allowlist does not compare it). BASH_ENV
+    would make the bash doctor source any file; ENV, LD_*, PYTHON*, SHELLOPTS
+    and the rest are left out the same way. Names below are fixed; values are
+    computed (HOME, USER and the runtime folder from the uid) or checked
+    against a narrow pattern. A checkout (the tests) also passes INVICTUS_*
+    and FAKE_* for the fakes, and the test HOME and runtime folder.
+    """
+    uid = os.getuid()
+    e = {"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"}
+    try:
+        import pwd
+        pw = pwd.getpwuid(uid)
+        e.update(HOME=pw.pw_dir, USER=pw.pw_name, LOGNAME=pw.pw_name)
+    except (ImportError, KeyError):
+        e["HOME"] = "/"
+    lang = os.environ.get("LANG", "")
+    if LANG_RE.fullmatch(lang):
+        e["LANG"] = lang
+    rundir = f"/run/user/{uid}"
+    if os.path.isdir(rundir):
+        e["XDG_RUNTIME_DIR"] = rundir
+        e["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={rundir}/bus"
+    wl = os.environ.get("WAYLAND_DISPLAY", "")
+    if SOCKET_RE.fullmatch(wl):
+        e["WAYLAND_DISPLAY"] = wl
+    his = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
+    if SOCKET_RE.fullmatch(his):
+        e["HYPRLAND_INSTANCE_SIGNATURE"] = his
+    e["INVICTUS_THREAD"] = THREAD  # checked above
+    if not INSTALLED:  # a checkout: the tests' fakes and overrides; never an installed copy
+        e.update({k: v for k, v in os.environ.items()  # not an override (checkout only)
+                  if k.startswith(("INVICTUS_", "FAKE_")) or k in ("HOME", "XDG_RUNTIME_DIR", "XDG_CONFIG_HOME")})
+    return e
+
+
 def run(argv, timeout):
     try:
-        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL,
+                           env=child_env())
     except subprocess.TimeoutExpired:
         return "timed out", True
     except OSError as e:
