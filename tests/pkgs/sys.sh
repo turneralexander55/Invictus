@@ -387,6 +387,16 @@ if pb_deps "$REPO/pkgs/meta/invictus-base/PKGBUILD" | grep -x invictus-guardrail
    && pb_deps "$REPO/pkgs/own/invictus-tools/PKGBUILD" | grep -xE 'invictus-sys(>=[0-9.:-]+)?' >/dev/null; then
     ok "invictus-base brings the guard rails and invictus-sys with no desktop package; invictus-tools brings invictus-sys"
 else sfail "package depends"; fi
+# sshd off on adopted installs too (Janus I-2, SM2): the generator mask is in
+# invictus-sys, which every machine has (invictus-tools, so every desktop,
+# depends on it; invictus-base is never installed by adopt.sh), and in no
+# other package, so pacman never sees two owners.
+gm=etc/systemd/system-generators/systemd-ssh-generator
+owners=()
+for t in "$TREES"/*/; do [[ -L "$t$gm" || -e "$t$gm" ]] && owners+=("$(basename "$t")"); done
+if [[ -L "$TREES/invictus-sys/$gm" && "$(readlink "$TREES/invictus-sys/$gm")" == /dev/null && "${owners[*]}" == invictus-sys ]]; then
+    ok "SM2: invictus-sys ships /$gm -> /dev/null, and no other package does"
+else sfail "SM2: generator mask in invictus-sys: $(ls -l "$TREES/invictus-sys/$gm" 2>&1); packages shipping it: ${owners[*]:-none}"; fi
 echo
 
 # ---- 15. polkit rules (node) ------------------------------------------------------------------

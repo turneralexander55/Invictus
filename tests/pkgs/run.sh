@@ -5,6 +5,7 @@
 #   tests/pkgs/run.sh
 #
 # 1. Every PKGBUILD parses and names itself after its folder.
+# 1b. A package whose inputs changed has a new version (pkgs/inputs.lock).
 # 2. The meta packages carry the design 1.2 fixes.
 # 3. invictus-keyring: build() derives the trusted fingerprint from
 #    the public key; check() refuses the placeholder and any private
@@ -71,6 +72,69 @@ while IFS= read -r pb; do
 done < <(find "$REPO/pkgs" -name PKGBUILD | sort)
 [[ $n -ge 5 ]] || bad "found only $n PKGBUILDs"
 [[ $fail == 0 ]] && ok "$n PKGBUILDs parse, named after their folders"
+echo
+
+# ---- 1b. a package whose inputs changed has a new version ----------------------
+# pkgs/inputs.lock holds each own/meta package's version and a hash of the
+# files its PKGBUILD names; scripts/dev/pkg-inputs.py checks it without git
+# (Janus, pre-release confirm 2026-10-08: sys, guardrails and tools changed
+# after 7a6cc3f with no pkgrel bump, so pacman would keep the old build).
+echo "== package versions vs inputs"
+PI="$REPO/scripts/dev/pkg-inputs.py"
+rc=0; out="$(python3 -I "$PI" --repo "$REPO" --check 2>&1)" || rc=$?
+if [[ $rc == 0 ]]; then ok "1b: every own/meta package's inputs match pkgs/inputs.lock at its version"
+else bad "1b: $out"; fi
+lst() { python3 -I "$PI" --repo "$REPO" --inputs "$1"; }
+if lst invictus-sys | grep -qx scripts/lib/pacman.sh && lst invictus-tools | grep -qx scripts/invictus-update.sh \
+    && lst invictus-guardrails | grep -qx scripts/guardrails/claude/fixed.json \
+    && lst invictus-tribune | grep -qx scripts/moneta/mcp.py && lst invictus-branding | grep -qx theme/dusk.toml \
+    && ! lst invictus-branding | grep -qx theme/invictus-theme && lst invictus-desktop | grep -qx config/hypr/hyprland.lua \
+    && lst invictus-base | grep -qx pkgs/meta/invictus-base/PKGBUILD; then
+    ok "1b: the inputs read from package() are right for sys, tools, guardrails, tribune, branding (globs), desktop and a meta"
+else bad "1b: an input list is wrong: sys $(lst invictus-sys | grep -c .) files, branding $(lst invictus-branding | paste -sd' ' | cut -c1-200)"; fi
+# A toy repo: one package with a plain path, a glob, a variable path and a
+# $root-based local; a second package that must not be touched.
+PR="$TMP/pirepo"
+mkdir -p "$PR/pkgs/own/toy" "$PR/pkgs/meta/other" "$PR/s/w" "$PR/t" "$PR/m"
+cat > "$PR/pkgs/own/toy/PKGBUILD" <<'PKB'
+pkgname=toy
+pkgver=1.0
+pkgrel=1
+package() {
+  local root="$startdir/../../.."
+  local src="$root/m"
+  install -Dm755 "$root/s/a.sh" "$pkgdir/usr/bin/a"
+  install -Dm644 -t "$pkgdir/usr/share/t" "$root"/t/*.toml
+  for f in x; do install -Dm755 "$root/s/w/$f.sh" "$pkgdir/usr/lib/$f"; done
+  install -Dm644 "$src/m.py" "$pkgdir/usr/lib/m.py"
+}
+PKB
+printf 'pkgname=other\npkgver=1\npkgrel=1\npackage() { :; }\n' > "$PR/pkgs/meta/other/PKGBUILD"
+echo a > "$PR/s/a.sh"; echo b > "$PR/s/b.sh"; echo x > "$PR/s/w/x.sh"; echo t > "$PR/t/one.toml"
+echo n > "$PR/t/notes.md"; echo m > "$PR/m/m.py"
+pi() { python3 -I "$PI" --repo "$PR" "$@"; }
+p_fail=0
+pibad() { bad "1b toy: $1"; p_fail=1; }
+{ pi --update >/dev/null 2>&1 && pi --check >/dev/null; } || pibad "a fresh lock does not check"
+for f in s/a.sh t/one.toml s/w/x.sh m/m.py pkgs/own/toy/PKGBUILD; do
+    cp "$PR/$f" "$PR/$f.orig"; echo changed >> "$PR/$f"
+    out="$(pi --check 2>&1)" && pibad "$f changed, --check passed"
+    grep -q "toy: its files changed but its version is still 1.0-1: bump pkgrel" <<< "$out" || pibad "$f: $out"
+    grep -q other <<< "$out" && pibad "$f changed, 'other' flagged: $out"
+    pi --update >/dev/null 2>&1 && pibad "$f changed, --update re-locked it without a bump"
+    mv "$PR/$f.orig" "$PR/$f"
+done
+for f in s/b.sh t/notes.md; do
+    echo changed >> "$PR/$f"; pi --check >/dev/null || pibad "$f is not an input, but --check failed"
+done
+sed -i 's/^pkgrel=1$/pkgrel=2/' "$PR/pkgs/own/toy/PKGBUILD"; echo changed >> "$PR/s/a.sh"
+out="$(pi --check 2>&1)" && pibad "bumped, lock not updated, --check passed"
+grep -q "run .* --update" <<< "$out" || pibad "bumped: $out"
+{ pi --update >/dev/null 2>&1 && pi --check >/dev/null; } || pibad "bumped and re-locked, --check still fails"
+echo again >> "$PR/s/a.sh"
+pi --update --rehash other >/dev/null 2>&1 && pibad "--rehash of another package re-locked toy"
+{ pi --update --rehash toy >/dev/null 2>&1 && pi --check >/dev/null; } || pibad "--rehash toy did not re-lock toy"
+[[ $p_fail == 0 ]] && ok "1b: a changed input (plain path, glob, variable path, \$root local, the PKGBUILD) fails --check and --update until pkgrel moves (or an unpublished bump is re-hashed by name); other files and packages do not"
 echo
 
 # ---- 2. meta fixes (design 1.2) --------------------------------------------

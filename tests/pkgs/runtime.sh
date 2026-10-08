@@ -273,6 +273,7 @@ mkdir -p "$TMP/fake"
 cat > "$TMP/fake/pacman" <<'EOF'
 #!/bin/sh
 echo "$*" >> "$FAKE_LOG"
+[ "$1" = -Qqo ] && exit "${FAKE_QO_RC:-1}"
 exit "${FAKE_PACMAN_RC:-0}"
 EOF
 cat > "$TMP/fake/doctor" <<'EOF'
@@ -283,7 +284,8 @@ EOF
 chmod +x "$TMP/fake/pacman" "$TMP/fake/doctor"
 update() {
     FAKE_LOG="$TMP/upd.log" HOME="$TMP/h-upd" INVICTUS_PACMAN="$TMP/fake/pacman" INVICTUS_SUDO="" \
-        INVICTUS_DOCTOR="$TMP/fake/doctor" INVICTUS_PARU=no-such-paru bash "$UPD" "$@" >"$TMP/upd.out" 2>&1
+        INVICTUS_DOCTOR="$TMP/fake/doctor" INVICTUS_PARU=no-such-paru INVICTUS_LIB="$REPO/scripts" \
+        INVICTUS_SYS_ROOT="${UPD_ROOT:-$TMP/upd-root}" bash "$UPD" "$@" >"$TMP/upd.out" 2>&1
 }
 want_doc="doctor --post-update"; [[ $EUID -eq 0 ]] && want_doc="doctor --post-update --system"
 rm -f "$TMP/upd.log"; rc=0; update --noconfirm || rc=$?
@@ -304,6 +306,49 @@ rm -f "$TMP/upd.log"; rc=0; update --noconfirm --system || rc=$?
 if [[ $rc == 0 && "$(cat "$TMP/upd.log")" == "$(printf -- '-Syu --noconfirm\ndoctor --post-update --system')" && -e "$TMP/h-upd/.cache/waybar-updates.cache" ]]; then
     ok "H1-update-system: invictus-update --system runs -Syu, then the doctor's system checks, and leaves the home alone"
 else bad "H1-update-system: rc $rc: $(paste -sd'|' "$TMP/upd.log" 2>/dev/null)"; fi
+# Janus P-L2: a dev install whose ssh generator mask the installer wrote
+# (a link to /dev/null that no package owns) gets --overwrite for exactly
+# that path, so invictus-sys 0.2.0-5's own copy does not stop the update.
+gmask=/etc/systemd/system-generators/systemd-ssh-generator
+mkdir -p "$TMP/upd-dev/etc/systemd/system-generators"; ln -sfn /dev/null "$TMP/upd-dev$gmask"
+rm -f "$TMP/upd.log"; rc=0; UPD_ROOT="$TMP/upd-dev" update --noconfirm || rc=$?
+if [[ $rc == 0 && "$(sed -n 1,2p "$TMP/upd.log")" == "$(printf -- '-Qqo -- %s\n-Syu --noconfirm --overwrite %s' "$gmask" "$gmask")" ]]; then
+    ok "P-L2: an unowned ssh generator mask (-> /dev/null) gets pacman --overwrite for that one path"
+else bad "P-L2 unowned mask: rc $rc: $(paste -sd'|' "$TMP/upd.log" 2>/dev/null)"; fi
+rm -f "$TMP/upd.log"; rc=0; FAKE_QO_RC=0 UPD_ROOT="$TMP/upd-dev" update --noconfirm || rc=$?
+if [[ $rc == 0 && "$(sed -n 2p "$TMP/upd.log")" == "-Syu --noconfirm" ]]; then
+    ok "P-L2: once invictus-sys owns the mask, no --overwrite"
+else bad "P-L2 owned mask: rc $rc: $(paste -sd'|' "$TMP/upd.log" 2>/dev/null)"; fi
+ln -sfn /etc/hosts "$TMP/upd-dev$gmask"
+rm -f "$TMP/upd.log"; rc=0; UPD_ROOT="$TMP/upd-dev" update --noconfirm || rc=$?
+if [[ $rc == 0 && "$(sed -n 1p "$TMP/upd.log")" == "-Syu --noconfirm" ]] && ! grep -q -- --overwrite "$TMP/upd.log"; then
+    ok "P-L2: a link there that is not to /dev/null gets no --overwrite (pacman's conflict stands)"
+else bad "P-L2 other link: rc $rc: $(paste -sd'|' "$TMP/upd.log" 2>/dev/null)"; fi
+rm -f "$TMP/upd.log"; rc=0; update --noconfirm || rc=$?
+if [[ $rc == 0 && "$(sed -n 1p "$TMP/upd.log")" == "-Syu --noconfirm" ]] && ! grep -q -- -Qqo "$TMP/upd.log"; then
+    ok "P-L2: no mask link: no ownership question, no --overwrite"
+else bad "P-L2 no link: rc $rc: $(paste -sd'|' "$TMP/upd.log" 2>/dev/null)"; fi
+# Janus PL-L1: that --overwrite only runs from the new updater, which arrives
+# in the very update that fails on a dev install. The one manual step must be
+# written where a person looks: both design docs, the exact command.
+plrm="sudo rm $gmask"
+if grep -qF -- "\`$plrm\`" "$REPO/docs/design-simple-mode.md" \
+    && grep -E '^56\. ' "$REPO/docs/design.md" | grep -qF -- "\`$plrm\`"; then
+    ok "PL-L1: design-simple-mode 1.3 and design.md note 56 give the one manual step for dev installs ($plrm)"
+else bad "PL-L1: the manual '$plrm' step for dev installs is missing from design-simple-mode.md or design.md note 56"; fi
+# ... and the same for -Syu --needed (install verb, pending extras, ai on: lib/pacman.sh)
+ln -sfn /dev/null "$TMP/upd-dev$gmask"
+rm -f "$TMP/upd.log"
+(
+    export INVICTUS_SYS_ROOT="$TMP/upd-dev" FAKE_LOG="$TMP/upd.log"
+    PACMAN="$TMP/fake/pacman"; INHIBIT=()
+    # shellcheck source=scripts/lib/pacman.sh
+    . "$REPO/scripts/lib/pacman.sh"
+    pacman_install_needed vlc
+)
+if [[ "$(sed -n 2p "$TMP/upd.log")" == "-Syu --needed --noconfirm --overwrite $gmask -- vlc" ]]; then
+    ok "P-L2: pacman_install_needed (install verb, pending extras, ai on) passes the same --overwrite"
+else bad "P-L2 lib: $(paste -sd'|' "$TMP/upd.log" 2>/dev/null)"; fi
 rc=0; update --system --aur || rc=$?
 if [[ $rc == 2 ]]; then ok "H1-update-system: --aur is refused with --system (AUR builds are per person)"
 else bad "H1: --system --aur ran (rc $rc)"; fi

@@ -11,6 +11,7 @@
 import http.server
 import json
 import os
+import re
 import shutil
 import socket
 import stat
@@ -515,7 +516,7 @@ def mcp(calls, **extra):
     for i, (method, params) in enumerate(calls, 1):
         lines.append(json.dumps({"jsonrpc": "2.0", "id": i, "method": method, "params": params}))
     r = subprocess.run([PY, "-I", MCP], input="\n".join(lines) + "\n", capture_output=True, text=True,
-                       env=envmap(INVICTUS_THREAD="t-mcp-1", **extra), timeout=30)
+                       env=envmap(**{"INVICTUS_THREAD": "t-mcp-1", **extra}), timeout=30)
     return {m["id"]: m for m in (json.loads(x) for x in r.stdout.splitlines())}
 
 
@@ -526,6 +527,74 @@ check(out.get(0, {}).get("result", {}).get("serverInfo", {}).get("name") == "inv
       and names == ["acta", "doctor", "package_install", "package_remove", "report_collect", "rollback", "service_set",
                     "snapshot", "update_now"],
       "MCP: initialize, then exactly nine tools; none for the guard rails, Full access or AI on/off (SM26)", f"tools {names}")
+
+
+# Janus P-L1: a server entry with our exact (allowlisted) command can still
+# carry `env`. BASH_ENV pointing at a theme file (the one kind of file Moneta
+# may write under fixed) made the bash doctor source it. The tools' children
+# now get an environment the server builds itself.
+PL1 = os.path.join(W, "pl1")
+os.makedirs(PL1, exist_ok=True)
+marker = os.path.join(PL1, "marker")
+payload = os.path.join(PL1, "x.toml")
+with open(payload, "w") as f:
+    f.write(f"touch {marker}\n")
+reset_logs()
+mcp([("tools/call", {"name": "doctor", "arguments": {}})], BASH_ENV=payload, ENV=payload)
+check(not os.path.exists(marker) and "doctor" in read(f"{LOG}.doctor"),
+      "P-L1: the doctor tool runs, and a BASH_ENV/ENV in the server's environment is not sourced (no marker)",
+      f"P-L1 BASH_ENV marker: exists={os.path.exists(marker)} doctor log {read(f'{LOG}.doctor')!r}")
+subprocess.run([os.path.join(FAKE, "doctor")], env={"BASH_ENV": payload, "PATH": "/usr/bin:/bin", "FAKE_LOG": LOG},
+               capture_output=True, timeout=30)
+check(os.path.exists(marker), "P-L1 control: the same doctor started with that BASH_ENV does source the file (the proof is real)",
+      "P-L1 control: BASH_ENV did not create the marker, so the check above proves nothing")
+dump = script("envdump", f'env > "{PL1}/child.env"\n')
+planted = {"BASH_ENV": payload, "ENV": payload, "LD_PRELOAD": "/nonexistent-pl1.so", "LD_LIBRARY_PATH": PL1,
+           "PYTHONPATH": PL1, "PYTHONSTARTUP": payload, "SHELLOPTS": "xtrace", "BASHOPTS": "extdebug",
+           "PERL5OPT": "-d", "NODE_OPTIONS": "--require /x", "GIT_CONFIG_GLOBAL": payload, "XDG_DATA_DIRS": PL1,
+           "LANG": "en_US.UTF-8; touch /x", "WAYLAND_DISPLAY": "../../tmp/evil"}
+mcp([("tools/call", {"name": "doctor", "arguments": {}})], INVICTUS_DOCTOR=dump, **planted)
+child = {}
+for line in read(os.path.join(PL1, "child.env")).splitlines():
+    if "=" in line:
+        k, v = line.split("=", 1)
+        child[k] = v
+ALLOWED = {"PATH", "LANG", "HOME", "USER", "LOGNAME", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "WAYLAND_DISPLAY",
+           "HYPRLAND_INSTANCE_SIGNATURE", "INVICTUS_THREAD", "XDG_CONFIG_HOME", "PWD", "SHLVL", "_", "OLDPWD"}
+extra = sorted(k for k in child if k not in ALLOWED and not k.startswith(("INVICTUS_", "FAKE_")))
+check(child and not extra and child.get("PATH") == "/usr/bin:/bin" and child.get("LANG") == "C.UTF-8"
+      and "WAYLAND_DISPLAY" not in child and child.get("INVICTUS_THREAD") == "t-mcp-1",
+      "P-L1: a tool's child gets only PATH=/usr/bin:/bin, HOME, USER, LANG (checked), the runtime folder and thread id; "
+      "none of BASH_ENV, ENV, LD_*, PYTHON*, SHELLOPTS, BASHOPTS, PERL5OPT, NODE_OPTIONS, GIT_CONFIG_*, XDG_DATA_DIRS",
+      f"P-L1 child env: extra {extra}, PATH {child.get('PATH')!r}, LANG {child.get('LANG')!r}, "
+      f"WAYLAND_DISPLAY {child.get('WAYLAND_DISPLAY')!r}")
+# Janus's P-L1 confirm nit: `.` and `..` are plain names too, but name the
+# runtime folder itself or step out of hypr/. Refused like any other path.
+os.unlink(os.path.join(PL1, "child.env"))
+mcp([("tools/call", {"name": "doctor", "arguments": {}})], INVICTUS_DOCTOR=dump, WAYLAND_DISPLAY="..",
+    HYPRLAND_INSTANCE_SIGNATURE=".")
+child = dict(ln.split("=", 1) for ln in read(os.path.join(PL1, "child.env")).splitlines() if "=" in ln)
+check(child and "WAYLAND_DISPLAY" not in child and "HYPRLAND_INSTANCE_SIGNATURE" not in child,
+      "child_env: WAYLAND_DISPLAY='..' and HYPRLAND_INSTANCE_SIGNATURE='.' are not passed to a tool's child",
+      f"child_env dot names: WAYLAND_DISPLAY {child.get('WAYLAND_DISPLAY')!r} "
+      f"HYPRLAND_INSTANCE_SIGNATURE {child.get('HYPRLAND_INSTANCE_SIGNATURE')!r}")
+os.unlink(os.path.join(PL1, "child.env"))
+mcp([("tools/call", {"name": "doctor", "arguments": {}})], INVICTUS_DOCTOR=dump, WAYLAND_DISPLAY="wayland-1",
+    HYPRLAND_INSTANCE_SIGNATURE="abc_123.x")
+child = dict(ln.split("=", 1) for ln in read(os.path.join(PL1, "child.env")).splitlines() if "=" in ln)
+check(child.get("WAYLAND_DISPLAY") == "wayland-1" and child.get("HYPRLAND_INSTANCE_SIGNATURE") == "abc_123.x",
+      "child_env control: plain socket names are still passed (the doctor's hyprctl checks need them)",
+      f"child_env plain names dropped: {child.get('WAYLAND_DISPLAY')!r} {child.get('HYPRLAND_INSTANCE_SIGNATURE')!r}")
+# Janus Info: re.match with `$` took "t1\n" as a thread id and passed it to
+# invictus-sys --request (which then refused every call). fullmatch refuses
+# it and the server makes its own id.
+reset_logs()
+mcp([("tools/call", {"name": "package_install", "arguments": {"names": ["firefox"]}})], INVICTUS_THREAD="t1\n")
+sys_line = read(f"{LOG}.sys").strip()
+check(re.fullmatch(r"--request mcp-\d{8}-\d{6}-[0-9a-f]{4} install firefox", sys_line) is not None,
+      "INVICTUS_THREAD with a trailing newline is refused; the server makes its own thread id",
+      f"INVICTUS_THREAD 't1\\n' reached invictus-sys: {sys_line!r}")
+reset_logs()
 
 
 def text_of(m):
@@ -671,6 +740,67 @@ check(r.returncode == 2, "A6: a guard that cannot load its helper still blocks t
       f"lone guard: {r.returncode} {r.stderr[-200:]!r}")
 r = guard("pre", "", "fixed", raw="not json")
 check(r.returncode == 2, "A6: a guard that cannot read its input blocks the edit (fails closed)", f"garbage: {r.returncode}")
+
+# Janus N-L1: exits the lint cannot see. The guard runs invictus_env.py
+# through exec_module, so a SystemExit there must still end in 2 (the guard
+# catches BaseException), and the /bin/sh wrapper the profiles call turns
+# any ending but 0 into 2, a signal death too. A tree laid out like the
+# checkout: wrapper, claude/config-guard.py, lib/invictus_env.py.
+NL1 = os.path.join(W, "nl1")
+os.makedirs(os.path.join(NL1, "claude"), exist_ok=True)
+os.makedirs(os.path.join(NL1, "lib"), exist_ok=True)
+WRAP = os.path.join(NL1, "claude-config-guard")
+WRAP_SRC = os.path.join(REPO, "scripts/guardrails/claude-config-guard.sh")
+if os.path.isfile(WRAP_SRC):
+    shutil.copy(WRAP_SRC, WRAP)
+else:  # no wrapper (the code before N-L1): every wrapped check below fails, none crashes
+    with open(WRAP, "w") as f:
+        f.write("#!/bin/sh\nexit 99\n")
+os.chmod(WRAP, 0o755)
+shutil.copy(GUARD, os.path.join(NL1, "claude/config-guard.py"))
+HELPER = open(os.path.join(REPO, "scripts/lib/invictus_env.py")).read()
+DENY_IN = json.dumps({"tool_input": {"file_path": os.path.join(GH, ".bashrc")}})
+OK_IN = json.dumps({"tool_input": {"file_path": os.path.join(GH, ".config/waybar/plain.css")}})
+
+
+def nl1_run(inject, wrapped, data=DENY_IN):
+    with open(os.path.join(NL1, "lib/invictus_env.py"), "w") as f:
+        f.write(HELPER + ("\n" + inject + "\n" if inject else ""))
+    args = [WRAP, "pre", "fixed"] if wrapped else [PY, "-I", os.path.join(NL1, "claude/config-guard.py"), "pre", "fixed"]
+    return subprocess.run(args, input=data, capture_output=True, text=True, env=envmap(HOME_OVERRIDE=GH), timeout=30)
+
+
+r = nl1_run("", True)
+r2 = nl1_run("", True, OK_IN)
+check(r.returncode == 2 and r2.returncode == 0 and "hookSpecificOutput" in r2.stdout,
+      "N-L1: the wrapper passes the guard's answer through (denied 2, allowed 0 with the guard's JSON on stdout)",
+      f"wrapper plain: denied {r.returncode}, allowed {r2.returncode} {r2.stdout[-200:]!r} {r2.stderr[-200:]!r}")
+r = nl1_run("raise SystemExit(1)", False)
+check(r.returncode == 2 and "cannot load invictus_env (SystemExit)" in r.stderr,
+      "N-L1: a SystemExit(1) raised inside invictus_env.py ends the guard with 2 (BaseException caught), not 1",
+      f"SystemExit(1) in the helper, guard alone: {r.returncode} {r.stderr[-200:]!r}")
+r = nl1_run("raise SystemExit(1)", True)
+check(r.returncode == 2, "N-L1: through the wrapper, a SystemExit(1) in invictus_env.py ends in 2",
+      f"SystemExit(1) in the helper, wrapped: {r.returncode} {r.stderr[-200:]!r}")
+r_alone = nl1_run("import os as _o; _o.kill(_o.getpid(), 9)", False)
+r = nl1_run("import os as _o; _o.kill(_o.getpid(), 9)", True)
+check(r_alone.returncode == -9 and r.returncode == 2,
+      "N-L1: a kill -9 of the Python child ends the hook with 2 (the guard alone dies with signal 9)",
+      f"kill -9: guard alone {r_alone.returncode}, wrapped {r.returncode} {r.stderr[-200:]!r}")
+r = nl1_run("import os as _o; _o._exit(1)", True)
+check(r.returncode == 2, "N-L1: an os._exit(1) the guard never catches still ends in 2 through the wrapper",
+      f"os._exit(1) in the helper, wrapped: {r.returncode}")
+nl1_run("", True)
+os.rename(os.path.join(NL1, "claude/config-guard.py"), os.path.join(NL1, "claude/gone.py"))
+r = nl1_run("", True)
+check(r.returncode == 2, "N-L1: the wrapper with no guard beside it blocks the edit (2)", f"no guard: {r.returncode}")
+os.rename(os.path.join(NL1, "claude/gone.py"), os.path.join(NL1, "claude/config-guard.py"))
+wsrc = open(WRAP).read()
+codes = [l.split()[-1] for l in wsrc.splitlines() if re.search(r"\bexit\b", l) and not l.lstrip().startswith("#")]
+check(wsrc.startswith("#!/bin/sh\n") and codes == ["0", "2"] and "/usr/bin/python3 -I " in wsrc
+      and "set -e" not in wsrc,
+      "N-L1: the wrapper is /bin/sh, runs /usr/bin/python3 -I, and its only exits are 0 (after a 0) and 2",
+      f"wrapper shape: exits {codes}")
 
 r = guard("pre", os.path.join(GH, ".config/hypr/user.lua"), "full")
 bk = os.path.join(GH, ".local/state/invictus/backups")

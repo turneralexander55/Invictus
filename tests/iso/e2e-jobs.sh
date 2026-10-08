@@ -218,6 +218,11 @@ rm -rf "$T/var/tmp/gen"
 job settings settings.sh "$T" maria atrium custodia --hostname-from-user
 gm="$T/etc/systemd/system-generators/systemd-ssh-generator"
 check "settings: systemd-ssh-generator masked (a link to /dev/null)" bash -c "[[ -L '$gm' && \"\$(readlink '$gm')\" == /dev/null ]]"
+# Janus I-2: the mask is invictus-sys's file (from the ISO's airootfs, which
+# has it through invictus-base), not one the job wrote.
+check "settings: pacman says invictus-sys owns the generator mask" \
+    bash -c "[[ \"\$(arch-chroot '$T' pacman -Qqo /etc/systemd/system-generators/systemd-ssh-generator)\" == invictus-sys ]]"
+check "settings: the job says the mask came from invictus-sys" grep -q 'systemd-ssh-generator masked (invictus-sys)' "$L/settings.log"
 check "settings: /etc/systemd/system-generators is searched before /usr/lib/systemd/system-generators" \
     bash -c "arch-chroot '$T' systemd-path systemd-search-system-generator | grep -q '/etc/systemd/system-generators:.*/usr/lib/systemd/system-generators'"
 check "settings: sshd.service not enabled" bash -c "! arch-chroot '$T' systemctl is-enabled sshd.service >/dev/null 2>&1"

@@ -23,6 +23,9 @@
 #      under the new profile, generic-cli comes and goes from the list, and
 #      root's stop ends the panel and its agent; the installed copy ignores
 #      INVICTUS_* overrides
+#   7a2. R2: the real Claude Code (our pin, no account) under the fixed
+#      profile connects the --plugin-dir plugin's server and drops a home
+#      server with the same command; the server answers doctor
 #   7b. ai off as root signs a real user out through setpriv (their files,
 #      their process), writes the browser policy; the panel's socket is
 #      reached as its folder's owner (L1); ai on fails (exit 1, nothing
@@ -44,7 +47,7 @@ fail=0
 ok()  { echo "ok    $1"; }
 bad() { echo "FAIL  $1"; fail=1; }
 
-pacman -Syu --noconfirm --needed base-devel polkit snapper sudo python dbus >/dev/null 2>&1
+pacman -Syu --noconfirm --needed base-devel polkit snapper sudo python dbus jq >/dev/null 2>&1
 
 WORK="$(mktemp -d)"
 cp -r "$SRC/." "$WORK/src"
@@ -55,10 +58,49 @@ for p in invictus-sys invictus-guardrails; do
     (cd "$WORK/src/pkgs/own/$p" && sudo -u builder PKGDEST="$WORK/out" makepkg -d --noconfirm >"$WORK/make-$p.log" 2>&1) \
         || { echo "makepkg $p failed:"; tail -20 "$WORK/make-$p.log"; exit 1; }
 done
-if pacman -U --noconfirm "$WORK"/out/invictus-sys-*.pkg.tar.zst "$WORK"/out/invictus-guardrails-*.pkg.tar.zst >"$WORK/install.log" 2>&1; then
+# Janus P-L2: this machine starts as a dev install did, with the unowned
+# mask the old installer wrote. lib/pacman.sh's ssh_mask_overwrite (what
+# invictus-update and the install verb call) must give real pacman the
+# one --overwrite that lets invictus-sys take the link over.
+mkdir -p /etc/systemd/system-generators
+ln -sfn /dev/null /etc/systemd/system-generators/systemd-ssh-generator
+# shellcheck disable=SC2034 # PACMAN is read by lib/pacman.sh
+PACMAN=pacman; PACMAN_OVERWRITE=()
+# shellcheck source=scripts/lib/pacman.sh
+. "$WORK/src/scripts/lib/pacman.sh"
+declare -F ssh_mask_overwrite >/dev/null && ssh_mask_overwrite
+if [[ "${PACMAN_OVERWRITE[*]}" == "--overwrite /etc/systemd/system-generators/systemd-ssh-generator" ]]; then
+    ok "P-L2: an unowned mask link gets exactly --overwrite /etc/systemd/system-generators/systemd-ssh-generator"
+else bad "P-L2: ssh_mask_overwrite gave '${PACMAN_OVERWRITE[*]}'"; fi
+if pacman -U --noconfirm "${PACMAN_OVERWRITE[@]}" "$WORK"/out/invictus-sys-*.pkg.tar.zst "$WORK"/out/invictus-guardrails-*.pkg.tar.zst >"$WORK/install.log" 2>&1; then
     ok "makepkg builds invictus-sys and invictus-guardrails; pacman -U installs them"
 else
     bad "install: $(tail -5 "$WORK/install.log")"; exit 1
+fi
+# sshd off on every machine, adopted ones too (design-simple-mode 1.3, SM2;
+# Janus I-2): invictus-sys owns the systemd-ssh-generator mask.
+gm=/etc/systemd/system-generators/systemd-ssh-generator
+if [[ -L "$gm" && "$(readlink "$gm")" == /dev/null ]] && [[ "$(pacman -Qqo "$gm" 2>/dev/null)" == invictus-sys ]]; then
+    ok "SM2: invictus-sys owns $gm -> /dev/null (pacman -Qo), so an adopted install gets the mask too"
+else
+    bad "SM2: $gm: $(ls -l "$gm" 2>&1) owner: $(pacman -Qo "$gm" 2>&1)"
+fi
+ssh_mask_overwrite
+if [[ ${#PACMAN_OVERWRITE[@]} == 0 ]]; then ok "P-L2: once invictus-sys owns the mask, no --overwrite"
+else bad "P-L2: still --overwrite after the install: ${PACMAN_OVERWRITE[*]}"; fi
+# Janus N-L1: the hook the profiles call is the /bin/sh wrapper; the guard
+# beside it is 0644 (nothing runs it without the wrapper). Run as tester:
+# a denied file gives 2, an allowed one 0.
+G=/usr/lib/invictus/claude-config-guard
+tg="$(getent passwd tester | cut -d: -f6)"
+mkdir -p "$tg/.config/waybar"; chown -R tester "$tg/.config"
+g_deny="$(printf '{"tool_input": {"file_path": "%s/.bashrc"}}' "$tg" | sudo -u tester "$G" pre fixed >/dev/null 2>&1; echo $?)"
+g_ok="$(printf '{"tool_input": {"file_path": "%s/.config/waybar/x.css"}}' "$tg" | sudo -u tester "$G" pre fixed >/dev/null 2>&1; echo $?)"
+if [[ "$(head -1 "$G")" == "#!/bin/sh" && "$(stat -c '%U %a' "$G")" == "root 755" && "$(stat -c '%U %a' "$G.py")" == "root 644" \
+      && "$g_deny" == 2 && "$g_ok" == 0 ]]; then
+    ok "N-L1: the installed hook is the /bin/sh wrapper (0755) around claude-config-guard.py (0644); as tester ~/.bashrc 2, waybar/x.css 0"
+else
+    bad "N-L1 installed guard: $(head -1 "$G") $(stat -c '%U %a %n' "$G" "$G.py" 2>&1 | paste -sd' '), deny $g_deny, allow $g_ok"
 fi
 
 # 1. The install hook applied Custodia (no guardrails file yet: custodia).
@@ -199,6 +241,59 @@ if pacman -U -dd --noconfirm "$WORK"/out/invictus-tribune-*.pkg.tar.zst >"$WORK/
 else
     bad "invictus-tribune install: $(tail -3 "$WORK/tribune-install.log") $(stat -c '%U %a %n' /usr/lib/invictus/moneta/* /etc/claude-code 2>&1 | paste -sd' ')"
 fi
+# R2 (Minerva, release review 2c): the real Claude Code (our pin) under the
+# fixed profile loads our --plugin-dir plugin's MCP server, as the panel
+# starts it, while strictPluginOnlyCustomization drops a server from the
+# home with the very same command. No account and no credentials: Anthropic's
+# and claude.ai's hosts point nowhere while it runs, no proxy variable is
+# passed, and nothing here signs in. A tool call through Claude Code needs a
+# signed-in account ("Not logged in · Please run /login"), so the doctor is
+# asked over JSON-RPC from the same installed command Claude Code connected.
+sudo -u builder gpg --import "$WORK/src/pkgs/aur/claude-code/keys/pgp/"*.asc >/dev/null 2>&1
+for p in aur/claude-code own/invictus-tools; do
+    (cd "$WORK/src/pkgs/$p" && sudo -u builder PKGDEST="$WORK/out" makepkg -d --noconfirm >"$WORK/make-r2.log" 2>&1) \
+        || bad "R2: makepkg $p: $(tail -5 "$WORK/make-r2.log")"
+done
+pacman -U -dd --noconfirm "$WORK"/out/claude-code-*.pkg.tar.zst "$WORK"/out/invictus-tools-*.pkg.tar.zst >"$WORK/r2-install.log" 2>&1 \
+    || bad "R2: install claude-code, invictus-tools: $(tail -3 "$WORK/r2-install.log")"
+cp /etc/hosts "$WORK/hosts"
+for h in api.anthropic.com anthropic.com console.anthropic.com statsig.anthropic.com mcp-proxy.anthropic.com \
+    claude.ai www.claude.ai downloads.claude.ai claude.com platform.claude.com; do echo "0.0.0.0 $h" >> /etc/hosts; done
+mkdir -p "$th/r2"; chown tester "$th/r2"
+printf '{"mcpServers":{"homesrv":{"command":"/usr/bin/python3","args":["-I","/usr/lib/invictus/moneta/mcp.py"]}}}\n' > "$th/.claude.json"
+chown tester "$th/.claude.json"
+cc() { (cd "$th/r2" && timeout 120 sudo -u tester env -i HOME="$th" USER=tester PATH=/usr/bin:/bin TERM=dumb \
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 /usr/bin/claude "$@" 2>&1); }
+PLUG=(--plugin-dir /usr/share/invictus/claude-plugin)
+r2list="$(cc "${PLUG[@]}" mcp list)" || true
+r2get="$(cc "${PLUG[@]}" mcp get plugin:invictus:invictus)" || true
+if [[ "$(readlink /etc/claude-code/managed-settings.json)" == */fixed.json ]] \
+   && grep -qx 'plugin:invictus:invictus: /usr/bin/python3 -I /usr/lib/invictus/moneta/mcp.py - ✔ Connected' <<< "$r2list" \
+   && ! grep -q homesrv <<< "$r2list" && grep -q 'Status: ✔ Connected' <<< "$r2get"; then
+    ok "R2: claude-code $(pacman -Q claude-code | cut -d' ' -f2) under the fixed profile connects the --plugin-dir plugin's invictus server; a home server with the same command is dropped (strictPluginOnlyCustomization)"
+else bad "R2: fixed profile, mcp list: $(paste -sd'|' <<< "$r2list") get: $(paste -sd'|' <<< "$r2get" | cut -c1-200)"; fi
+mv /etc/claude-code/managed-settings.json "$WORK/ms.link"
+r2ctl="$(cc mcp list)" || true
+mv "$WORK/ms.link" /etc/claude-code/managed-settings.json
+if grep -q '^homesrv: .* ✔ Connected' <<< "$r2ctl"; then
+    ok "R2 control: without the managed profile the home server does load (so the drop above is the profile's)"
+else bad "R2 control: no profile, mcp list: $(paste -sd'|' <<< "$r2ctl")"; fi
+r2p="$(cc "${PLUG[@]}" -p "run the doctor tool" --output-format text)" || true
+r2doc="$(printf '%s\n' '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' \
+    '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+    '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"doctor","arguments":{}}}' \
+    | timeout 120 sudo -u tester env -i HOME="$th" PATH=/usr/bin:/bin /usr/bin/python3 -I /usr/lib/invictus/moneta/mcp.py)" || true
+r2txt="$(python3 -c 'import json, sys
+for line in sys.stdin:
+    m = json.loads(line)
+    if m.get("id") == 1:
+        print("".join(c.get("text", "") for c in m["result"]["content"]))' <<< "$r2doc" 2>&1)" || true
+if grep -qE '^(ok|warn|FAIL) +guard rails: ' <<< "$r2txt" && grep -qE '^(ok|warn|FAIL|note) +hypr: ' <<< "$r2txt"; then
+    ok "R2: the installed server answers doctor with the real invictus-doctor's report (Claude Code itself: '$r2p', so a tool call needs a signed-in account)"
+else bad "R2: doctor over JSON-RPC: $(head -c 600 <<< "$r2txt")"; fi
+cat "$WORK/hosts" > /etc/hosts
+rm -rf "$th/.claude.json" "$th/.claude" "$th/.cache/claude-cli-nodejs" "$th/r2"
+pacman -R -dd --noconfirm invictus-tools claude-code >/dev/null 2>&1 || bad "R2: could not remove invictus-tools, claude-code"
 echo on > /etc/invictus/ai   # AI on without the package install; ai on itself is 7b's
 printf '#!/bin/bash\necho "$$" >> /tmp/claude.pids\nexec sleep 300\n' > /usr/bin/claude
 chmod 755 /usr/bin/claude

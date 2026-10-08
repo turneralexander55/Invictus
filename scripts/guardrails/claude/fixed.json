@@ -40,11 +40,31 @@
       "Edit(~/.config/environment.d/**)",
       "Edit(~/.local/bin/**)",
       "Edit(~/.config/kitty/**)",
-      "Edit(~/.config/quickshell/**)"
+      "Edit(~/.config/quickshell/**)",
+      "Edit(~/.zshenv)",
+      "Edit(~/.zlogin)",
+      "Edit(~/.bash_login)",
+      "Edit(~/.config/fish/**)",
+      "Edit(~/.config/uwsm/**)",
+      "Edit(~/.local/share/applications/**)",
+      "Edit(~/.config/mimeapps.list)",
+      "Edit(~/.local/share/dbus-1/**)",
+      "Edit(~/.gitconfig)",
+      "Edit(~/.config/git/**)",
+      "Edit(~/.ssh/**)",
+      "Edit(~/.local/lib/**)",
+      "Edit(~/.claude.json)",
+      "Edit(~/.claude/**)",
+      "Edit(~/.mcp.json)"
     ]
   },
+  "strictPluginOnlyCustomization": ["agents", "mcp"],
   "disableAutoMode": "disable",
   "allowManagedHooksOnly": true,
+  "allowManagedMcpServersOnly": true,
+  "allowedMcpServers": [
+    { "serverCommand": ["/usr/bin/python3", "-I", "/usr/lib/invictus/moneta/mcp.py"] }
+  ],
   "env": {
     "DISABLE_UPDATES": "1",
     "DISABLE_AUTOUPDATER": "1"

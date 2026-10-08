@@ -304,7 +304,8 @@ case "$VERB" in
         if [[ -x "$UPDATE" ]]; then
             with_pacman "${INHIBIT[@]}" "$UPDATE" --noconfirm --system || rc=$?
         else
-            with_pacman "${INHIBIT[@]}" "$PACMAN" -Syu --noconfirm || rc=$?
+            ssh_mask_overwrite
+            with_pacman "${INHIBIT[@]}" "$PACMAN" -Syu --noconfirm "${PACMAN_OVERWRITE[@]}" || rc=$?
         fi
         case "$rc" in
             0) finish ok 0 ;;
