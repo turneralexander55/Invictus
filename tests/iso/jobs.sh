@@ -371,12 +371,26 @@ check "launcher: an old /etc/calamares is replaced, not merged" test ! -e "$T/et
 
 # ---- live session ---------------------------------------------------------------------------
 S="$REPO/installer/live/session"
+# A session that never ends (a watchdog that does not fire) is cut off after
+# 60 s, so a broken watchdog fails its checks instead of hanging the suite;
+# fake Hyprlands it left behind (--foreground: timeout only stops the session
+# itself, so the "stopped" checks still see them) are killed before the next
+# run and at exit.
+reap_fakes() {
+    local pids
+    [[ -f "$T/sess-state/hypr.pids" ]] || return 0
+    read -ra pids <"$T/sess-state/hypr.pids"
+    kill -KILL "${pids[@]}" 2>/dev/null
+    return 0
+}
+trap 'reap_fakes; rm -rf "$T"' EXIT
 session() {
+    reap_fakes
     FAKE_LOG="$T/session.log"; : >"$FAKE_LOG"
     FAKE_STATE="$T/sess-state"; rm -rf "$FAKE_STATE"; mkdir -p "$FAKE_STATE"
     rm -f "$T/invictus-live-session.log"
     [[ -n "${CLIENTS:-}" ]] && printf '%s\n' "$CLIENTS" >"$FAKE_STATE/clients.json"
-    env XDG_RUNTIME_DIR="$T" INVICTUS_HYPR_POLL=0.2 "$@" bash "$S" >/dev/null 2>&1
+    timeout --foreground -k 5 60 env XDG_RUNTIME_DIR="$T" INVICTUS_HYPR_POLL=0.2 "$@" bash "$S" >/dev/null 2>&1
 }
 SLOG="$T/invictus-live-session.log"
 gone() {  # gone: every pid the hanging fake Hyprland wrote has exited (a zombie
