@@ -61,8 +61,10 @@ done
 # one --overwrite that lets invictus-sys take the link over.
 mkdir -p /etc/systemd/system-generators
 ln -sfn /dev/null /etc/systemd/system-generators/systemd-ssh-generator
+# shellcheck disable=SC2034 # PACMAN is read by lib/pacman.sh
+PACMAN=pacman; PACMAN_OVERWRITE=()
 # shellcheck source=scripts/lib/pacman.sh
-PACMAN=pacman; PACMAN_OVERWRITE=(); . "$WORK/src/scripts/lib/pacman.sh"
+. "$WORK/src/scripts/lib/pacman.sh"
 declare -F ssh_mask_overwrite >/dev/null && ssh_mask_overwrite
 if [[ "${PACMAN_OVERWRITE[*]}" == "--overwrite /etc/systemd/system-generators/systemd-ssh-generator" ]]; then
     ok "P-L2: an unowned mask link gets exactly --overwrite /etc/systemd/system-generators/systemd-ssh-generator"
@@ -81,8 +83,8 @@ else
     bad "SM2: $gm: $(ls -l "$gm" 2>&1) owner: $(pacman -Qo "$gm" 2>&1)"
 fi
 ssh_mask_overwrite
-[[ ${#PACMAN_OVERWRITE[@]} == 0 ]] && ok "P-L2: once invictus-sys owns the mask, no --overwrite" \
-    || bad "P-L2: still --overwrite after the install: ${PACMAN_OVERWRITE[*]}"
+if [[ ${#PACMAN_OVERWRITE[@]} == 0 ]]; then ok "P-L2: once invictus-sys owns the mask, no --overwrite"
+else bad "P-L2: still --overwrite after the install: ${PACMAN_OVERWRITE[*]}"; fi
 # Janus N-L1: the hook the profiles call is the /bin/sh wrapper; the guard
 # beside it is 0644 (nothing runs it without the wrapper). Run as tester:
 # a denied file gives 2, an allowed one 0.
