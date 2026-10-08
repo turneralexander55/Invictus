@@ -14,7 +14,7 @@ org.invictus.sys.snapshot	Type your password to make a safety copy now.
 org.invictus.sys.rollback	Type your password to put the computer back to safety copy {args}.
 org.invictus.sys.service	Type your password to change a system service: {args}.
 org.invictus.sys.set-config	Type your password to change a setting: {args}.
-org.invictus.sys.assistant-full-access	Type your password to change whether Moneta may use the terminal and every tool: {args}.
+org.invictus.sys.assistant-full-access	Type your password to change whether Moneta has full access: {args}. With full access Moneta can read everything you can on this computer, your files, mail and saved passwords included, and something it reads, like a web page or a message, could trick it into asking you for a change you did not want. It still waits for your yes each time, so say yes only to what you understand.
 org.invictus.sys.ai-on	Type your password to add Moneta, an AI assistant, to this computer. It asks before it changes anything. Undo: Settings > AI > No AI.
 org.invictus.sys.ai-off	Type your password to remove AI from this computer and sign everyone out of it.
 org.invictus.sys.report-collect	Type your password to collect this computer's error log for a problem report. Nothing is sent.

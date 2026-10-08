@@ -105,7 +105,7 @@
 
   <action id="org.invictus.sys.assistant-full-access">
     <description>Change what Moneta may use</description>
-    <message>Type your password to change whether Moneta may use the terminal and every tool.</message>
+    <message>Type your password to change Moneta&apos;s full access. With it on, Moneta can read everything you can on this computer, your files, mail and saved passwords included, and something it reads, like a web page or a message, could trick it into asking you for a change you did not want. It still waits for your yes each time, so say yes only to what you understand.</message>
     <defaults>
       <allow_any>auth_admin</allow_any>
       <allow_inactive>auth_admin</allow_inactive>
