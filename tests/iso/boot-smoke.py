@@ -141,6 +141,13 @@ def main():
     r = sh.run("systemctl list-jobs --no-legend --full", 30)
     if r and r[1].strip() and "No jobs" not in r[1]:
         problems.append("jobs still queued after boot:\n" + r[1].rstrip())
+    # sshd is off on the live image too (design-simple-mode 1.3): no system
+    # socket for it, including systemd-ssh-generator's AF_UNIX and AF_VSOCK ones.
+    r = sh.run("systemctl list-sockets --all --no-legend --full", 30)
+    if r is None:
+        problems.append("could not list the system's sockets")
+    elif any("ssh" in ln for ln in r[1].splitlines()):
+        problems.append("sshd is listening:\n" + "\n".join(ln for ln in r[1].splitlines() if "ssh" in ln))
     r = sh.run("journalctl -b --no-pager -o short-monotonic", 90)
     if r:
         with open(os.path.join(run, "journal.txt"), "w") as f:

@@ -139,11 +139,15 @@ check "settings: release file drops a line with shell in it" bash -c "! grep -q 
 check "settings: says guard rails not applied while invictus-sys is missing" out_has "invictus-sys is not installed yet"
 check "settings: mdns_minimal before resolve on the hosts line" grep -qx 'hosts: mymachines mdns_minimal \[NOTFOUND=return\] resolve \[!UNAVAIL=return\] files myhostname dns' "$ROOTDIR/etc/nsswitch.conf"
 check "settings: other nsswitch lines untouched" grep -qx 'passwd: files systemd' "$ROOTDIR/etc/nsswitch.conf"
+gm="$ROOTDIR/etc/systemd/system-generators/systemd-ssh-generator"
+check "settings: systemd-ssh-generator is masked, so no local sshd socket (design-simple-mode 1.3)" \
+    bash -c "[[ -L '$gm' && \"\$(readlink '$gm')\" == /dev/null ]]"
 
 touch "$FAKE_STATE/has-invictus-sys"
 run_job settings.sh "$ROOTDIR" maria tessera libertas
 check "settings: Advanced values written (tessera, libertas)" bash -c "[[ \$(cat '$ROOTDIR/home/maria/.config/invictus/flavor') == tessera && \$(cat '$ROOTDIR/etc/invictus/guardrails') == libertas ]]"
 check "settings: runs invictus-sys guardrails apply when present" logged "chroot invictus-sys guardrails apply"
+check "settings: a second run keeps the generator mask" bash -c "[[ -L '$gm' && \"\$(readlink '$gm')\" == /dev/null ]]"
 check "settings: a second run does not add mdns_minimal twice" test "$(grep -o mdns_minimal "$ROOTDIR/etc/nsswitch.conf" | wc -l)" -eq 1
 check "settings: hostname untouched without --hostname-from-user" test "$(cat "$ROOTDIR/etc/hostname")" = maria-invictus
 

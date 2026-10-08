@@ -107,7 +107,7 @@ Include = /etc/pacman.d/mirrorlist
 Include = /etc/pacman.d/mirrorlist
 EOF
 pacstrap -C "$W/pacman.conf" -K "$T" base linux-cachyos mkinitcpio btrfs-progs snapper limine \
-    limine-mkinitcpio-hook limine-snapper-sync efibootmgr acl >"$W/pacstrap.log" 2>&1 \
+    limine-mkinitcpio-hook limine-snapper-sync efibootmgr acl openssh >"$W/pacstrap.log" 2>&1 \
     || { tail -30 "$W/pacstrap.log"; exit 1; }
 # What Calamares' machineid, fstab, users and initcpiocfg would have done.
 systemd-machine-id-setup --root="$T" >/dev/null
@@ -173,6 +173,26 @@ if grep -q 'snapshot entries added' "$W/snap.log"; then
 else
     echo "note  limine-snapper-sync did not run in the chroot; the service adds the entries at first boot"
 fi
+
+# ---- settings: sshd off (design-simple-mode 1.3) -----------------------------------
+# With openssh installed, systemd-ssh-generator binds sshd to a local
+# AF_UNIX socket. First show that it does on this target (the control), then
+# run the settings job and check the generator is masked where PID 1 looks
+# first (/etc/systemd/system-generators comes before /usr/lib/...).
+gen=/usr/lib/systemd/system-generators/systemd-ssh-generator
+mkdir -p "$T/var/tmp/gen"
+arch-chroot "$T" "$gen" /var/tmp/gen /var/tmp/gen /var/tmp/gen >"$W/gen.log" 2>&1 || true
+check "control: with openssh installed, the generator makes sshd-unix-local.socket" test -f "$T/var/tmp/gen/sshd-unix-local.socket"
+rm -rf "$T/var/tmp/gen"
+rc=0; bash "$SRC/installer/jobs/settings.sh" "$T" maria atrium custodia >"$W/settings.log" 2>&1 || rc=$?
+check "settings job exits 0" test "$rc" -eq 0
+[[ $rc -eq 0 ]] || tail -20 "$W/settings.log"
+gm="$T/etc/systemd/system-generators/systemd-ssh-generator"
+check "settings: systemd-ssh-generator masked (a link to /dev/null)" bash -c "[[ -L '$gm' && \"\$(readlink '$gm')\" == /dev/null ]]"
+check "settings: /etc/systemd/system-generators is searched before /usr/lib/systemd/system-generators" \
+    bash -c "arch-chroot '$T' systemd-path systemd-search-system-generator | grep -q '/etc/systemd/system-generators:.*/usr/lib/systemd/system-generators'"
+check "settings: sshd.service not enabled" bash -c "! arch-chroot '$T' systemctl is-enabled sshd.service >/dev/null 2>&1"
+check "settings: nothing else enables an ssh socket" bash -c "! find '$T/etc/systemd/system' -name '*ssh*' | grep -q ."
 
 echo
 echo "e2e-jobs: $pass passed, $fail failed"

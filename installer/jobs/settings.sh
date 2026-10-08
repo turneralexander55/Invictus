@@ -64,6 +64,16 @@ if [[ -e "$ROOT/usr/lib/systemd/system/sshd.service" ]]; then
     in_target systemctl disable sshd.service >/dev/null 2>&1 || true
     say "sshd disabled"
 fi
+# systemd-ssh-generator (systemd 256 and later) binds sshd to a local
+# AF_UNIX socket, /run/ssh-unix-local/socket (and AF_VSOCK port 22 in a VM),
+# whenever sshd is installed, whatever sshd.service says. Masked the way
+# systemd.generator(7) documents (a link to /dev/null in
+# /etc/systemd/system-generators/), which also drops what
+# systemd.ssh_auto=no would leave: systemd.ssh_listen= and the ssh.listen
+# credential. Written whether or not openssh is there today.
+install -d -m 755 "$ROOT/etc/systemd/system-generators"
+ln -sfn /dev/null "$ROOT/etc/systemd/system-generators/systemd-ssh-generator"
+say "systemd-ssh-generator masked"
 
 # ---- machine: mDNS names (docs/packages.md, "For the ISO") -------------------
 # Driverless printers and scanners are found by .local names: nss-mdns

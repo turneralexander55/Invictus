@@ -25,6 +25,7 @@ HEALTHY = {
     "journalctl": (0, "[ 1.0] invictus systemd[1]: Started Getty on tty1.\n"
                       "[ 2.0] invictus systemd-timesyncd[5]: Timed out waiting for reply from 1.2.3.4:123.\n"),
     "systemd-analyze": (0, "Startup finished in 1s\n"),
+    "systemctl list-sockets": (0, "/run/dbus/system_bus_socket dbus.socket dbus.service\n"),
     "cat /run/user": (0, ""),
 }
 
@@ -99,6 +100,10 @@ scenario("a failed unit fails",
          {"systemctl is-system-running": (1, "degraded\n"),
           "systemctl --failed": (0, "sshd.service loaded failed failed OpenSSH Daemon\n")},
          20, 1, ["FAIL  failed units:", "sshd.service"])
+scenario("an sshd socket fails (systemd-ssh-generator's local AF_UNIX socket, design-simple-mode 1.3)",
+         {"systemctl list-sockets": (0, "/run/dbus/system_bus_socket dbus.socket dbus.service\n"
+                                        "/run/ssh-unix-local/socket sshd-unix-local.socket sshd-unix-local@.service\n")},
+         20, 1, ["FAIL  sshd is listening:", "sshd-unix-local.socket"])
 scenario("jobs still queued after boot fail",
          {"systemctl list-jobs": (0, "12 dev-ttyS0.device start running\n")},
          20, 1, ["FAIL  jobs still queued after boot:", "dev-ttyS0.device"])

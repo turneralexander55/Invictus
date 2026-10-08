@@ -108,6 +108,13 @@ check "boot wait: no boot entry names a serial console (serial-getty would wait 
     bash -c "! grep -Eq 'console=tty[A-Z]' '$ISO'/efiboot/loader/entries/*.conf '$ISO/grub/loopback.cfg'"
 check "boot wait: the live image enables no time-sync or network-online waiter" \
     bash -c "! find '$ISO/airootfs' -path '*.wants/*' | grep -Eq 'time-wait-sync|wait-online'"
+# sshd off (design-simple-mode 1.3, 2026-10-08): systemd-ssh-generator binds
+# sshd to /run/ssh-unix-local/socket whenever openssh is installed; it is
+# masked on the live image and kept on the installed system.
+gm="$ISO/airootfs/etc/systemd/system-generators/systemd-ssh-generator"
+check "sshd off: systemd-ssh-generator is masked on the live image" bash -c "[[ -L '$gm' && \"\$(readlink '$gm')\" == /dev/null ]]"
+check "sshd off: the generator mask is kept on the installed system (keep.txt, not live-only)" \
+    bash -c "grep -qx /etc/systemd/system-generators/systemd-ssh-generator '$ISO/keep.txt' && ! grep -qx /etc/systemd/system-generators/systemd-ssh-generator '$ISO/live-only.txt'"
 
 # ---- 4. secrets ---------------------------------------------------------------------------
 SCAN="$ISO/secrets-scan.sh"
