@@ -56,7 +56,7 @@ DOCTOR = env("INVICTUS_DOCTOR", "/usr/bin/invictus-doctor")
 HELP_SESSION = env("INVICTUS_HELP_SESSION", "/run/invictus/help-session")
 JOURNALCTL = env("INVICTUS_JOURNALCTL", "/usr/bin/journalctl")
 THREAD = os.environ.get("INVICTUS_THREAD", "")  # not an override
-if not re.match(r"^[A-Za-z0-9._:-]{1,64}$", THREAD):
+if not re.fullmatch(r"[A-Za-z0-9._:-]{1,64}", THREAD):  # fullmatch: `$` would take "t1\n" (Janus)
     THREAD = time.strftime("mcp-%Y%m%d-%H%M%S-") + secrets.token_hex(2)
 
 OUT_LIMIT = 8192
@@ -94,6 +94,11 @@ LANG_RE = re.compile(r"[A-Za-z]{1,8}(_[A-Za-z]{2,3})?(\.[A-Za-z0-9-]{1,16})?(@[A
 SOCKET_RE = re.compile(r"[A-Za-z0-9._-]{1,128}")
 
 
+def socket_name(name):
+    """A plain file name in the runtime folder: no slash, and not `.` or `..` (Janus)."""
+    return name if SOCKET_RE.fullmatch(name) and name not in (".", "..") else ""
+
+
 def child_env():
     """The whole environment of every program a tool runs (Janus P-L1).
 
@@ -121,12 +126,9 @@ def child_env():
     if os.path.isdir(rundir):
         e["XDG_RUNTIME_DIR"] = rundir
         e["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={rundir}/bus"
-    wl = os.environ.get("WAYLAND_DISPLAY", "")
-    if SOCKET_RE.fullmatch(wl):
-        e["WAYLAND_DISPLAY"] = wl
-    his = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
-    if SOCKET_RE.fullmatch(his):
-        e["HYPRLAND_INSTANCE_SIGNATURE"] = his
+    for name in ("WAYLAND_DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE"):
+        if socket_name(os.environ.get(name, "")):
+            e[name] = os.environ[name]
     e["INVICTUS_THREAD"] = THREAD  # checked above
     if not INSTALLED:  # a checkout: the tests' fakes and overrides; never an installed copy
         e.update({k: v for k, v in os.environ.items()  # not an override (checkout only)

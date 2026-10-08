@@ -516,7 +516,7 @@ def mcp(calls, **extra):
     for i, (method, params) in enumerate(calls, 1):
         lines.append(json.dumps({"jsonrpc": "2.0", "id": i, "method": method, "params": params}))
     r = subprocess.run([PY, "-I", MCP], input="\n".join(lines) + "\n", capture_output=True, text=True,
-                       env=envmap(INVICTUS_THREAD="t-mcp-1", **extra), timeout=30)
+                       env=envmap(**{"INVICTUS_THREAD": "t-mcp-1", **extra}), timeout=30)
     return {m["id"]: m for m in (json.loads(x) for x in r.stdout.splitlines())}
 
 
@@ -568,6 +568,33 @@ check(child and not extra and child.get("PATH") == "/usr/bin:/bin" and child.get
       "none of BASH_ENV, ENV, LD_*, PYTHON*, SHELLOPTS, BASHOPTS, PERL5OPT, NODE_OPTIONS, GIT_CONFIG_*, XDG_DATA_DIRS",
       f"P-L1 child env: extra {extra}, PATH {child.get('PATH')!r}, LANG {child.get('LANG')!r}, "
       f"WAYLAND_DISPLAY {child.get('WAYLAND_DISPLAY')!r}")
+# Janus's P-L1 confirm nit: `.` and `..` are plain names too, but name the
+# runtime folder itself or step out of hypr/. Refused like any other path.
+os.unlink(os.path.join(PL1, "child.env"))
+mcp([("tools/call", {"name": "doctor", "arguments": {}})], INVICTUS_DOCTOR=dump, WAYLAND_DISPLAY="..",
+    HYPRLAND_INSTANCE_SIGNATURE=".")
+child = dict(ln.split("=", 1) for ln in read(os.path.join(PL1, "child.env")).splitlines() if "=" in ln)
+check(child and "WAYLAND_DISPLAY" not in child and "HYPRLAND_INSTANCE_SIGNATURE" not in child,
+      "child_env: WAYLAND_DISPLAY='..' and HYPRLAND_INSTANCE_SIGNATURE='.' are not passed to a tool's child",
+      f"child_env dot names: WAYLAND_DISPLAY {child.get('WAYLAND_DISPLAY')!r} "
+      f"HYPRLAND_INSTANCE_SIGNATURE {child.get('HYPRLAND_INSTANCE_SIGNATURE')!r}")
+os.unlink(os.path.join(PL1, "child.env"))
+mcp([("tools/call", {"name": "doctor", "arguments": {}})], INVICTUS_DOCTOR=dump, WAYLAND_DISPLAY="wayland-1",
+    HYPRLAND_INSTANCE_SIGNATURE="abc_123.x")
+child = dict(ln.split("=", 1) for ln in read(os.path.join(PL1, "child.env")).splitlines() if "=" in ln)
+check(child.get("WAYLAND_DISPLAY") == "wayland-1" and child.get("HYPRLAND_INSTANCE_SIGNATURE") == "abc_123.x",
+      "child_env control: plain socket names are still passed (the doctor's hyprctl checks need them)",
+      f"child_env plain names dropped: {child.get('WAYLAND_DISPLAY')!r} {child.get('HYPRLAND_INSTANCE_SIGNATURE')!r}")
+# Janus Info: re.match with `$` took "t1\n" as a thread id and passed it to
+# invictus-sys --request (which then refused every call). fullmatch refuses
+# it and the server makes its own id.
+reset_logs()
+mcp([("tools/call", {"name": "package_install", "arguments": {"names": ["firefox"]}})], INVICTUS_THREAD="t1\n")
+sys_line = read(f"{LOG}.sys").strip()
+check(re.fullmatch(r"--request mcp-\d{8}-\d{6}-[0-9a-f]{4} install firefox", sys_line) is not None,
+      "INVICTUS_THREAD with a trailing newline is refused; the server makes its own thread id",
+      f"INVICTUS_THREAD 't1\\n' reached invictus-sys: {sys_line!r}")
+reset_logs()
 
 
 def text_of(m):
