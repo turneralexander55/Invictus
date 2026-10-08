@@ -19,7 +19,7 @@ shipped Python script.
 Load it from a script with this block, copied as is (the script must find
 the helper before it knows whether it is installed). The block raises
 ImportError and never exits: the caller decides (Minerva, final review
-2026-10-01, ruling 5). A PreToolUse hook catches Exception and exits 2 (any
+2026-10-01, ruling 5). A PreToolUse hook catches BaseException and exits 2 (any
 other non-zero exit lets the tool call through); a tool prints the message
 and exits 1. tests/pkgs/lib/env-ast.py fails on a _invictus_env that exits.
 

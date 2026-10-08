@@ -560,6 +560,41 @@ if [[ $jl2_rc == 1 && ${#jl2_missed[@]} == 0 ]]; then
 else
     bad "J-L2: env-ast rc $jl2_rc, missed: ${jl2_missed[*]}"
 fi
+# Janus N-L1: the excepthook looks up the global os when it runs, so a hook
+# that rebinds or deletes os or sys makes the hook itself raise, and Python
+# exits 1. Each plant below has the good header and must be named; the
+# first three are Janus's own shapes (rc 1, and the lint missed them on 12f17c5).
+NL1="$TMP/envast-nl1/scripts/guardrails/claude"
+rm -rf "$TMP/envast-nl1"; mkdir -p "$NL1"
+plant_nl1() { { printf '%s' "$hdr"; printf '%s\n' "$2"; } >"$NL1/$1.py"; }
+plant_nl1 rebind-os 'os = None
+raise ValueError("boom")'
+plant_nl1 del-os 'del os
+raise ValueError("boom")'
+plant_nl1 import-as-os 'import posixpath as os
+raise ValueError("boom")'
+plant_nl1 from-as-sys 'from os import path as sys'
+plant_nl1 with-as-os 'with open("/dev/null") as os:
+    pass'
+plant_nl1 global-sys 'def f():
+    global sys
+    sys = None'
+python3 "$HERE/lib/env-ast.py" --hook-dir "$NL1" >"$TMP/envast-nl1.out"; nl1_rc=$?
+nl1_missed=()
+for f in rebind-os del-os import-as-os from-as-sys with-as-os global-sys; do
+    grep -q "^$NL1/$f.py:[0-9]*: rebinds or deletes" "$TMP/envast-nl1.out" || nl1_missed+=("$f")
+done
+# the plants are real: run as they are, Janus's three exit 1, not 2
+nl1_rc1=0
+for f in rebind-os del-os import-as-os; do
+    python3 -I "$NL1/$f.py" >/dev/null 2>&1; r=$?
+    [[ $r == 1 ]] && nl1_rc1=$((nl1_rc1 + 1))
+done
+if [[ $nl1_rc == 1 && ${#nl1_missed[@]} == 0 && $nl1_rc1 == 3 ]]; then
+    ok "N-L1: the hook lint names every rebinding or deletion of os or sys (6 of 6: os = None, del os, import ... as os, from ... import ... as sys, with ... as os, global sys); Janus's three exit 1 when run"
+else
+    bad "N-L1: env-ast rc $nl1_rc, missed: ${nl1_missed[*]}; plants exiting 1: $nl1_rc1 of 3"
+fi
 # ... and the real hook folder: Python hooks and JSON profiles only, every hook in the good shape
 if python3 "$HERE/lib/env-ast.py" --hook-dir "$REPO/scripts/guardrails/claude" >"$TMP/envast-dir.out"; then
     ok "J-L2: scripts/guardrails/claude holds only .py and .json files and every hook sets the exit-2 excepthook first"

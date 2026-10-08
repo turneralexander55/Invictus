@@ -1,9 +1,12 @@
 #!/usr/bin/python3 -I
 # ------------------------------------------------------------
 # claude-config-guard: MUST A6 for Claude Code (design 4.8). Installed as
-# /usr/lib/invictus/claude-config-guard by invictus-guardrails, next to the
-# managed profiles that call it as hooks. Root-owned, so the agent cannot
-# change it, and hooks in managed settings cannot be turned off from a home.
+# /usr/lib/invictus/claude-config-guard.py by invictus-guardrails and run by
+# /usr/lib/invictus/claude-config-guard (scripts/guardrails/claude-config-guard.sh),
+# the /bin/sh wrapper the managed profiles call as hooks: it runs this file
+# with python3 -I and turns any exit code but 0 into 2, a signal death too
+# (Janus N-L1). Root-owned, so the agent cannot change it, and hooks in
+# managed settings cannot be turned off from a home.
 #
 #   claude-config-guard pre fixed|full    PreToolUse on Edit, Write, NotebookEdit
 #   claude-config-guard post              PostToolUse on the same tools
@@ -37,7 +40,9 @@
 # through, so the first thing this file does is install an excepthook that
 # exits 2 (Janus J-L1); everything that can raise runs after it, and the
 # lookups that used to run at import (HOME) run inside main()'s try.
-# tests/pkgs/lib/env-ast.py requires that shape in every hook file.
+# tests/pkgs/lib/env-ast.py requires that shape in every hook file. The
+# wrapper is what makes the rule hold for ways out the lint cannot see (a
+# library's own exit, a rebound os inside the excepthook, a kill).
 # A hook that times out does not: Claude Code lets the tool call go ahead
 # (hooks docs, PreToolUse timeouts), so the profiles give pre 10 s and post
 # 60 s, and on a timeout what still holds is the managed deny rules
@@ -94,7 +99,9 @@ def _invictus_env():
 
 try:
     env = _invictus_env()
-except Exception as e:  # fail closed: exit 1 would let the edit through
+except BaseException as e:  # fail closed: exit 1 would let the edit through. BaseException, not
+    # Exception: the helper runs through exec_module, so a SystemExit or KeyboardInterrupt it
+    # raises lands here too (Janus N-L1)
     print(f"claude-config-guard cannot load invictus_env ({type(e).__name__}); not allowed.", file=sys.stderr)
     sys.exit(2)
 
@@ -255,14 +262,14 @@ def main():
         try:
             setup()
             return pre(args[1])
-        except Exception as e:  # fail closed
+        except BaseException as e:  # fail closed (BaseException: a library's SystemExit too, N-L1)
             print(f"claude-config-guard could not check this edit ({e}); not allowed.", file=sys.stderr)
             return 2
     if args == ["post"]:
         try:
             setup()
             return post()
-        except Exception as e:
+        except BaseException as e:
             print(f"claude-config-guard could not check the result ({e}); run invictus-doctor --hypr.", file=sys.stderr)
             return 2
     print("claude-config-guard pre fixed|full | post", file=sys.stderr)
@@ -273,7 +280,14 @@ if __name__ == "__main__":
     # Only exit 2 blocks a PreToolUse call; any other non-zero lets it through.
     # So the guard exits 2 or 0 (falling off the end), nothing else.
     rc = main()
-    try:  # a failed flush at exit would end in 120, which lets the call through
+    # The flush only matters for rc != 0: os._exit(2) skips the interpreter's
+    # own flush, so a message still in a buffer would be lost (today every
+    # such path writes whole lines to stderr, which Python flushes per line,
+    # so this is belt and braces). It does not decide the exit code (Janus
+    # I-5): with rc 0 a failed flush at interpreter exit gives 120, which
+    # lets the call through just as 0 does, and with rc != 0 the finally
+    # below exits 2 whether or not the flush raised.
+    try:
         sys.stdout.flush()
         sys.stderr.flush()
     finally:

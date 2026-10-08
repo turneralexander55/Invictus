@@ -34,7 +34,13 @@ For each shipped Python script:
         __builtins__ outside such a call, an aliased import of sys or os,
         `from sys|os|posix import ...` of an exit name, importing builtins,
         signal, ctypes, posix, _thread, _signal or faulthandler, or getattr
-        on sys, os, builtins, signal or posix or with a computed name.
+        on sys, os, builtins, signal or posix or with a computed name;
+      * nothing binds or deletes the names os or sys except a plain
+        `import os` / `import sys` (Janus N-L1): the excepthook looks up
+        the global os when it runs, so `os = None`, `del os` or
+        `import posixpath as os` make the hook itself raise, and Python
+        then exits 1. The /bin/sh wrapper (claude-config-guard.sh) turns
+        that 1 into 2 as well; the lint names the edit that caused it.
 """
 import ast
 import os
@@ -141,6 +147,11 @@ def hook_problems(path, tree):
             bad.append(f"{path}:{node.lineno}: raise SystemExit in a hook without the literal 2 (only exit 2 blocks)")
             allowed.add(id(node.exc))
     for node in ast.walk(tree):
+        name = rebinds_os_sys(node)
+        if name:
+            bad.append(f"{path}:{getattr(node, 'lineno', '?')}: rebinds or deletes {name} (forbidden in a hook: "
+                       "the excepthook needs the real os and sys; Janus N-L1)")
+    for node in ast.walk(tree):
         if isinstance(node, ast.Attribute) and node.attr in EXIT_ATTRS and id(node) not in allowed:
             bad.append(f"{path}:{node.lineno}: .{node.attr} (forbidden in a hook: only sys.exit(2) or os._exit(2))")
         elif isinstance(node, ast.Name) and node.id in EXIT_NAMES and id(node) not in allowed:
@@ -156,6 +167,28 @@ def hook_problems(path, tree):
                     a.name == "*" or a.name in EXIT_ATTRS or a.asname for a in node.names)):
                 bad.append(f"{path}:{node.lineno}: from {node.module} import ... (forbidden in a hook)")
     return bad
+
+
+def rebinds_os_sys(node):
+    """The line of a binding or deletion of os or sys other than a plain import, else None."""
+    names = ("os", "sys")
+    if isinstance(node, ast.Name) and node.id in names and isinstance(node.ctx, (ast.Store, ast.Del)):
+        return node.id
+    if isinstance(node, ast.Import):
+        hit = [a.asname for a in node.names if a.asname in names]
+        return hit[0] if hit else None
+    if isinstance(node, ast.ImportFrom):
+        hit = [a.asname or a.name for a in node.names if (a.asname or a.name) in names]
+        return hit[0] if hit else None
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.ExceptHandler)) and node.name in names:
+        return node.name
+    if isinstance(node, ast.arg) and node.arg in names:
+        return node.arg
+    if isinstance(node, (ast.MatchAs, ast.MatchStar)) and node.name in names:
+        return node.name
+    if isinstance(node, (ast.Global, ast.Nonlocal)) and set(node.names) & set(names):
+        return sorted(set(node.names) & set(names))[0]
+    return None
 
 
 def hook_dir_problems(d):
