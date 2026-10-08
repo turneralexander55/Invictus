@@ -23,13 +23,18 @@
 #
 # Exit: pacman's code if pacman fails; 3 if the doctor finds a
 # problem after a good update; 0 otherwise.
-# Env (tests): INVICTUS_PACMAN, INVICTUS_SUDO, INVICTUS_DOCTOR, INVICTUS_PARU
+# Env (tests): INVICTUS_PACMAN, INVICTUS_SUDO, INVICTUS_DOCTOR, INVICTUS_PARU,
+#   INVICTUS_LIB (where lib/pacman.sh is), INVICTUS_SYS_ROOT (prefix for the
+#   ssh generator mask check)
 # ------------------------------------------------------------
 set -euo pipefail
 
 PACMAN="${INVICTUS_PACMAN:-pacman}"
 DOCTOR="${INVICTUS_DOCTOR:-invictus-doctor}"
 PARU="${INVICTUS_PARU:-paru}"
+# ssh_mask_overwrite (Janus P-L2): a dev install's unowned generator mask
+# shellcheck source=scripts/lib/pacman.sh
+. "${INVICTUS_LIB:-/usr/lib/invictus}/lib/pacman.sh"
 if [[ -n "${INVICTUS_SUDO+x}" ]]; then SUDO="$INVICTUS_SUDO"
 elif [[ $EUID -eq 0 ]]; then SUDO=""
 else SUDO="sudo"; fi
@@ -61,10 +66,13 @@ elif [[ "$(findmnt -no FSTYPE / 2>/dev/null)" == btrfs ]]; then
     echo "==> Note: / is btrfs but snap-pac is not installed, so no snapshot is taken"
 fi
 
-# The whole system at once. Never -Sy on its own.
-echo "==> ${SUDO:+$SUDO }$PACMAN -Syu ${CONFIRM[*]}"
+# The whole system at once. Never -Sy on its own. On a dev install from
+# before invictus-sys 0.2.0-5, pacman may replace the installer's unowned
+# ssh generator mask with the package's identical one (that path only).
+ssh_mask_overwrite
+echo "==> ${SUDO:+$SUDO }$PACMAN -Syu ${CONFIRM[*]} ${PACMAN_OVERWRITE[*]}"
 set +e
-${SUDO:+"$SUDO"} "$PACMAN" -Syu "${CONFIRM[@]}"
+${SUDO:+"$SUDO"} "$PACMAN" -Syu "${CONFIRM[@]}" "${PACMAN_OVERWRITE[@]}"
 rc=$?
 set -e
 if [[ $rc -ne 0 ]]; then

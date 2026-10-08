@@ -7,6 +7,8 @@
 # the system's own pacman.conf, so only packages from the configured repos
 # can come in (MUST A3).
 #
+#   ssh_mask_overwrite          PACMAN_OVERWRITE for a dev install's unowned
+#                               ssh generator mask (Janus P-L2)
 #   valid_package_name NAME     a plain repo package name or repo/name;
 #                               never an option, a path, a URL or a file
 #   pacman_install_needed CMD... runs CMD... -Syu --needed --noconfirm -- names
@@ -27,10 +29,30 @@ valid_package_name() {
     [[ "$1" =~ ^([a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9@._+-]*$ && ${#1} -le 128 ]]
 }
 
+# ssh_mask_overwrite: sets the array PACMAN_OVERWRITE for a -S transaction
+# (Janus P-L2). Dev installs from ISOs built before invictus-sys 0.2.0-5
+# have /etc/systemd/system-generators/systemd-ssh-generator -> /dev/null
+# written by the installer and owned by no package; pacman refuses
+# invictus-sys's own copy of that link ("exists in filesystem") and the
+# whole update stops. When exactly that link is there and no package owns
+# it, pacman may overwrite that one path, nothing else. Chosen over
+# removing the link first: the mask is never missing, even when the
+# transaction fails. Prefix for tests: INVICTUS_SYS_ROOT (dropped by the
+# installed callers).
+SSH_MASK=/etc/systemd/system-generators/systemd-ssh-generator
+ssh_mask_overwrite() {
+    local f="${INVICTUS_SYS_ROOT:-}$SSH_MASK"
+    PACMAN_OVERWRITE=()
+    if [[ -L "$f" && "$(readlink -- "$f")" == /dev/null ]] && ! "$PACMAN" -Qqo -- "$SSH_MASK" >/dev/null 2>&1; then
+        PACMAN_OVERWRITE=(--overwrite "$SSH_MASK")
+    fi
+}
+
 # pacman_install_needed NAME...: install (or keep) NAME... and update
 # everything else in the same transaction.
 pacman_install_needed() {
-    "${INHIBIT[@]}" "$PACMAN" -Syu --needed --noconfirm -- "$@"
+    ssh_mask_overwrite
+    "${INHIBIT[@]}" "$PACMAN" -Syu --needed --noconfirm "${PACMAN_OVERWRITE[@]}" -- "$@"
 }
 
 # pacman's own summary lines (LC_ALL=C) when the databases or the packages
