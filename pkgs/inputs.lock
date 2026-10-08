@@ -1,9 +1,9 @@
 # name version sha256-of-inputs: scripts/dev/pkg-inputs.py --update after a bump;
 # tests/pkgs/run.sh group 1b fails when a package's inputs change and its version does not.
 invictus-branding 0.1.0-1 0e92cc673d4828015bfdd22949cd733c4bc6630f82471418be528532bc45f637
-invictus-guardrails 0.2.0-6 103cbf0305540c91c928738d38dd08130d5d8e21de2a262a2b52d6da43bdbcdf
+invictus-guardrails 0.2.0-6 588fc0f340462261a4faee2c7131771b51cd026625ec3194beb6a57a3149a07b
 invictus-keyring 20260930-1 639ba14e858c4149a6ae8f1fa6126288328b44ad477f1e8e496274f71f44f04b
-invictus-sys 0.2.0-6 af6a809da3637ead80b1d5ac80b6b058a5c10ff04eabae26e59ce866a092e11a
+invictus-sys 0.2.0-6 d127f45ee4c4b85bc6277e904047acad58dec4d29ee65f120f956cb33db028fd
 invictus-tools 0.1.0-9 51dfac29a673fdc4888ada2cd557df13caf07971746946f68060cb7e01d74bc9
 invictus-tribune 0.2.0-3 8512c8fdeff74cc30eed0a5eae71e7dd9d19f538f06a1abafa892b4e94955a21
 invictus-atrium 0.2.0-1 064faa7e1865ffefba17f6c2fefe32d30da0a861ecd7a29679017a8ca6f60d01
