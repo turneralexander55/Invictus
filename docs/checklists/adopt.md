@@ -37,7 +37,7 @@ Leave `~/hyprdots` alone: your current desktop runs from it until step 7.
   git branch --show-current
   ```
   (The repo was renamed from hyprdots; GitHub shows it as "Invictus".
-  Moneta tells you the branch name if it has moved on.)
+  Cicero tells you the branch name if it has moved on.)
   You should see `Cloning into '/home/<you>/src/invictus'...` ending in
   `done.`, then `ccr-e2dd4715-j4vnyk` from the last command.
 

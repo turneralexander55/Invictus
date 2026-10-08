@@ -33,7 +33,7 @@ Card {
     nextEnabled: ready
     backVisible: wiz && wiz.index > 0
     laterLabel: failedSignIn || addressProblem !== "" ? "Later" : ""
-    note: busy ? "Adding Moneta. This can take a few minutes."
+    note: busy ? "Adding Cicero. This can take a few minutes."
         : failedSignIn ? "Not signed in yet. You can try again now, or sign in later from Help."
         : addressProblem !== "" ? addressProblem
         : problem
@@ -91,7 +91,7 @@ Card {
                 }
                 return
             }
-            // Moneta is on; only its settings did not take
+            // Cicero is on; only its settings did not take
             wiz.reload()
             wiz.choice = "ai"
             if (o.result === "provider-refused") {
@@ -102,7 +102,7 @@ Card {
                 addressProblem = "The key couldn't be saved. Try again, or ask Support."
                 return
             }
-            problem = "Moneta couldn't be added. Try again, or ask Support."
+            problem = "Cicero couldn't be added. Try again, or ask Support."
         })
     }
 
@@ -128,7 +128,7 @@ Card {
             Layout.fillHeight: true
             picked: step.picked === "ai"
             title: "An AI assistant"
-            line: "Moneta answers questions, by voice or typing, and fixes things after asking you."
+            line: "Cicero answers questions, by voice or typing, and fixes things after asking you."
             onPick: step.pickAi("")
             picture: Rectangle {
                 anchors.centerIn: parent

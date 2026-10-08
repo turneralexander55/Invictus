@@ -26,7 +26,7 @@ Before you start:
 ## 1. Get the ISO
 
 - [ ] Download `invictus-<date>-x86_64.iso` and its `.sha256` from the
-  GitHub run Moneta links (Actions, "iso", the run, "Artifacts", `iso`), or
+  GitHub run Cicero links (Actions, "iso", the run, "Artifacts", `iso`), or
   from the `iso-<date>` release when there is one.
 - [ ] Check it. In a terminal in the download folder:
   ```
@@ -226,7 +226,7 @@ time offline.
 
 ## What to send back
 
-Tell Moneta, with a phone photo where a screen looked wrong:
+Tell Cicero, with a phone photo where a screen looked wrong:
 1. Ventoy worked, or you needed dd (and what Ventoy showed).
 2. Hyprland or the fallback installer window on the live stick.
 3. Install time, and any error (with the log from step 5).

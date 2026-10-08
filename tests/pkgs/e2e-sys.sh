@@ -18,7 +18,7 @@
 #   6. HoldPkg under Custodia stops `pacman -R --noconfirm` of a held
 #      package; after `guardrails set libertas` it goes through
 #   7. Acta lands in the journal with its fields (when journald runs here)
-#   7a. the Moneta panel installed for real and run as tester: Full access
+#   7a. the Cicero panel installed for real and run as tester: Full access
 #      on and the switch to Custodia (the real verbs) restart its agent
 #      under the new profile, generic-cli comes and goes from the list, and
 #      root's stop ends the panel and its agent; the installed copy ignores
@@ -224,7 +224,7 @@ else
     echo "note  journald does not run in this container: Acta's journal fields are checked on a VM"
 fi
 
-# 7a. The Moneta panel, installed for real (its desktop depends skipped:
+# 7a. The Cicero panel, installed for real (its desktop depends skipped:
 # no kitty or Hyprland here), run as tester, driven by the real verbs: Full
 # access on restarts it with the full profile, the switch to Custodia
 # restarts it with the fixed one and takes generic-cli off the list, and
@@ -233,13 +233,13 @@ tu="$(id -u tester)"; th="$(getent passwd tester | cut -d: -f6)"
 (cd "$WORK/src/pkgs/own/invictus-tribune" && sudo -u builder PKGDEST="$WORK/out" makepkg -d --noconfirm >"$WORK/make-tribune.log" 2>&1) \
     || bad "makepkg invictus-tribune: $(tail -5 "$WORK/make-tribune.log")"
 if pacman -U -dd --noconfirm "$WORK"/out/invictus-tribune-*.pkg.tar.zst >"$WORK/tribune-install.log" 2>&1 \
-   && [[ "$(stat -c '%U %a' /usr/lib/invictus/moneta/moneta.py /usr/lib/invictus/moneta/mcp.py /usr/lib/invictus/claude-config-guard | sort -u)" == "root 755" ]] \
+   && [[ "$(stat -c '%U %a' /usr/lib/invictus/cicero/cicero.py /usr/lib/invictus/cicero/mcp.py /usr/lib/invictus/claude-config-guard | sort -u)" == "root 755" ]] \
    && [[ "$(stat -c '%U %a' /usr/share/invictus/providers/*/provider.toml /usr/share/invictus/guardrails/claude/*.json | sort -u)" == "root 644" ]] \
    && [[ "$(stat -c '%U %a' /etc/claude-code /usr/share/invictus/claude-plugin /usr/share/invictus/providers)" == "$(printf 'root 755\nroot 755\nroot 755')" ]] \
-   && [[ "$(readlink -f /usr/bin/tribune)" == /usr/lib/invictus/moneta/moneta.py ]]; then
+   && [[ "$(readlink -f /usr/bin/tribune)" == /usr/lib/invictus/cicero/cicero.py ]]; then
     ok "A8: invictus-tribune installs root-owned: panel 0755, providers and both profiles 0644, /etc/claude-code 0755 (no drop-ins from a home)"
 else
-    bad "invictus-tribune install: $(tail -3 "$WORK/tribune-install.log") $(stat -c '%U %a %n' /usr/lib/invictus/moneta/* /etc/claude-code 2>&1 | paste -sd' ')"
+    bad "invictus-tribune install: $(tail -3 "$WORK/tribune-install.log") $(stat -c '%U %a %n' /usr/lib/invictus/cicero/* /etc/claude-code 2>&1 | paste -sd' ')"
 fi
 # R2 (Minerva, release review 2c): the real Claude Code (our pin) under the
 # fixed profile loads our --plugin-dir plugin's MCP server, as the panel
@@ -260,7 +260,7 @@ cp /etc/hosts "$WORK/hosts"
 for h in api.anthropic.com anthropic.com console.anthropic.com statsig.anthropic.com mcp-proxy.anthropic.com \
     claude.ai www.claude.ai downloads.claude.ai claude.com platform.claude.com; do echo "0.0.0.0 $h" >> /etc/hosts; done
 mkdir -p "$th/r2"; chown tester "$th/r2"
-printf '{"mcpServers":{"homesrv":{"command":"/usr/bin/python3","args":["-I","/usr/lib/invictus/moneta/mcp.py"]}}}\n' > "$th/.claude.json"
+printf '{"mcpServers":{"homesrv":{"command":"/usr/bin/python3","args":["-I","/usr/lib/invictus/cicero/mcp.py"]}}}\n' > "$th/.claude.json"
 chown tester "$th/.claude.json"
 cc() { (cd "$th/r2" && timeout 120 sudo -u tester env -i HOME="$th" USER=tester PATH=/usr/bin:/bin TERM=dumb \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 /usr/bin/claude "$@" 2>&1); }
@@ -268,7 +268,7 @@ PLUG=(--plugin-dir /usr/share/invictus/claude-plugin)
 r2list="$(cc "${PLUG[@]}" mcp list)" || true
 r2get="$(cc "${PLUG[@]}" mcp get plugin:invictus:invictus)" || true
 if [[ "$(readlink /etc/claude-code/managed-settings.json)" == */fixed.json ]] \
-   && grep -qx 'plugin:invictus:invictus: /usr/bin/python3 -I /usr/lib/invictus/moneta/mcp.py - ✔ Connected' <<< "$r2list" \
+   && grep -qx 'plugin:invictus:invictus: /usr/bin/python3 -I /usr/lib/invictus/cicero/mcp.py - ✔ Connected' <<< "$r2list" \
    && ! grep -q homesrv <<< "$r2list" && grep -q 'Status: ✔ Connected' <<< "$r2get"; then
     ok "R2: claude-code $(pacman -Q claude-code | cut -d' ' -f2) under the fixed profile connects the --plugin-dir plugin's invictus server; a home server with the same command is dropped (strictPluginOnlyCustomization)"
 else bad "R2: fixed profile, mcp list: $(paste -sd'|' <<< "$r2list") get: $(paste -sd'|' <<< "$r2get" | cut -c1-200)"; fi
@@ -282,7 +282,7 @@ r2p="$(cc "${PLUG[@]}" -p "run the doctor tool" --output-format text)" || true
 r2doc="$(printf '%s\n' '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' \
     '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
     '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"doctor","arguments":{}}}' \
-    | timeout 120 sudo -u tester env -i HOME="$th" PATH=/usr/bin:/bin /usr/bin/python3 -I /usr/lib/invictus/moneta/mcp.py)" || true
+    | timeout 120 sudo -u tester env -i HOME="$th" PATH=/usr/bin:/bin /usr/bin/python3 -I /usr/lib/invictus/cicero/mcp.py)" || true
 r2txt="$(python3 -c 'import json, sys
 for line in sys.stdin:
     m = json.loads(line)
@@ -328,7 +328,7 @@ if waitfor '[[ $(grep -c "started claude-code" /tmp/tribune.log) == 3 ]]' && ! k
 else bad "custodia restart: $(cat /tmp/tribune.log) offered '$(offered)'"; fi
 /usr/lib/invictus/guardrails signal stop > "$WORK/stop.log" 2>&1
 if waitfor "! kill -0 $tpid 2>/dev/null" && ! pgrep -u tester -f 'sleep 300' >/dev/null && [[ ! -e "/run/user/$tu/invictus/tribune.sock" ]] \
-   && grep -q 'told 1 Moneta panel' "$WORK/stop.log"; then
+   && grep -q 'told 1 Cicero panel' "$WORK/stop.log"; then
     ok "NA2/G7: root's stop reaches the real panel through setpriv; the panel, its agent and its socket are gone"
 else bad "stop: $(cat "$WORK/stop.log") $(cat /tmp/tribune.log) $(pgrep -u tester -a 2>&1 | paste -sd' ')"; fi
 rm -f /usr/bin/claude
@@ -367,7 +367,7 @@ if [[ $rc == 0 && "$(cat /etc/invictus/ai)" == off && ! -e "$th/.claude/.credent
    && [[ "$(stat -c %U "$th/.claude.json")" == tester ]] && ! grep -q oauthAccount "$th/.claude.json" && grep -q numStartups "$th/.claude.json" \
    && [[ -f /etc/firefox/policies/policies.json && -f "/var/lib/invictus/ai-off-pending/$tu" ]] \
    && ! pacman -Q invictus-tribune >/dev/null 2>&1; then
-    ok "ai off as root: tester's credential file and account block removed by a process running as tester (real setpriv), memory kept, browser policy and pending marker written, the Moneta panel package removed"
+    ok "ai off as root: tester's credential file and account block removed by a process running as tester (real setpriv), memory kept, browser policy and pending marker written, the Cicero panel package removed"
 else
     bad "ai off: rc $rc: $(cat "$WORK/aioff.out"); $(find "$th" -maxdepth 2 -printf '%u %p\n' 2>&1 | paste -sd' ')"
 fi
@@ -379,7 +379,7 @@ rc=0; invictus-sys ai on > "$WORK/aion.out" 2>&1 || rc=$?
 if [[ $rc == 1 && "$(cat /etc/invictus/ai)" == on && ! -e /var/lib/invictus/ai-install-pending && ! -e /etc/firefox/policies/policies.json ]] \
    && [[ -z "$(ls -A /var/lib/invictus/ai-off-pending)" ]] \
    && grep -q 'Update first' "$WORK/aion.out" && grep -q 'invictus-sys: failed' "$WORK/aion.out" \
-   && grep -q 'target not found: invictus-moneta' "$WORK/aion.out"; then
+   && grep -q 'target not found: invictus-cicero' "$WORK/aion.out"; then
     ok "ai on with the AI set in no configured repo (real pacman): failed, exit 1, no pending marker; AI reads on, our browser policy and the ai-off markers are gone"
 else
     bad "ai on, not in a repo: rc $rc: $(tail -3 "$WORK/aion.out")"

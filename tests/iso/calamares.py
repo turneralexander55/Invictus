@@ -139,7 +139,7 @@ def check_extras():
         check(f"{v} extras: Games is offered", by.get("Games") == ["invictus-gaming"])
         check(f"{v} extras: CJK fonts are offered", by.get("Chinese, Japanese and Korean text") == ["noto-fonts-cjk"])
         check(f"{v} extras: no AI set on the page (design-no-ai.md N5)",
-              not ({"invictus-moneta", "invictus-voice", "claude-code"} & set(page)))
+              not ({"invictus-cicero", "invictus-voice", "claude-code"} & set(page)))
         title = ni["label"]["title"]
         # Calamares 3.4.2 page_netinst.ui: the title label does not wrap.
         check(f"{v} extras: the title says it needs internet, on one line (under 100 characters)",

@@ -32,7 +32,7 @@
 
 pkgname=invictus-desktop
 pkgver=0.3.0
-pkgrel=4
+pkgrel=5
 pkgdesc='Invictus desktop session shared by Tessera and Atrium, and its config'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
@@ -120,11 +120,11 @@ package() {
   local root="$startdir/../../.."
   local share="$pkgdir/usr/share/invictus"
 
-  # Shipped Hyprland modules: replaced on every update. moneta.lua (Super+A)
+  # Shipped Hyprland modules: replaced on every update. cicero.lua (Super+A)
   # belongs to invictus-tribune, the AI set: a No AI desktop has no panel.
   local m
   for m in "$root"/config/hypr/invictus/*.lua; do
-    [[ "${m##*/}" == moneta.lua ]] && continue
+    [[ "${m##*/}" == cicero.lua ]] && continue
     install -Dm644 -t "$share/hypr/invictus" "$m"
   done
 

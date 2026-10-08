@@ -1,13 +1,13 @@
 #!/usr/bin/python3 -I
 # ------------------------------------------------------------
-# The Moneta panel (code name tribune) and its provider layer (design 4.2).
-# Installed as /usr/lib/invictus/moneta/moneta.py by invictus-tribune, with
+# The Cicero panel (code name tribune) and its provider layer (design 4.2).
+# Installed as /usr/lib/invictus/cicero/cicero.py by invictus-tribune, with
 # two names in /usr/bin pointing at it:
 #
 #   invictus-provider ...   choose and set up who answers (Settings, the
-#                           first-start wizard); contract: docs/moneta-panel.md
+#                           first-start wizard); contract: docs/cicero-panel.md
 #   tribune [run]           the panel itself, inside the dropdown kitty that
-#                           Super+A opens (config/hypr/invictus/moneta.lua)
+#                           Super+A opens (config/hypr/invictus/cicero.lua)
 #   tribune chat            the chat client for api providers (the panel
 #                           starts it; chat only, it proposes and you press)
 #   tribune acta [-n N]     the last invictus-sys calls (Acta)
@@ -84,9 +84,9 @@ GRACE = float(env("TRIBUNE_GRACE", "5"))
 
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
 KEY_NAMESPACE = "invictus/provider"   # design-no-ai.md N4: ai off clears it
-CLI_OFF = "Moneta's command-line agent is off. Pick who answers in Settings > Moneta."
+CLI_OFF = "Cicero's command-line agent is off. Pick who answers in Settings > Cicero."
 AI_OFF = "AI is off on this computer. Settings > AI turns it on."
-NO_STATE = "Moneta cannot read the guard-rails state, so it does not start. Run invictus-doctor."
+NO_STATE = "Cicero cannot read the guard-rails state, so it does not start. Run invictus-doctor."
 
 EXIT_OK, EXIT_FAILED, EXIT_BAD, EXIT_REFUSED = 0, 1, 2, 3
 
@@ -215,7 +215,7 @@ def providers():
 
 
 def settings_path():
-    return os.path.join(config_dir(), "moneta.toml")
+    return os.path.join(config_dir(), "cicero.toml")
 
 
 def read_settings():
@@ -230,7 +230,7 @@ def _toml_str(s):
 
 
 def write_settings(data):
-    lines = ["# Written by invictus-provider (Settings > Moneta). Who answers in the Moneta panel."]
+    lines = ["# Written by invictus-provider (Settings > Cicero). Who answers in the Cicero panel."]
     if "provider" in data:
         lines.append(f"provider = {_toml_str(data['provider'])}")
     for section in sorted(k for k, v in data.items() if isinstance(v, dict)):
@@ -243,7 +243,7 @@ def write_settings(data):
                 lines.append(f"{k} = {_toml_str(str(v))}")
     d = config_dir()
     os.makedirs(d, mode=0o700, exist_ok=True)
-    tmp = os.path.join(d, f".moneta.toml.{secrets.token_hex(4)}")
+    tmp = os.path.join(d, f".cicero.toml.{secrets.token_hex(4)}")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:
         f.write("\n".join(lines) + "\n")
@@ -433,7 +433,7 @@ def _provider_set(rest, state):
     if own:
         s[name] = own
     write_settings(s)
-    print(f"Moneta now answers with {ext(p['label'])}.")
+    print(f"Cicero now answers with {ext(p['label'])}.")
     return EXIT_OK
 
 
@@ -457,7 +457,7 @@ def _provider_key(rest):
     if not key or len(key) > 4096 or any(c < " " for c in key):
         raise BadArgs("the key goes on stdin, one line")
     # The key travels on secret-tool's stdin, never on a command line.
-    r = subprocess.run([SECRET_TOOL, "store", f"--label=Moneta: {p['label']} key", *key_attrs(name, endpoint)],
+    r = subprocess.run([SECRET_TOOL, "store", f"--label=Cicero: {p['label']} key", *key_attrs(name, endpoint)],
                        input=key, text=True, check=False)
     if r.returncode != 0:
         print("invictus-provider: the keyring did not take the key (is it unlocked?)", file=sys.stderr)
@@ -465,13 +465,13 @@ def _provider_key(rest):
     return EXIT_OK
 
 
-PROVIDER_HELP = """invictus-provider: who answers in the Moneta panel (docs/moneta-panel.md)
+PROVIDER_HELP = """invictus-provider: who answers in the Cicero panel (docs/cicero-panel.md)
   list [--json]                         the providers you may pick now
   get [--json]                          the one picked, and whether it may run
   check                                 exit 0 if it may run, 3 and why if not
   set NAME [--endpoint URL] [--model M] [--command -- PROGRAM ARGS...]
   key set NAME                          the API key, one line on stdin, to the keyring
-  key clear [NAME]                      forget the keys (all Moneta keys without NAME)
+  key clear [NAME]                      forget the keys (all Cicero keys without NAME)
 Exit: 0 done, 1 failed, 2 bad arguments, 3 refused (guard rails, Full access, No AI)."""
 
 
@@ -531,7 +531,7 @@ def acta_cli(argv):
 PROPOSABLE = {"update", "install", "remove", "snapshot", "rollback", "service", "set-config", "report-collect"}
 SETTABLE = re.compile(r"^(nets\.[a-z-]+|flavor\.lock)$")
 
-SYSTEM_PROMPT = """You are Moneta, the assistant on this Invictus computer. You cannot run anything yourself.
+SYSTEM_PROMPT = """You are Cicero, the assistant on this Invictus computer. You cannot run anything yourself.
 When a change to the system would help, propose it as invictus-sys calls in a fenced block, one per line:
 ```invictus-sys
 install firefox
@@ -626,12 +626,12 @@ def chat_cli(argv):
         print(why or "The chosen provider is not a chat service.")
         return EXIT_REFUSED
     if not p.get("endpoint"):
-        print("No endpoint is set. Settings > Moneta, or: invictus-provider set NAME --endpoint URL")
+        print("No endpoint is set. Settings > Cicero, or: invictus-provider set NAME --endpoint URL")
         return EXIT_REFUSED
     try:
         check_endpoint(p["endpoint"])
     except BadArgs as e:
-        print(f"Moneta will not use this endpoint: {ext(e)}")
+        print(f"Cicero will not use this endpoint: {ext(e)}")
         return EXIT_REFUSED
     key = key_lookup(p["name"], p["endpoint"])
     thread = os.environ.get("INVICTUS_THREAD", "")  # not an override
@@ -639,7 +639,7 @@ def chat_cli(argv):
         thread = new_thread_id()
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     buttons = []
-    print(f"Moneta, through {ext(p['label'])} ({ext(p.get('model', ''))}). Chat only: it can propose, you decide.")
+    print(f"Cicero, through {ext(p['label'])} ({ext(p.get('model', ''))}). Chat only: it can propose, you decide.")
     print("Type and press Enter. A number runs a proposed action. /quit ends.\n")
     while True:
         try:
@@ -660,7 +660,7 @@ def chat_cli(argv):
                 buttons = []
                 continue
         messages.append({"role": "user", "content": line})
-        sys.stdout.write("Moneta: "); sys.stdout.flush()
+        sys.stdout.write("Cicero: "); sys.stdout.flush()
         try:
             reply = stream_reply(p, key, messages)
         except (urllib.error.URLError, OSError, ValueError, KeyError, IndexError, TypeError) as e:
@@ -729,7 +729,7 @@ class Panel:
                 probe.settimeout(1)
                 probe.connect(path)
                 probe.close()
-                print("Moneta is already open in another window.")
+                print("Cicero is already open in another window.")
                 raise SystemExit(EXIT_REFUSED)
             except OSError:
                 os.unlink(path)
@@ -785,12 +785,12 @@ class Panel:
             print(why)
             return False
         if p["kind"] == "none":
-            print("No assistant is set up. Pick one in Settings > Moneta.")
+            print("No assistant is set up. Pick one in Settings > Cicero.")
             return False
         if p["kind"] == "cli":
             argv = p.get("chat") or []
             if not argv:
-                print("No command is set for this agent. Settings > Moneta.")
+                print("No command is set for this agent. Settings > Cicero.")
                 return False
         else:
             argv = [sys.executable, "-I", os.path.realpath(__file__), "chat"]
@@ -885,7 +885,7 @@ class Panel:
         return EXIT_OK
 
     def header(self):
-        print("Moneta. Super+A shows and hides this panel. What invictus-sys changed: tribune acta")
+        print("Cicero. Super+A shows and hides this panel. What invictus-sys changed: tribune acta")
         rows = acta_lines(3)
         if rows:
             print("Last changes:\n  " + "\n  ".join(ext(r) for r in rows))
@@ -898,7 +898,7 @@ class Panel:
             if not running:
                 watch.append(sys.stdin)
                 if running is False:
-                    print("Press Enter to start Moneta again, or close this window.", flush=True)
+                    print("Press Enter to start Cicero again, or close this window.", flush=True)
                     running = None
             r, _, _ = select.select(watch, [], [], 0.5)
             if self.sock in r:
@@ -906,12 +906,12 @@ class Panel:
                 if msg == "stop":
                     if self.child:
                         self.stop_agent()
-                    print("Moneta stopped: AI was turned off on this computer.", flush=True)
+                    print("Cicero stopped: AI was turned off on this computer.", flush=True)
                     return
                 if msg == "restart-profile":
                     if self.child:
                         self.stop_agent()
-                    print("Moneta is starting again with the new rules.", flush=True)
+                    print("Cicero is starting again with the new rules.", flush=True)
                     running = self.start()
                     continue
             if sys.stdin in r:
@@ -924,7 +924,7 @@ class Panel:
                 self.reap()
                 self.child = None
                 self.take_terminal()
-                print("\nMoneta ended.", flush=True)
+                print("\nCicero ended.", flush=True)
                 running = False
 
 

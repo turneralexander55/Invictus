@@ -11,7 +11,7 @@ files["config/hypr"] = { read_globals = { "hl" } }
 -- Hyprland does, and logs loader order through LOADER_LOG.
 files["tests/hyprland-lua"] = {
     -- os.getenv is swapped to give each config load its own environment;
-    -- package.searchpath to hide a module (No AI: no moneta.lua on disk)
+    -- package.searchpath to hide a module (No AI: no cicero.lua on disk)
     globals = { "hl", "require", "LOADER_LOG", "os", "package" },
     ignore = {
         "542", -- empty if branch: used as a "this case is fine" arm in key parsing

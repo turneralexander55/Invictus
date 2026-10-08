@@ -303,7 +303,7 @@ pci_dev 0000:01:00.1 0x10de 0x040300   # NVIDIA audio only (no graphics)
 run_job extras.sh "$ROOTDIR"
 check "extras: an NVIDIA non-graphics device adds nothing" bash -c "! grep -q pacman '$FAKE_LOG'"
 
-for badpick in "linux" "invictus-moneta" "--config=/tmp/x" "invictus-office;reboot" "../etc/passwd"; do
+for badpick in "linux" "invictus-cicero" "--config=/tmp/x" "invictus-office;reboot" "../etc/passwd"; do
     extras_target extras-bad
     run_job extras.sh "$ROOTDIR" invictus-office "$badpick"; rc=$?
     check "F4: extras: skips '$badpick' with a warning and installs the rest" \

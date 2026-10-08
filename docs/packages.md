@@ -13,18 +13,18 @@ What each meta package is for, what is in it and why. Audit of Alex's old lists 
 | `invictus-office` | LibreOffice and the Office-metric fonts | Installer extra, ticked by default (not on the ISO) |
 | `invictus-gaming` | Steam, Proton GE, gamescope, MangoHud, GameMode, Lutris with umu. Needs `[multilib]` | Opt-in: installer extra |
 | `invictus-dev` | Build tools, git, Zed and VS Code, Node, Python, podman. No AI | Opt-in: installer extra |
-| `invictus-moneta` | The AI set's meta: Claude Code now; the Moneta panel, plugin and MCP server, providers and Collegium as they are built | Only when someone picks an AI (first start or Settings, `invictus-sys ai on`); never on a No AI machine |
+| `invictus-cicero` | The AI set's meta: Claude Code now; the Cicero panel, plugin and MCP server, providers and Collegium as they are built | Only when someone picks an AI (first start or Settings, `invictus-sys ai on`); never on a No AI machine |
 | `invictus-windows` | Placeholder: FreeRDP 3 and rootless podman for the Windows VM | Opt-in, Phase 4 |
 | `invictus-voice` | Placeholder: whisper.cpp with the Vulkan backend, both from `[extra]` | Opt-in, when `invictus-ptt` exists |
 
 Rules the tests hold (`tests/pkgs/run.sh`, group "package sets"):
-- One package, one set. The only intended overlap is `podman podman-compose crun` in dev and windows, so each works alone. A set may depend on another set: tessera, atrium, gaming, windows, voice and moneta depend on `invictus-desktop`.
-- No AI outside the AI set (design-no-ai.md N5): the AI set is `claude-code`, `invictus-moneta`, `invictus-voice`, `whisper-cpp`, `ggml-vulkan`, `invictus-collegium` and any local model package (`scripts/lib/ai-set.sh`). No other set or own package depends on it or suggests it, directly or through other sets. `tests/pkgs/run.sh` checks the PKGBUILDs; `tests/pkgs/no-ai-in-base.sh` (CI `no-ai-in-base`, NA3) checks the built repo with pacman's resolver before every publish, and `e2e-arch.sh` runs it too. `invictus-guardrails` and `invictus-sys` depend on nothing in the AI set.
+- One package, one set. The only intended overlap is `podman podman-compose crun` in dev and windows, so each works alone. A set may depend on another set: tessera, atrium, gaming, windows, voice and cicero depend on `invictus-desktop`.
+- No AI outside the AI set (design-no-ai.md N5): the AI set is `claude-code`, `invictus-cicero`, `invictus-voice`, `whisper-cpp`, `ggml-vulkan`, `invictus-collegium` and any local model package (`scripts/lib/ai-set.sh`). No other set or own package depends on it or suggests it, directly or through other sets. `tests/pkgs/run.sh` checks the PKGBUILDs; `tests/pkgs/no-ai-in-base.sh` (CI `no-ai-in-base`, NA3) checks the built repo with pacman's resolver before every publish, and `e2e-arch.sh` runs it too. `invictus-guardrails` and `invictus-sys` depend on nothing in the AI set.
 - `invictus-desktop` never relies on `invictus-base` (adopt installs it without base), so anything the shipped config or our scripts run comes from desktop, a flavour, our own packages or Arch's `base`.
 - A set names what we run or rely on directly, not the hard dependencies of what it names (`hyprland` already pulls `xorg-xwayland` and `mesa`'s VA-API driver comes with `mesa`).
 - `pkgs/meta/sources.txt` says where every name comes from (`core`, `extra`, `multilib`, `aur` built from `pkgs/aur`, `aur-paru`, `invictus`). `tests/pkgs/live-arch.sh` rechecks it against Arch and the AUR, checks each command in `tests/pkgs/fixtures/commands.txt` is a file of its package, and resolves every set in one transaction: no conflicts, and Steam gets `vulkan-radeon`/`lib32-vulkan-radeon`, never another driver.
 
-For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera invictus-atrium pipewire-jack` (`pipewire-jack` as a target so `jack` resolves to it, see desktop below; `invictus-guardrails` comes with `invictus-base`, design-simple-mode 6.1); office, gaming, dev and the CJK fonts are installer extras (see "Extras" below), windows is opt-in; moneta and voice (the AI set) are never on the ISO's install list, first start or Settings adds them. `calamares`, `limine-mkinitcpio-hook` and `limine-snapper-sync` are in `pkgs/aur` now (same names as `iso/aur-needed`, which can go). Installer jobs these sets need: enable `NetworkManager`, `bluetooth`, `sddm`, `power-profiles-daemon`, `cups.socket`, `avahi-daemon`, `paccache.timer`; add `mdns_minimal [NOTFOUND=return]` before `resolve` on the `hosts` line of `/etc/nsswitch.conf`; nothing for the keyring: Arch's `/etc/pam.d/sddm` already unlocks and starts gnome-keyring at login (`pam_gnome_keyring.so` in auth, password and session, checked in the sddm package).
+For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera invictus-atrium pipewire-jack` (`pipewire-jack` as a target so `jack` resolves to it, see desktop below; `invictus-guardrails` comes with `invictus-base`, design-simple-mode 6.1); office, gaming, dev and the CJK fonts are installer extras (see "Extras" below), windows is opt-in; cicero and voice (the AI set) are never on the ISO's install list, first start or Settings adds them. `calamares`, `limine-mkinitcpio-hook` and `limine-snapper-sync` are in `pkgs/aur` now (same names as `iso/aur-needed`, which can go). Installer jobs these sets need: enable `NetworkManager`, `bluetooth`, `sddm`, `power-profiles-daemon`, `cups.socket`, `avahi-daemon`, `paccache.timer`; add `mdns_minimal [NOTFOUND=return]` before `resolve` on the `hosts` line of `/etc/nsswitch.conf`; nothing for the keyring: Arch's `/etc/pam.d/sddm` already unlocks and starts gnome-keyring at login (`pam_gnome_keyring.so` in auth, password and session, checked in the sddm package).
 
 ## invictus-base
 
@@ -45,7 +45,7 @@ For the ISO (Vulcan 2): install `invictus-base invictus-desktop invictus-tessera
 | `openssh` | ssh and git over ssh (sshd stays off) | people, dev |
 | `polkit` | `invictus-sys` authorises through it | assistant, guard rails |
 | `pacman-contrib` | `paccache` cleanup | `paccache.timer` |
-| `invictus-guardrails` | The guard rails, on every installed machine (design-simple-mode 6.1); brings `invictus-sys`, the only door to root (design 4.1, `docs/invictus-sys.md`). Neither has a desktop dependency | installer, Settings, Moneta |
+| `invictus-guardrails` | The guard rails, on every installed machine (design-simple-mode 6.1); brings `invictus-sys`, the only door to root (design 4.1, `docs/invictus-sys.md`). Neither has a desktop dependency | installer, Settings, Cicero |
 | `sudo nano less tree man-db man-pages` | Everyday command line and manuals | people |
 | `unzip zip 7zip rsync usbutils lm_sensors` | Archives, copies, `lsusb`, temperatures | people, Desk later |
 
@@ -157,14 +157,14 @@ Optional: `vulkan-tools`, `lact` (AMD clocks and fans).
 | `podman podman-compose crun` | Rootless containers; crun named so podman does not ask | people |
 | `ripgrep fd jq` | Search, find, JSON | people, agents |
 
-Optional: `uv`, `rustup`, `go`, `shellcheck`, `distrobox`. Claude Code left dev for `invictus-moneta` (design-no-ai.md N5): a No AI machine can have the dev tools.
+Optional: `uv`, `rustup`, `go`, `shellcheck`, `distrobox`. Claude Code left dev for `invictus-cicero` (design-no-ai.md N5): a No AI machine can have the dev tools.
 
-## invictus-moneta (the AI set)
+## invictus-cicero (the AI set)
 
 | Package | Why | Used by |
 |---|---|---|
 | `invictus-desktop` | The panel is a desktop app | |
-| `claude-code` | Claude Code, from our pin in `pkgs/aur` | people, the Moneta panel later |
+| `claude-code` | Claude Code, from our pin in `pkgs/aur` | people, the Cicero panel later |
 
 Joins as built: the panel, the plugin and MCP server, the provider files, `invictus-collegium`. `/etc/claude-code/` and the managed profiles belong to `invictus-guardrails` on every machine, not to this set (design-no-ai.md N4).
 
@@ -227,7 +227,7 @@ Every AUR package a set names is built from a pin in `pkgs/aur` (`sources.txt` s
 | `spaceship-prompt` | desktop | 876c787 (4.22.5-1) | sha256 (no signature upstream) | FSPP | Vulcan | when the weekly check flags it |
 | `xwaylandvideobridge` | tessera | 6682410 (0.5.3-1) | KDE tarball signature | mhdi | Vulcan | when the weekly check flags it |
 | `zen-browser-bin` | desktop | f4c4f31 (1.22.3b-1) | sha256 only: Zen publishes no signature or checksum file; AUR's sum and ours agree | Larvey | Felix runs, Vulcan reviews | weekly (Firefox security fixes) |
-| `claude-code` | moneta | 5f4ea22 (2.1.285-1) | Anthropic-signed release manifest (key 31DD DE24 ... 1A7E CACE); the binary must match it | cg505 | Felix runs, Vulcan reviews | weekly |
+| `claude-code` | cicero | 5f4ea22 (2.1.285-1) | Anthropic-signed release manifest (key 31DD DE24 ... 1A7E CACE); the binary must match it | cg505 | Felix runs, Vulcan reviews | weekly |
 | `visual-studio-code-bin` | dev | 7fe1834 (1.139.1-1) | sha256 in Microsoft's signed apt index (`upstream-check.sh`) | dcelasun | Felix runs, Vulcan reviews | weekly |
 | `proton-ge-custom-bin` | gaming | 4b40426 (1:GE_Proton11_7-1) | sha512 (matches GE's `.sha512sum`; no signature) | eliteschw31n | Felix runs, Vulcan reviews | each GE release, about every two weeks |
 | `limine-mkinitcpio-hook` | base | 94ffde9 (1.40.0-1) | Zesko's signed git tag; GraalVM sha256; Gradle dependency checksums | Zesko | Vulcan | when the weekly check flags it; new Gradle deps need `scripts/dev/gradle-metadata.sh` |
@@ -239,9 +239,9 @@ Coming with later phases: `rustdesk-bin` (kuhtoxo) for `invictus-guardrails`.
 
 ### AUR pins: keeping them current
 
-- **Check (weekly, Monday).** `scripts/dev/bump-aur.sh --check` lists pins behind the AUR. The `aur-pins` workflow runs it every Monday at 06:17 UTC, but GitHub runs schedules only on the default branch, so until the work is on `main` Felix runs it by hand on Mondays and tells Moneta.
+- **Check (weekly, Monday).** `scripts/dev/bump-aur.sh --check` lists pins behind the AUR. The `aur-pins` workflow runs it every Monday at 06:17 UTC, but GitHub runs schedules only on the default branch, so until the work is on `main` Felix runs it by hand on Mondays and tells Cicero.
 - **Bump.** `scripts/dev/bump-aur.sh NAME --reviewer <name>` clones the AUR, prints its log and diff since our commit, applies it only if nothing but the version and checksums changed, recomputes every checksum by downloading (in an Arch container unless run on Arch), checks each one the AUR names came out the same, checks signatures (and `upstream-check.sh` where there is one), and moves the header lines. It never commits. If the AUR changed anything else (a new source, a build step, a helper file) it stops with exit 3: Vulcan merges that by hand and reruns with `--sums-only`.
-- **Who.** Felix (cheap, routine) runs the weekly bumps of zen, claude-code, VS Code and Proton GE, pastes the AUR diff into the hand-back, and Vulcan reviews before Moneta merges. Anything that stops with exit 3, 4 or 5 goes to Vulcan. Vulcan 2 owns calamares with the ISO.
+- **Who.** Felix (cheap, routine) runs the weekly bumps of zen, claude-code, VS Code and Proton GE, pastes the AUR diff into the hand-back, and Vulcan reviews before Cicero merges. Anything that stops with exit 3, 4 or 5 goes to Vulcan. Vulcan 2 owns calamares with the ISO.
 - **Proton GE's size.** About 560 MB download and a 500 MB package, under GitHub's 2 GiB per-asset limit (`build-repo.sh` refuses any package of 2 GiB or more). CI rebuilds and uploads it only when its version changes: the build job reuses the published file, and publish uploads only package files the release does not have yet. A cold CI build of every pin took about 15 minutes here (4 cores).
 - **Tests.** `tests/pkgs/run.sh` group 11 checks every pin's header, that no checksum is SKIP and that signers' keys match `validpgpkeys`; the `aur-pins` workflow builds every pin on its own when one changes. The e2e tests use empty stand-ins for the big ones (`tests/pkgs/fixtures/aur-heavy.txt`).
 

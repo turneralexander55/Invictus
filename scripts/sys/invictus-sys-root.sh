@@ -82,7 +82,7 @@ CALLER_UID="${PKEXEC_UID:-${INVICTUS_TEST_UID:-${SUDO_UID:-$EUID}}}"
 CALLER="$(getent passwd "$CALLER_UID" 2>/dev/null | cut -d: -f1)"
 [[ -n "$CALLER" ]] || CALLER="uid$CALLER_UID"
 # The process that ran pkexec is our parent (pkexec execs us in place):
-# its logind session, and the request id it carries (the Moneta thread),
+# its logind session, and the request id it carries (the Cicero thread),
 # both only labels for the record.
 SESSION="$(sed -nE 's/.*session-([A-Za-z0-9]+)\.scope.*/\1/p' "$PROC/$PPID/cgroup" 2>/dev/null | head -1 || true)"
 if [[ -n "${PKEXEC_UID:-}" ]]; then
@@ -272,7 +272,7 @@ ai_turn_off() {
     # The setting first: whatever fails below, every reader sees No AI.
     write_ai off
     rm -f "$AI_PENDING"; "$SYSTEMCTL" disable --now invictus-ai-pending.service >/dev/null 2>&1 || true
-    # N4.3: full access goes with it, the profile follows, Moneta stops (N3 step 1).
+    # N4.3: full access goes with it, the profile follows, Cicero stops (N3 step 1).
     echo "full-access = off" > "$ETC/assistant.new"; chmod 644 "$ETC/assistant.new"; mv -f "$ETC/assistant.new" "$ETC/assistant"
     if [[ -x "$GUARDRAILS" ]]; then
         "$GUARDRAILS" apply >/dev/null || say "guardrails apply failed; run invictus-sys guardrails check"
@@ -381,7 +381,7 @@ case "$VERB" in
 
     assistant-full-access)
         val="$1"
-        [[ "$RAILS" == libertas ]] || refuse "Moneta's full access is off while the guard rails are Custodia"
+        [[ "$RAILS" == libertas ]] || refuse "Cicero's full access is off while the guard rails are Custodia"
         [[ "$val" == off || "$(gr_ai)" == on ]] || refuse "there is no AI on this computer (No AI)"
         mkdir -p "$ETC"
         with_pair write_full_access "$val" || rc=$?

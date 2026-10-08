@@ -66,7 +66,7 @@ jobs:
       - name: Hyprland Lua config tests
         run: LUA=lua5.4 tests/hyprland-lua/run.sh
       - name: Package tests
-        # Groups 14-17 (invictus-sys, polkit rules, guard rails, the Moneta
+        # Groups 14-17 (invictus-sys, polkit rules, guard rails, the Cicero
         # panel) need node, python3 (3.11+ for tomllib) and visudo; the
         # runner image has all three.
         run: |
@@ -96,7 +96,7 @@ jobs:
     container: archlinux:base-devel
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: invictus-sys, the guard rails and the Moneta panel with real polkitd, pkexec, pacman and visudo
+      - name: invictus-sys, the guard rails and the Cicero panel with real polkitd, pkexec, pacman and visudo
         run: bash tests/pkgs/e2e-sys.sh "$GITHUB_WORKSPACE"
 
   firstboot-qml:

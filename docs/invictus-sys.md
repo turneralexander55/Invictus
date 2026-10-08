@@ -1,6 +1,6 @@
 # invictus-sys: verb reference
 
-`invictus-sys` is the only door to root on Invictus (design 4.1). Settings, the Help panel, the Moneta panel (part 6), the Desk and people in a terminal all call the same command. This page is the contract: verbs, arguments, polkit action ids, output and exit codes. Change it only with a design note, a test and, for anything in the Custodia tier 1 list, Minerva's review (SM22 standing rule).
+`invictus-sys` is the only door to root on Invictus (design 4.1). Settings, the Help panel, the Cicero panel (part 6), the Desk and people in a terminal all call the same command. This page is the contract: verbs, arguments, polkit action ids, output and exit codes. Change it only with a design note, a test and, for anything in the Custodia tier 1 list, Minerva's review (SM22 standing rule).
 
 Packages: `invictus-sys` (the command, the root helper, the polkit policy, the shared libs, `ai-signout`, `ai-pending` and its service) and `invictus-guardrails` (the guard rails it switches). Source: `scripts/sys/`, `scripts/guardrails/`, `scripts/lib/{sys-verbs,pacman,acta,guardrails-state,ai-set}.sh`. Tests: `tests/pkgs/sys.sh` (groups 14 to 16 of `tests/pkgs/run.sh`).
 
@@ -17,7 +17,7 @@ invictus-sys [--request ID] VERB ARGS
 
 Running as root (installer, a root terminal) skips pkexec. Every verb is its own polkit action, so a password typed for one never covers another (MUST A10). The polkit messages carry no arguments: the root helper checks them only after the password, and any program can call pkexec directly. The Invictus polkit agent shows plain words from `/usr/share/invictus/guardrails/messages.tsv` instead (G1), filling `{args}` only after `sys_validate` accepts them.
 
-`--request ID` (letters, digits, `._:-`, up to 64) labels the call in Acta: the Moneta panel passes its thread id. It is read from the environment of the process that ran pkexec, so it is a label, never trusted for anything else.
+`--request ID` (letters, digits, `._:-`, up to 64) labels the call in Acta: the Cicero panel passes its thread id. It is read from the environment of the process that ran pkexec, so it is a label, never trusted for anything else.
 
 ## Verbs
 
@@ -30,9 +30,9 @@ Running as root (installer, a root terminal) skips pkexec. Every verb is its own
 | `rollback ID` | `rollback` | password, kept | password, kept | booted into snapshot ID: `limine-snapper-restore`. Otherwise writes `/var/lib/invictus/rollback-pending` and says how to pick it in the boot menu. Never restarts the computer |
 | `service enable\|disable\|restart UNIT` | `service` | password, kept | password, kept | `systemctl enable --now`, `disable --now` or `restart`, for units in `/usr/share/invictus/sys/services.allow` only |
 | `set-config KEY on\|off` | `set-config` | password, kept | `nets.*` refused | keys: `nets.pre-admin-snapshot`, `nets.auto-update`, `nets.boot-guard`, `nets.home-snapshots` (`/etc/invictus/nets`), `flavor.lock` (`/etc/invictus/flavor.lock`) |
-| `set-config assistant.full-access on\|off` | `assistant-full-access` | password, never kept | refused | `/etc/invictus/assistant`; `on` also needs AI on (`/etc/invictus/ai`); relinks the managed profile and tells the Moneta panel |
-| `ai on` | `ai-on` | password, never kept | password, never kept | `/etc/invictus/ai` on; removes our browser policy; `pacman -Syu --needed -- invictus-moneta`. No connection: result `pending`, `/var/lib/invictus/ai-install-pending`, and `invictus-ai-pending.service` installs it later (only while AI still reads on) |
-| `ai off` | `ai-off` | no password for an admin (`wheel`) at their own active desktop; anyone else, or from anywhere else, a password (design-no-ai.md N1, revised 2026-10-01) | same | No AI: `/etc/invictus/ai` off, pending install cancelled, full access off, the Moneta panel told `stop`, the Firefox `GenerativeAI` policy written (never over someone else's `policies.json`), each person signed out by a process running as them (`claude auth logout` for you only, then `~/.claude/.credentials.json` and the `oauthAccount` block; memory kept), `/var/lib/invictus/ai-off-pending/<uid>` for their keyring at next login, then `pacman -Rs` of the installed AI set |
+| `set-config assistant.full-access on\|off` | `assistant-full-access` | password, never kept | refused | `/etc/invictus/assistant`; `on` also needs AI on (`/etc/invictus/ai`); relinks the managed profile and tells the Cicero panel |
+| `ai on` | `ai-on` | password, never kept | password, never kept | `/etc/invictus/ai` on; removes our browser policy; `pacman -Syu --needed -- invictus-cicero`. No connection: result `pending`, `/var/lib/invictus/ai-install-pending`, and `invictus-ai-pending.service` installs it later (only while AI still reads on) |
+| `ai off` | `ai-off` | no password for an admin (`wheel`) at their own active desktop; anyone else, or from anywhere else, a password (design-no-ai.md N1, revised 2026-10-01) | same | No AI: `/etc/invictus/ai` off, pending install cancelled, full access off, the Cicero panel told `stop`, the Firefox `GenerativeAI` policy written (never over someone else's `policies.json`), each person signed out by a process running as them (`claude auth logout` for you only, then `~/.claude/.credentials.json` and the `oauthAccount` block; memory kept), `/var/lib/invictus/ai-off-pending/<uid>` for their keyring at next login, then `pacman -Rs` of the installed AI set |
 | `report-collect` | `report-collect` | password, kept | tier 1 | this boot's errors from the journal to `/var/lib/invictus/report/` (root:wheel 0640, last 5 kept). Sends nothing |
 | `guardrails set libertas [--for 1h]` | `guardrails-libertas` | (already) | password, never kept; agent hold list | snapshot "Before: guard rails off" first, then the switch; `--for` 1m to 7d writes `/etc/invictus/guardrails-until` and arms the expiry timer |
 | `guardrails set custodia` | `guardrails-custodia` | no password from your own active desktop; elsewhere a password | (already) | instant switch; clears cached sudo and polkit credentials; turns full access off |
@@ -74,9 +74,9 @@ Every call writes one journal entry, `SYSLOG_IDENTIFIER=invictus-sys`, with fiel
 journalctl -t invictus-sys -o json
 ```
 
-## For the Moneta panel (part 6)
+## For the Cicero panel (part 6)
 
-Built in `invictus-tribune` (branch invictus-panel); its own contract, including the provider setup the wizard calls, is `docs/moneta-panel.md`. What it relies on here:
+Built in `invictus-tribune` (branch invictus-panel); its own contract, including the provider setup the wizard calls, is `docs/cicero-panel.md`. What it relies on here:
 
 
 - Call `invictus-sys --request <thread id> VERB ...` as the user; never `pkexec` or the root helper directly.

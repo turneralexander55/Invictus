@@ -1,8 +1,8 @@
 #!/usr/bin/python3 -I
 # ------------------------------------------------------------
 # The Invictus MCP server (design 4.2, design-simple-mode 4.2): structured
-# calls for Claude Code, so Moneta can act with no shell at all (the fixed
-# profile denies Bash). Installed as /usr/lib/invictus/moneta/mcp.py by
+# calls for Claude Code, so Cicero can act with no shell at all (the fixed
+# profile denies Bash). Installed as /usr/lib/invictus/cicero/mcp.py by
 # invictus-tribune; the Invictus plugin's .mcp.json starts it.
 #
 # Each tool is a thin client of a command the person could type: invictus-sys

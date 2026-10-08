@@ -78,7 +78,7 @@ end
 -- Hyprland yet. Slides are for Showcase only: Calm has no slides.
 if level == "showcase" then
     hl.layer_rule({ name = "motion-waybar",       match = { namespace = "waybar" },       animation = "slide top" })
-    hl.layer_rule({ name = "motion-moneta-panel", match = { namespace = "moneta-panel" }, animation = "slide right" })
+    hl.layer_rule({ name = "motion-cicero-panel", match = { namespace = "cicero-panel" }, animation = "slide right" })
 end
 
 return { level = level, leaves = LEAVES }

@@ -9,8 +9,8 @@
 # Add a package here when it joins the set (a local model runtime,
 # invictus-collegium when it exists).
 # shellcheck disable=SC2034 # read by the scripts that source this
-AI_METAS="invictus-moneta invictus-voice"
+AI_METAS="invictus-cicero invictus-voice"
 # shellcheck disable=SC2034
 AI_PKGS="claude-code invictus-tribune whisper-cpp ggml-vulkan invictus-collegium $AI_METAS"
 # shellcheck disable=SC2034
-AI_ON_INSTALL="invictus-moneta"
+AI_ON_INSTALL="invictus-cicero"

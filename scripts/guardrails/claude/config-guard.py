@@ -23,7 +23,7 @@
 #        monitors.lua, waybar's config) are the person's or a tool's: any of
 #        them can start a program (hl.exec_cmd, waybar exec/on-click).
 #      full (Full access): ~/.config/hypr/user.lua, ~/.config/hypr/monitors.lua,
-#        ~/.config/invictus/** (not moneta.toml or providers/: who answers is
+#        ~/.config/invictus/** (not cicero.toml or providers/: who answers is
 #        the person's choice, T7; not theme-hooks.d/: invictus-theme apply
 #        runs what is there, Janus I5), ~/.config/waybar/**, and any path in
 #        the home whose first part does not start with a dot (projects,
@@ -33,7 +33,7 @@
 #      allowed edit of an existing file, a copy goes to
 #      ~/.local/state/invictus/backups/<time>/<path in home>.
 # post: after an edit under ~/.config/hypr, `invictus-doctor --hypr`; if it
-#      fails, the backup goes back (or the new file is removed) and Moneta is
+#      fails, the backup goes back (or the new file is removed) and Cicero is
 #      told why.
 # Any error in pre blocks the edit (exit 2): a broken guard fails closed.
 # Python exits 1 on an uncaught exception, and exit 1 lets a PreToolUse call
@@ -126,7 +126,7 @@ FIXED_ALLOW = (
 # full
 ALLOW_FILES = (".config/hypr/user.lua", ".config/hypr/monitors.lua")
 ALLOW_TREES = (".config/invictus", ".config/waybar")
-NEVER = (".config/invictus/moneta.toml", ".config/invictus/providers",
+NEVER = (".config/invictus/cicero.toml", ".config/invictus/providers",
          ".config/invictus/theme-hooks.d")  # programs invictus-theme apply runs (Janus I5)
 
 
@@ -152,7 +152,7 @@ def on_allowlist(rel, profile):
 def decide(path, profile):
     """None if allowed, else the reason."""
     if not path or not os.path.isabs(path) or "\0" in path:
-        return "Moneta edits files by their full path only."
+        return "Cicero edits files by their full path only."
     given = os.path.normpath(path)
     real = os.path.realpath(path)
     if profile != "full":
@@ -165,19 +165,19 @@ def decide(path, profile):
             st = None
         if st is not None and (not stat.S_ISREG(st.st_mode) or st.st_nlink > 1):
             return (f"{path} is a link to another file or not a plain file; "
-                    "Moneta does not edit it here.")
+                    "Cicero does not edit it here.")
     for p in (given, real):
         rel = rel_in_home(p)
         if rel is None:
-            return f"{path} is outside your home folder; Moneta does not edit it."
+            return f"{path} is outside your home folder; Cicero does not edit it."
         if on_allowlist(rel, profile):
             continue
         if profile == "full" and not rel.split("/", 1)[0].startswith("."):
             continue
         if profile == "full":
-            return (f"{path} is a settings file Moneta may not change. It may change ~/.config/hypr/user.lua, "
+            return (f"{path} is a settings file Cicero may not change. It may change ~/.config/hypr/user.lua, "
                     "monitors.lua, ~/.config/waybar and ~/.config/invictus.")
-        return (f"{path} is not one Moneta may change here. It may change themes in ~/.config/invictus/themes, "
+        return (f"{path} is not one Cicero may change here. It may change themes in ~/.config/invictus/themes, "
                 "the motion level and waybar's style sheets; anything else is yours to do.")
     return None
 

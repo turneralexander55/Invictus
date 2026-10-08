@@ -104,8 +104,8 @@
   </action>
 
   <action id="org.invictus.sys.assistant-full-access">
-    <description>Change what Moneta may use</description>
-    <message>Type your password to change Moneta&apos;s full access. With it on, Moneta can read everything you can on this computer, your files, mail and saved passwords included, and something it reads, like a web page or a message, could trick it into asking you for a change you did not want. It still waits for your yes each time, so say yes only to what you understand.</message>
+    <description>Change what Cicero may use</description>
+    <message>Type your password to change Cicero&apos;s full access. With it on, Cicero can read everything you can on this computer, your files, mail and saved passwords included, and something it reads, like a web page or a message, could trick it into asking you for a change you did not want. It still waits for your yes each time, so say yes only to what you understand.</message>
     <defaults>
       <allow_any>auth_admin</allow_any>
       <allow_inactive>auth_admin</allow_inactive>
@@ -120,7 +120,7 @@
        (40-invictus-guardrails.rules), a password from anywhere else. -->
   <action id="org.invictus.sys.ai-on">
     <description>Add an AI assistant to this computer</description>
-    <message>Type your password to add Moneta, an AI assistant, to this computer. It asks before it changes anything. Undo: Settings &gt; AI &gt; No AI.</message>
+    <message>Type your password to add Cicero, an AI assistant, to this computer. It asks before it changes anything. Undo: Settings &gt; AI &gt; No AI.</message>
     <defaults>
       <allow_any>auth_admin</allow_any>
       <allow_inactive>auth_admin</allow_inactive>

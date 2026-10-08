@@ -37,7 +37,7 @@
 
 pkgname=invictus-guardrails
 pkgver=0.2.0
-pkgrel=6
+pkgrel=7
 pkgdesc='Invictus guard rails: Custodia or Libertas, switched live, with the silent safety nets'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'

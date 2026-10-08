@@ -223,7 +223,7 @@ check_guardrails() {
     for n in pre-admin-snapshot auto-update boot-guard home-snapshots; do
         [[ "$(val "net.$n")" == off ]] && note "guard rails: safety net $n is off"
     done
-    [[ "$(val full-access)" == on ]] && note "guard rails: Moneta has full access (terminal and every tool)"
+    [[ "$(val full-access)" == on ]] && note "guard rails: Cicero has full access (terminal and every tool)"
     if "$GUARDRAILS" apply --check >/dev/null 2>&1; then ok "guard rails: the derived files match (sudoers and polkit rules only when run as root)"
     else warn "guard rails: the derived files do not match (sudo invictus-sys guardrails apply)"; fi
 }

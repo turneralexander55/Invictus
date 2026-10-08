@@ -1,23 +1,23 @@
 --------------------------------------------------------------------------------
 --                                                                            --
---                               MONETA PANEL                                 --
+--                               CICERO PANEL                                 --
 --                                                                            --
 --------------------------------------------------------------------------------
--- Super+A shows and hides the Moneta panel (code name tribune, design 4.2): a
--- kitty on the special workspace "moneta" running /usr/bin/tribune, which
+-- Super+A shows and hides the Cicero panel (code name tribune, design 4.2): a
+-- kitty on the special workspace "cicero" running /usr/bin/tribune, which
 -- starts whoever answers (Claude Code, another agent or a chat service).
 --
 -- Installed by invictus-tribune (the AI set), not invictus-desktop: on a No AI
 -- computer this file is absent, core.lua's protected require finds nothing,
--- and there is no Super+A (no-ai.md: "no Moneta panel, no Super+A").
+-- and there is no Super+A (no-ai.md: "no Cicero panel, no Super+A").
 --------------------------------------------------------------------------------
 
 local apps = require("invictus.variables")
 
 local M = {
-    workspace = "special:moneta",
-    class     = "invictus-moneta",
-    command   = "kitty --class invictus-moneta --title Moneta /usr/bin/tribune",
+    workspace = "special:cicero",
+    class     = "invictus-cicero",
+    command   = "kitty --class invictus-cicero --title Cicero /usr/bin/tribune",
 }
 
 -- The first Super+A shows the empty special workspace, which starts the
@@ -26,13 +26,13 @@ local M = {
 hl.workspace_rule({ workspace = M.workspace, on_created_empty = M.command })
 
 hl.window_rule({
-    name  = "moneta-panel-workspace",
-    match = { class = "^invictus-moneta$" },
+    name  = "cicero-panel-workspace",
+    match = { class = "^invictus-cicero$" },
 
     workspace = M.workspace .. " silent",
 })
 
-hl.bind(apps.mainMod .. " + A", hl.dsp.workspace.toggle_special("moneta"),
-        { description = "Moneta: show/hide the Moneta panel" })
+hl.bind(apps.mainMod .. " + A", hl.dsp.workspace.toggle_special("cicero"),
+        { description = "Cicero: show/hide the Cicero panel" })
 
 return M

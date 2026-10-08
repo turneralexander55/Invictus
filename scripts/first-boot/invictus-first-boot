@@ -22,7 +22,7 @@ subcommand prints one JSON object on stdout. Installed as
   invictus-first-boot assistant claude|home|other|none [--address A]
                                            step 3 (no-ai.md 2): `invictus-sys ai on`
                                            (the password) then `invictus-provider set`
-                                           (docs/moneta-panel.md); `none` runs `ai off`
+                                           (docs/cicero-panel.md); `none` runs `ai off`
                                            only if AI is on. For `other` the key comes
                                            on stdin and goes to `invictus-provider key
                                            set` on its stdin
@@ -503,8 +503,8 @@ def apply_look(theme, motion, apps):
 
 # ---------------------------------------------------------------- the assistant
 #
-# The provider layer is Vulcan's `invictus-provider` (docs/moneta-panel.md, the
-# contract; package invictus-tribune, pulled by invictus-moneta, so it exists
+# The provider layer is Vulcan's `invictus-provider` (docs/cicero-panel.md, the
+# contract; package invictus-tribune, pulled by invictus-cicero, so it exists
 # only once `invictus-sys ai on` has installed the AI set). First start only
 # calls its documented commands: `set claude-code`; `set openai-compatible
 # --endpoint URL`; `key set openai-compatible` with the key on stdin. Exit
@@ -586,7 +586,7 @@ def cmd_assistant(args):
         if not key:
             raise Fail("another AI service needs its key on stdin", 2)
 
-    # 1. The password: add Moneta (org.invictus.sys.ai-on, auth_admin, never
+    # 1. The password: add Cicero (org.invictus.sys.ai-on, auth_admin, never
     #    kept; no-ai.md 2.2 step 1). Cancelled changes nothing.
     result = "ok"
     if ai_state() != "on":
@@ -633,7 +633,7 @@ def cmd_apply_pending(args=(), quiet=False):
     is installed. Run by every `start` (Hyprland's autostart), so it happens at
     the first session after the packages arrived. Tried until it is set, or
     once when invictus-provider refuses it (that will not change; Janus L4).
-    A key for another service is never kept: Settings > Moneta asks for it
+    A key for another service is never kept: Settings > Cicero asks for it
     (the Not signed in state)."""
     if args:
         raise Fail("usage: apply-pending", 2)
@@ -657,7 +657,7 @@ def cmd_apply_pending(args=(), quiet=False):
             update_record(provider_pending=False, provider_result=result, provider_tries=tries)
         elif tries >= PENDING_TRIES:
             # the keyring or something else keeps failing: stop after a few
-            # sessions; Settings > Moneta can still set it up
+            # sessions; Settings > Cicero can still set it up
             result = f"dropped: failed {tries} times"
             update_record(provider_pending=False, provider_result=result, provider_tries=tries)
         else:
@@ -669,7 +669,7 @@ def cmd_apply_pending(args=(), quiet=False):
 
 def claude_login_argv():
     """The `login` argv from the shipped claude-code provider file (root-owned;
-    a file in the home never replaces a shipped one, docs/moneta-panel.md)."""
+    a file in the home never replaces a shipped one, docs/cicero-panel.md)."""
     import tomllib
     try:
         with open(share_dir() / "providers" / "claude-code" / "provider.toml", "rb") as f:

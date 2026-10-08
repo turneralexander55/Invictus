@@ -1,8 +1,8 @@
-# Group 17 of tests/pkgs/run.sh (through moneta.sh): the Moneta panel
+# Group 17 of tests/pkgs/run.sh (through cicero.sh): the Cicero panel
 # (tribune), the provider layer, the chat client, the MCP server and the A6
 # config guard. Prints "ok    ..." or "FAIL  ..." lines; exit 1 on any FAIL.
 #
-# usage: python3 -I moneta_tests.py REPO TMPDIR
+# usage: python3 -I cicero_tests.py REPO TMPDIR
 #
 # Faked at the seam: `guardrails status` (a script reading a state file),
 # secret-tool, invictus-sys, invictus-doctor and journalctl (recorders), the
@@ -22,8 +22,8 @@ import threading
 import time
 
 REPO, TMP = sys.argv[1], sys.argv[2]
-MON = os.path.join(REPO, "scripts/moneta/moneta.py")
-MCP = os.path.join(REPO, "scripts/moneta/mcp.py")
+MON = os.path.join(REPO, "scripts/cicero/cicero.py")
+MCP = os.path.join(REPO, "scripts/cicero/mcp.py")
 GUARD = os.path.join(REPO, "scripts/guardrails/claude/config-guard.py")
 PY = sys.executable
 FAILED = 0
@@ -44,7 +44,7 @@ def check(cond, good, failmsg):
     return cond
 
 
-W = os.path.join(TMP, "moneta")
+W = os.path.join(TMP, "cicero")
 shutil.rmtree(W, ignore_errors=True)
 FAKE = os.path.join(W, "fake")
 os.makedirs(FAKE)
@@ -77,7 +77,7 @@ AGENT = script("agent", 'echo "$$" >> "$FAKE_LOG.agent"\n'
 SHELL_AGENT = script("shell-agent", 'echo ran >> "$FAKE_LOG.shell"\nsleep 300\n')
 
 SYSPROV = os.path.join(W, "providers")
-shutil.copytree(os.path.join(REPO, "scripts/moneta/providers"), SYSPROV)
+shutil.copytree(os.path.join(REPO, "scripts/cicero/providers"), SYSPROV)
 # The shipped claude-code provider runs /usr/bin/claude; here, the fake agent.
 with open(os.path.join(SYSPROV, "claude-code/provider.toml")) as f:
     shipped_claude = f.read()
@@ -129,7 +129,7 @@ def reset_logs():
 
 def settings(text):
     os.makedirs(os.path.join(CONF, "invictus"), exist_ok=True)
-    with open(os.path.join(CONF, "invictus/moneta.toml"), "w") as f:
+    with open(os.path.join(CONF, "invictus/cicero.toml"), "w") as f:
         f.write(text)
 
 
@@ -152,7 +152,7 @@ def pids(name):
 
 
 # ---- provider layer -------------------------------------------------------------------
-print("== Moneta: provider layer", flush=True)
+print("== Cicero: provider layer", flush=True)
 state()
 r = provider("list", "--json")
 rows = {x["name"]: x for x in json.loads(r.stdout or "[]")} if r.returncode == 0 else {}
@@ -195,19 +195,19 @@ offered = sorted(x["name"] for x in json.loads(r.stdout or "[]") if x["offered"]
 check(offered == ["none"], "unreadable guard-rails state: only none (fails closed)", f"no state: {offered}")
 
 state("custodia", "on")
-before = read(os.path.join(CONF, "invictus/moneta.toml"), None)
+before = read(os.path.join(CONF, "invictus/cicero.toml"), None)
 r = provider("set", "generic-cli", "--command", "--", SHELL_AGENT)
 check(r.returncode == 3 and "command-line agent is off" in r.stderr
-      and read(os.path.join(CONF, "invictus/moneta.toml"), None) == before,
+      and read(os.path.join(CONF, "invictus/cicero.toml"), None) == before,
       "SM10: under Custodia `set generic-cli` is refused (exit 3) and the settings file is unchanged",
       f"set generic-cli under custodia: rc {r.returncode} {r.stderr}")
 
 state("libertas", "on")
 r = provider("set", "generic-cli", "--command", "--", SHELL_AGENT, "-x")
-mode = stat.S_IMODE(os.stat(os.path.join(CONF, "invictus/moneta.toml")).st_mode) if r.returncode == 0 else 0
+mode = stat.S_IMODE(os.stat(os.path.join(CONF, "invictus/cicero.toml")).st_mode) if r.returncode == 0 else 0
 got = json.loads(provider("get", "--json").stdout or "{}")
 check(r.returncode == 0 and mode == 0o600 and got.get("name") == "generic-cli" and got.get("permitted"),
-      "Libertas + Full access: generic-cli set with its command; moneta.toml is 0600",
+      "Libertas + Full access: generic-cli set with its command; cicero.toml is 0600",
       f"set generic-cli: rc {r.returncode} {r.stderr} mode {oct(mode)} get {got}")
 state("libertas", "off")
 r = provider("check")
@@ -237,7 +237,7 @@ check(r.returncode == 0 and "sk-test-secret-123" not in argv_log and read(f"{LOG
 reset_logs()
 provider("key", "clear")
 check(read(f"{LOG}.secret").strip() == "clear invictus-namespace invictus/provider",
-      "NA2: `key clear` removes every Moneta key by the namespace", f"key clear: {read(f'{LOG}.secret')!r}")
+      "NA2: `key clear` removes every Cicero key by the namespace", f"key clear: {read(f'{LOG}.secret')!r}")
 
 # Janus L1: a home provider's label and model reach the terminal through
 # `list`, `get` and `set`; escape sequences and direction overrides must not.
@@ -255,7 +255,7 @@ check(all(r.returncode == 0 for r in outs) and "Home" in raw and "\x1b" not in r
 shutil.rmtree(os.path.join(CONF, "invictus/providers/evil"))
 
 # ---- the panel ---------------------------------------------------------------------------
-print("== Moneta: the panel (tribune)", flush=True)
+print("== Cicero: the panel (tribune)", flush=True)
 SOCK = os.path.join(RUN, "invictus/tribune.sock")
 
 
@@ -432,7 +432,7 @@ check(r.returncode == 0 and "thread t-1" in r.stdout, "Acta: `tribune acta` list
       f"tribune acta: {r.stdout!r}")
 
 # ---- the chat client (api providers, A13) ---------------------------------------------
-print("== Moneta: chat client", flush=True)
+print("== Cicero: chat client", flush=True)
 REQUESTS = []
 REPLY = {"text": ""}
 
@@ -507,7 +507,7 @@ check(r.returncode == 3 and len(REQUESTS) == n_before and not read(f"{LOG}.secre
 srv.shutdown()
 
 # ---- MCP server ------------------------------------------------------------------------
-print("== Moneta: MCP server", flush=True)
+print("== Cicero: MCP server", flush=True)
 
 
 def mcp(calls, **extra):
@@ -530,7 +530,7 @@ check(out.get(0, {}).get("result", {}).get("serverInfo", {}).get("name") == "inv
 
 
 # Janus P-L1: a server entry with our exact (allowlisted) command can still
-# carry `env`. BASH_ENV pointing at a theme file (the one kind of file Moneta
+# carry `env`. BASH_ENV pointing at a theme file (the one kind of file Cicero
 # may write under fixed) made the bash doctor source it. The tools' children
 # now get an environment the server builds itself.
 PL1 = os.path.join(W, "pl1")
@@ -630,7 +630,7 @@ check("install" in text_of(out[1]) and '"INVICTUS_SNAPSHOT": "12"' in text_of(ou
       "MCP: the acta tool returns the Acta entries", f"acta tool {text_of(out[1])!r}")
 
 # ---- A6 config guard -------------------------------------------------------------------------
-print("== Moneta: A6 config guard", flush=True)
+print("== Cicero: A6 config guard", flush=True)
 GH = os.path.join(W, "ghome")
 os.makedirs(os.path.join(GH, ".config/hypr"))
 os.makedirs(os.path.join(GH, ".config/waybar"))
@@ -669,7 +669,7 @@ cases = {
     (".config/invictus/themes/sub/x.toml", "fixed"): 2, (".config/waybar/scripts/x.css", "fixed"): 2,
     (".config/invictus/flavor", "fixed"): 2, (".config/invictus/first-boot.json", "fixed"): 2,
     (".bashrc", "fixed"): 2, (".bashrc", "full"): 2, (".config/hypr/hyprland.lua", "fixed"): 2,
-    (".config/invictus/moneta.toml", "full"): 2, (".config/invictus/providers/x/provider.toml", "full"): 2,
+    (".config/invictus/cicero.toml", "full"): 2, (".config/invictus/providers/x/provider.toml", "full"): 2,
     (".config/waybar/evil.css", "fixed"): 2, (".config/waybar/../../.bashrc", "fixed"): 2,
     (".claude/settings.json", "full"): 2, ("projects/app.py", "fixed"): 2, ("projects/app.py", "full"): 0,
     (".config/invictus/theme-hooks.d/10-evil", "fixed"): 2, (".config/invictus/theme-hooks.d/10-evil", "full"): 2,
@@ -811,7 +811,7 @@ r2 = guard("post", os.path.join(GH, ".config/hypr/user.lua"), FAKE_DOCTOR_RC="1"
 check(r.returncode == 0 and copies and read(copies[0]) == "-- good\n"
       and read(os.path.join(GH, ".config/hypr/user.lua")) == "-- good\n" and r2.returncode == 2
       and "broke the Hyprland config check" in r2.stderr and "--hypr" in read(f"{LOG}.doctor"),
-      "A6: a backup before the edit; a change that fails invictus-doctor --hypr is put back and Moneta is told",
+      "A6: a backup before the edit; a change that fails invictus-doctor --hypr is put back and Cicero is told",
       f"restore: pre {r.returncode} copies {copies} file {read(os.path.join(GH, '.config/hypr/user.lua'))!r} post {r2.returncode} {r2.stderr!r}")
 newf = os.path.join(GH, ".config/hypr/monitors.lua")
 guard("pre", newf, "full")

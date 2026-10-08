@@ -21,7 +21,7 @@
       "Edit(//etc/**)",
       "Edit(//boot/**)",
       "Edit(//usr/**)",
-      "Edit(~/.config/invictus/moneta.toml)",
+      "Edit(~/.config/invictus/cicero.toml)",
       "Edit(~/.config/invictus/providers/**)",
       "Edit(~/.claude/settings.json)",
       "Edit(~/.claude/settings.local.json)"

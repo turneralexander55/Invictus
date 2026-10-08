@@ -1,5 +1,5 @@
 # Units `invictus-sys service enable|disable|restart` may change (design
-# 4.1). One per line, then why. Things a person or Moneta has a reason to
+# 4.1). One per line, then why. Things a person or Cicero has a reason to
 # turn on, off or restart; nothing that guards the machine (the update
 # timer, the boot guard, snapper, polkit, sshd) is here. Adding a unit is a
 # line here with a reason; tests/pkgs/sys.sh checks none of the guards is.

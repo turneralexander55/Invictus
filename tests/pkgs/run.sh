@@ -30,7 +30,7 @@
 # 15. The polkit rules, run in node with polkitd's order and defaults.
 # 16. The guard rails: apply, the live switch both ways, timed Libertas,
 #    nets, full access, pre-admin-snapshot, the pacman hook (SM9 to SM26).
-# 17. The Moneta panel and the provider layer: the panel's socket and
+# 17. The Cicero panel and the provider layer: the panel's socket and
 #    restarts, who may run (SM10, SM26), the chat client (A13), the MCP
 #    server, the A6 guard, the managed profiles (A7, A8), A9 and A12.
 # 18. First start (invictus-first-boot): run once per person, monitors.lua,
@@ -87,7 +87,7 @@ else bad "1b: $out"; fi
 lst() { python3 -I "$PI" --repo "$REPO" --inputs "$1"; }
 if lst invictus-sys | grep -qx scripts/lib/pacman.sh && lst invictus-tools | grep -qx scripts/invictus-update.sh \
     && lst invictus-guardrails | grep -qx scripts/guardrails/claude/fixed.json \
-    && lst invictus-tribune | grep -qx scripts/moneta/mcp.py && lst invictus-branding | grep -qx theme/dusk.toml \
+    && lst invictus-tribune | grep -qx scripts/cicero/mcp.py && lst invictus-branding | grep -qx theme/dusk.toml \
     && ! lst invictus-branding | grep -qx theme/invictus-theme && lst invictus-desktop | grep -qx config/hypr/hyprland.lua \
     && lst invictus-base | grep -qx pkgs/meta/invictus-base/PKGBUILD; then
     ok "1b: the inputs read from package() are right for sys, tools, guardrails, tribune, branding (globs), desktop and a meta"
@@ -222,7 +222,7 @@ for pb in "$REPO"/pkgs/meta/*/PKGBUILD; do
 done
 adopt_metas="$(sed -n 's/^for m in \(.*\); do$/\1/p' "$REPO/scripts/dev/adopt.sh")"
 [[ "$adopt_metas" == "desktop tessera gaming dev" ]] || sbad "adopt.sh installs '$adopt_metas', want 'desktop tessera gaming dev'"
-for f in tessera atrium gaming windows voice moneta; do
+for f in tessera atrium gaming windows voice cicero; do
     field "$REPO/pkgs/meta/invictus-$f/PKGBUILD" depends | grep -x invictus-desktop >/dev/null || sbad "invictus-$f does not depend on invictus-desktop"
 done
 
@@ -498,8 +498,8 @@ echo
 . "$HERE/runtime.sh"
 # shellcheck source=tests/pkgs/sys.sh
 . "$HERE/sys.sh"
-# shellcheck source=tests/pkgs/moneta.sh
-. "$HERE/moneta.sh"
+# shellcheck source=tests/pkgs/cicero.sh
+. "$HERE/cicero.sh"
 # shellcheck source=tests/pkgs/firstboot.sh
 . "$HERE/firstboot.sh"
 # shellcheck source=tests/pkgs/firstboot-panel.sh

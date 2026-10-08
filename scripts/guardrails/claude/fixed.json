@@ -23,7 +23,7 @@
       "Edit(//etc/**)",
       "Edit(//boot/**)",
       "Edit(//usr/**)",
-      "Edit(~/.config/invictus/moneta.toml)",
+      "Edit(~/.config/invictus/cicero.toml)",
       "Edit(~/.config/invictus/providers/**)",
       "Edit(~/.claude/settings.json)",
       "Edit(~/.claude/settings.local.json)",
@@ -63,7 +63,7 @@
   "allowManagedHooksOnly": true,
   "allowManagedMcpServersOnly": true,
   "allowedMcpServers": [
-    { "serverCommand": ["/usr/bin/python3", "-I", "/usr/lib/invictus/moneta/mcp.py"] }
+    { "serverCommand": ["/usr/bin/python3", "-I", "/usr/lib/invictus/cicero/mcp.py"] }
   ],
   "env": {
     "DISABLE_UPDATES": "1",

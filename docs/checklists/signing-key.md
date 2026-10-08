@@ -44,7 +44,7 @@ check signatures.
   ```
 
   The last line must print `-----BEGIN PGP PUBLIC KEY BLOCK-----`. If it says
-  PRIVATE, stop and tell Moneta.
+  PRIVATE, stop and tell Cicero.
 
 - [ ] Commit and push it:
 
@@ -54,7 +54,7 @@ check signatures.
   git push
   ```
 
-  If you would rather not push, send the file to Moneta instead. It is public.
+  If you would rather not push, send the file to Cicero instead. It is public.
 
 ## 3. Back up the private key (offline)
 
@@ -130,7 +130,7 @@ The secrets page: https://github.com/turneralexander55/invictus/settings/secrets
   The output includes "Appending keys from invictus.gpg". From now on the
   keyring package keeps the key current.
 
-- [ ] Tell Moneta it worked, or paste the error.
+- [ ] Tell Cicero it worked, or paste the error.
 
 For now install only `invictus-keyring`. The meta packages
 (`invictus-desktop` and the rest) are in the repo but need Phase 1 before
@@ -139,6 +139,6 @@ they install.
 ## Later
 
 - Adding a collaborator to the GitHub repo gives them a way to use the
-  secret. Make a new key then (steps 1 to 5 again) and tell Moneta, who
+  secret. Make a new key then (steps 1 to 5 again) and tell Cicero, who
   moves the old one to `invictus-revoked`.
 - Two years from now: `gpg --quick-set-expire FPR 2y`, then steps 2 and 4.

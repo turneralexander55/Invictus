@@ -22,7 +22,7 @@ The last line of the output is `invictus-sys: <result> snapshot=<id>`. Exit 126 
 The full reference, with exit codes and polkit actions, is `docs/invictus-sys.md` in the Invictus repository.
 
 How you reach it depends on how you run:
-- **Claude Code in the Moneta panel**: the `invictus` MCP tools (`update_now`, `package_install`, `package_remove`, `snapshot`, `rollback`, `service_set`, `report_collect`, `doctor`, `acta`). They call `invictus-sys` for you, with your thread id. Without Full access you have no shell; these tools are how you act.
+- **Claude Code in the Cicero panel**: the `invictus` MCP tools (`update_now`, `package_install`, `package_remove`, `snapshot`, `rollback`, `service_set`, `report_collect`, `doctor`, `acta`). They call `invictus-sys` for you, with your thread id. Without Full access you have no shell; these tools are how you act.
 - **Another command-line agent** (Full access): run `invictus-sys` yourself.
 - **A chat service** (no tools): write each proposed call in a fenced block, one per line, and the panel shows it as a button the person presses:
 
@@ -37,7 +37,7 @@ How you reach it depends on how you run:
 Which files you may change depends on the guard rails.
 
 - **Without Full access** (Custodia, or Libertas with Full access off): data files only. Theme files in `~/.config/invictus/themes/` (`*.toml`), the motion level in `~/.config/invictus/motion`, and waybar's style sheets (`~/.config/waybar/*.css`). Nothing else, not even under `~/.config/invictus`. Files a program executes (`~/.config/hypr/user.lua`, `monitors.lua`, waybar's config) are the person's or a tool's, because any of them can start a program. A monitor layout or a keybind is the person's to change: tell them where in Settings.
-- **With Full access:** `~/.config/hypr/user.lua`, `~/.config/hypr/monitors.lua`, `~/.config/waybar/` and `~/.config/invictus/` (not `moneta.toml`, `providers/` or `theme-hooks.d/`: who answers, and what runs on a theme change, are the person's choice), and the person's own files outside the dot folders.
+- **With Full access:** `~/.config/hypr/user.lua`, `~/.config/hypr/monitors.lua`, `~/.config/waybar/` and `~/.config/invictus/` (not `cicero.toml`, `providers/` or `theme-hooks.d/`: who answers, and what runs on a theme change, are the person's choice), and the person's own files outside the dot folders.
 
 A copy is saved under `~/.local/state/invictus/backups/` before each change, and a change to the Hyprland config that fails `invictus-doctor --hypr` is put back. Anything else in the home, such as `~/.bashrc`, is the person's to change.
 

@@ -12,17 +12,21 @@
 # panel, the plugin and MCP server, the providers and invictus-collegium
 # join here as they are built; invictus-voice (whisper) stays its own set.
 
-pkgname=invictus-moneta
+pkgname=invictus-cicero
 pkgver=0.1.0
-pkgrel=2
-pkgdesc='Invictus Moneta, the AI assistant: the Moneta panel and Claude Code (AI; opt-in)'
+pkgrel=3
+pkgdesc='Invictus Cicero, the AI assistant: the Cicero panel and Claude Code (AI; opt-in)'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
 license=('GPL-3.0-or-later')
+# The assistant was named Moneta until 2026-10-08 (Alex): this package takes
+# over from invictus-moneta so an upgrade moves over cleanly.
+replaces=('invictus-moneta')
+conflicts=('invictus-moneta')
 depends=(
   'invictus-desktop'
 
-  # The Moneta panel, the provider layer, the Invictus plugin and MCP server
+  # The Cicero panel, the provider layer, the Invictus plugin and MCP server
   'invictus-tribune'
 
   # Claude Code, built from our pin in pkgs/aur (the default provider)

@@ -343,7 +343,7 @@ local EXCEPTIONS = {
 -- Keyed like EXCEPTIONS: modmask + key (SUPER+SHIFT = 65).
 local NEW_BINDS = {
     ["65+t"] = { "exec_cmd", "invictus-theme pick" }, -- Look: change theme (docs/look.md, The switcher)
-    ["64+a"] = { "workspace.toggle_special", "moneta" }, -- Moneta: the panel (design 4.2; invictus/moneta.lua, AI set only)
+    ["64+a"] = { "workspace.toggle_special", "cicero" }, -- Cicero: the panel (design 4.2; invictus/cicero.lua, AI set only)
 }
 local KEY_RENAMES = { ESC = "Escape" } -- ESC is not an xkb keysym; the old bind never fired
 -- Old binds deliberately left out of the shipped config: Alex's own, not a friend's.
@@ -598,7 +598,7 @@ end
 test("window rules match window-rules.conf", function(check)
     local gamingRule = {}
     for _, r in ipairs(state.windowRules) do
-        if r.name and (r.name:match("^game%-") or r.name:match("^steam%-toasts") or r.name:match("^moneta%-")) then gamingRule[r.name] = true end
+        if r.name and (r.name:match("^game%-") or r.name:match("^steam%-toasts") or r.name:match("^cicero%-")) then gamingRule[r.name] = true end
     end
     local plain = {}
     for _, r in ipairs(state.windowRules) do if not gamingRule[r.name] then table.insert(plain, r) end end
@@ -630,10 +630,10 @@ test("layer rules: the old rofi rule, plus the look's blur and no_anim rules", f
         rofi                          = { blur = true, ignore_alpha = 0.3, dim_around = true },
         ["swaync-notification-window"] = { blur = true, ignore_alpha = 0.3, no_anim = true },
         ["swaync-control-center"]     = { blur = true, ignore_alpha = 0.3, no_anim = true },
-        ["moneta-panel"]              = { blur = true, ignore_alpha = 0.3 },
+        ["cicero-panel"]              = { blur = true, ignore_alpha = 0.3 },
         ["invictus-veil"]             = { no_anim = true },
         ["motion-waybar"]             = { animation = "slide top" },
-        ["motion-moneta-panel"]       = { animation = "slide right" },
+        ["motion-cicero-panel"]       = { animation = "slide right" },
     }
     local n = 0
     for name, effects in pairs(want) do
@@ -933,7 +933,7 @@ test("motion off: animations.enabled = false, no animation leaf, no glint gradie
     check(configOf(L)["animations.enabled"] == false, "animations.enabled = " .. show(configOf(L)["animations.enabled"]))
     check(#L.state.animations == 0, #L.state.animations .. " animation leaves still set")
     check(configOf(L)["general.col.active_border"] == DUSK.sol, "Off should use the solid focus border")
-    for _, name in ipairs({ "motion-waybar", "motion-moneta-panel" }) do
+    for _, name in ipairs({ "motion-waybar", "motion-cicero-panel" }) do
         check(layerRule(L, name) == nil, "layer animation " .. name .. " set in Off")
     end
     check(layerRule(L, "invictus-veil") and layerRule(L, "invictus-veil").no_anim == true, "veil no_anim missing")
@@ -946,7 +946,7 @@ test("motion calm: solid border, no glint leaf, no slides, layer animations abse
         check(not (a.style or ""):match("^slide") or (a.style or ""):match("^slidefade"), a.leaf .. ": slide style in Calm")
         check(not (a.style or ""):match("^slidefade"), a.leaf .. ": slidefade in Calm (no slides)")
     end
-    check(layerRule(L, "motion-waybar") == nil and layerRule(L, "motion-moneta-panel") == nil, "layer slides set in Calm")
+    check(layerRule(L, "motion-waybar") == nil and layerRule(L, "motion-cicero-panel") == nil, "layer slides set in Calm")
 end)
 
 test("motion showcase: gradient glint border and the layer slides", function(check)
@@ -954,7 +954,7 @@ test("motion showcase: gradient glint border and the layer slides", function(che
     check(deepEqual(configOf(L)["general.col.active_border"], { colors = { DUSK.sol, DUSK.sol_bright, DUSK.sol }, angle = 45 }),
         "border " .. show(configOf(L)["general.col.active_border"]))
     check(layerRule(L, "motion-waybar").animation == "slide top", "waybar slide")
-    check(layerRule(L, "motion-moneta-panel").animation == "slide right", "panel slide")
+    check(layerRule(L, "motion-cicero-panel").animation == "slide right", "panel slide")
 end)
 
 test("motion: level names are case-insensitive and the file may end with a newline", function(check)
@@ -1088,49 +1088,49 @@ test("the config requires the generated file (not dofile), so Hyprland sees it a
     check(src:find(".config/invictus/current/hyprland-colors.lua", 1, true), "colors.lua does not read the generated path")
 end)
 
--- ─── the Moneta panel (design 4.2; no-ai.md: no Super+A with No AI) ────────
+-- ─── the Cicero panel (design 4.2; no-ai.md: no Super+A with No AI) ────────
 
-test("Moneta panel: Super+A toggles special:moneta, whose first show starts tribune in kitty", function(check)
+test("Cicero panel: Super+A toggles special:cicero, whose first show starts tribune in kitty", function(check)
     local L = loadConfig({})
     noProblems(L, check)
-    check(L.requiredModules["invictus.moneta"], "core.lua did not load invictus.moneta")
+    check(L.requiredModules["invictus.cicero"], "core.lua did not load invictus.cicero")
     local rule
-    for _, r in ipairs(L.state.workspaceRules) do if r.workspace == "special:moneta" then rule = r end end
-    check(rule and rule.on_created_empty == "kitty --class invictus-moneta --title Moneta /usr/bin/tribune",
-        "special:moneta needs on_created_empty running /usr/bin/tribune in kitty, got " .. show(rule))
+    for _, r in ipairs(L.state.workspaceRules) do if r.workspace == "special:cicero" then rule = r end end
+    check(rule and rule.on_created_empty == "kitty --class invictus-cicero --title Cicero /usr/bin/tribune",
+        "special:cicero needs on_created_empty running /usr/bin/tribune in kitty, got " .. show(rule))
     local win
-    for _, r in ipairs(L.state.windowRules) do if r.name == "moneta-panel-workspace" then win = r end end
-    check(win and win.match.class == "^invictus-moneta$" and win.workspace == "special:moneta silent",
-        "the panel's kitty must land on special:moneta: " .. show(win))
+    for _, r in ipairs(L.state.windowRules) do if r.name == "cicero-panel-workspace" then win = r end end
+    check(win and win.match.class == "^invictus-cicero$" and win.workspace == "special:cicero silent",
+        "the panel's kitty must land on special:cicero: " .. show(win))
     local n = 0
     for _, b in ipairs(L.state.binds) do
-        if deepEqual(actualDispatcher(b.dispatcher), { "workspace.toggle_special", "moneta" }) then
+        if deepEqual(actualDispatcher(b.dispatcher), { "workspace.toggle_special", "cicero" }) then
             n = n + 1
-            check(b.keys == "SUPER + A", "Moneta bind on " .. b.keys)
-            check(b.opts.description == "Moneta: show/hide the Moneta panel", "description " .. tostring(b.opts.description))
+            check(b.keys == "SUPER + A", "Cicero bind on " .. b.keys)
+            check(b.opts.description == "Cicero: show/hide the Cicero panel", "description " .. tostring(b.opts.description))
         end
     end
-    check(n == 1, n .. " binds toggle special:moneta")
+    check(n == 1, n .. " binds toggle special:cicero")
     -- kitty and tribune must come from packages: kitty from invictus-desktop,
-    -- tribune from invictus-tribune, which the AI meta (invictus-moneta) pulls.
-    local f = io.open(repo .. "/pkgs/meta/invictus-moneta/PKGBUILD")
+    -- tribune from invictus-tribune, which the AI meta (invictus-cicero) pulls.
+    local f = io.open(repo .. "/pkgs/meta/invictus-cicero/PKGBUILD")
     local meta = f and f:read("a") or ""
     if f then f:close() end
-    check(meta:find("'invictus-tribune'", 1, true), "invictus-moneta must depend on invictus-tribune")
+    check(meta:find("'invictus-tribune'", 1, true), "invictus-cicero must depend on invictus-tribune")
 end)
 
-test("Moneta panel: with No AI (module absent) the config loads cleanly and nothing binds Super+A", function(check)
+test("Cicero panel: with No AI (module absent) the config loads cleanly and nothing binds Super+A", function(check)
     local realSearch = package.searchpath
     package.searchpath = function(name, path, ...)
-        if name == "invictus.moneta" then return nil, "hidden by the test" end
+        if name == "invictus.cicero" then return nil, "hidden by the test" end
         return realSearch(name, path, ...)
     end
     local L = loadConfig({})
     package.searchpath = realSearch
     noProblems(L, check)
-    check(not L.requiredModules["invictus.moneta"], "invictus.moneta loaded although absent")
+    check(not L.requiredModules["invictus.cicero"], "invictus.cicero loaded although absent")
     for _, b in ipairs(L.state.binds) do check(b.keys ~= "SUPER + A", "Super+A bound with No AI") end
-    for _, r in ipairs(L.state.workspaceRules) do check(r.workspace ~= "special:moneta", "special:moneta rule with No AI") end
+    for _, r in ipairs(L.state.workspaceRules) do check(r.workspace ~= "special:cicero", "special:cicero rule with No AI") end
 end)
 
 -- ─── fake `hyprctl binds` output for the show-keybindings test ──────────────

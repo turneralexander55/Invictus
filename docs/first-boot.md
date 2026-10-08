@@ -86,7 +86,7 @@ applies the theme in use (Dusk on a new home), Calm and light apps.
 
 ## The provider layer
 
-The contract is `docs/moneta-panel.md` (Vulcan, branch `invictus-panel`);
+The contract is `docs/cicero-panel.md` (Vulcan, branch `invictus-panel`);
 first start calls only what it documents, after `invictus-sys ai on` has
 installed the AI set (and `invictus-provider` with it):
 
@@ -99,7 +99,7 @@ installed the AI set (and `invictus-provider` with it):
 
 `invictus-provider` exits 2 or 3 (an endpoint it will not take, or not
 allowed): the screen says `That address can't be used...`. Exit 1 (the
-keyring refused the key): `The key couldn't be saved...`. Moneta stays on in
+keyring refused the key): `The key couldn't be saved...`. Cicero stays on in
 both cases and the person can carry on with `Later`.
 
 Updates: Claude Code's `DISABLE_UPDATES=1` is in the managed profiles and
@@ -116,7 +116,7 @@ AI was turned off meanwhile, the choice is dropped). A choice
 `invictus-provider` refuses (exit 2 or 3) is tried once and then dropped,
 with `provider_result` recorded; a kept record that is not well formed is
 dropped too, and nothing in this step can stop the wizard from opening. A key for another
-service is never kept, so that person adds it in Settings > Moneta, which
+service is never kept, so that person adds it in Settings > Cicero, which
 shows the Not signed in card; a Claude person signs in from Help's card
 (no-ai.md 2.3). No change to the panel is needed.
 

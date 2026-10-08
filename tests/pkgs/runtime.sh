@@ -671,7 +671,7 @@ if [[ $rc == 1 && -s "$TMP/px-pending" ]] && ! grep -q systemctl "$TMP/px.log"; 
 else
     bad "pending extras failure: rc $rc, file $(cat "$TMP/px-pending" 2>/dev/null), log $(paste -sd'|' "$TMP/px.log")"
 fi
-for evil in "linux" "invictus-moneta" "--config=/tmp/x" "a b"; do
+for evil in "linux" "invictus-cicero" "--config=/tmp/x" "a b"; do
     printf 'invictus-office\n%s\n' "$evil" > "$TMP/px-pending"; rm -f "$TMP/px.log"; rc=0; pending || rc=$?
     if [[ $rc == 2 && ! -s "$TMP/px.log" ]]; then :; else bad "pending extras accepted '$evil' (rc $rc)"; fi
 done

@@ -2,7 +2,7 @@
   "mcpServers": {
     "invictus": {
       "command": "/usr/bin/python3",
-      "args": ["-I", "/usr/lib/invictus/moneta/mcp.py"]
+      "args": ["-I", "/usr/lib/invictus/cicero/mcp.py"]
     }
   }
 }

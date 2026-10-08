@@ -3,7 +3,7 @@
 Status: design, not yet built. Owner: Venus (designer). Date: 2026-09-30.
 Replaces the sketch in `simple-mode.md` 8.5. Works in both flavors (Atrium and Tessera) and under both guard rails (Custodia and Libertas). The admin model behind every switch is Minerva's (`design-simple-mode.md`, sections 1.3 to 1.6, 2, 4, and Alex's answers in 11); this document is what people see and touch.
 
-Names (Alex, 2026-09-30): flavors **Atrium** and **Tessera**, guard rails **Custodia** and **Libertas**, the assistant **Moneta**.
+Names (Alex, 2026-09-30): flavors **Atrium** and **Tessera**, guard rails **Custodia** and **Libertas**, the assistant **Cicero**.
 
 Mockups (`docs/mockups/`, 1920 x 1080, self-contained HTML, same fonts, tokens and scale-to-fit script as the other mockups; sample names and data are made up):
 
@@ -16,9 +16,9 @@ Mockups (`docs/mockups/`, 1920 x 1080, self-contained HTML, same fonts, tokens a
 | `settings-safety-copies-libertas-one-off.html` | Libertas, hourly copies of files turned off, the system copies listed |
 | `settings-desktop-style.html` | Desktop style, Atrium on |
 | `settings-desktop-style-keep.html` | Just switched to Tessera: "Keep this desktop style?", 14 s left |
-| `settings-moneta-tessera.html` | Tessera, Libertas, Settings tiled at half the screen: the Moneta page (redrawn 2026-09-30: No AI is the fourth answer) |
-| `settings-ai-off.html` | Atrium, No AI: the AI page, with Moneta's kept memory from before (3.9.1) |
-| `settings-moneta-not-signed-in.html` | Atrium, AI on but never signed in: the Moneta page, Account first (`no-ai.md` 2.3) |
+| `settings-cicero-tessera.html` | Tessera, Libertas, Settings tiled at half the screen: the Cicero page (redrawn 2026-09-30: No AI is the fourth answer) |
+| `settings-ai-off.html` | Atrium, No AI: the AI page, with Cicero's kept memory from before (3.9.1) |
+| `settings-cicero-not-signed-in.html` | Atrium, AI on but never signed in: the Cicero page, Account first (`no-ai.md` 2.3) |
 | `settings-check-text-150.html` | Guard rails at 150% text size (a check, not a state) |
 
 ---
@@ -31,7 +31,7 @@ Mockups (`docs/mockups/`, 1920 x 1080, self-contained HTML, same fonts, tokens a
 - **Safety copies page**: the five safety nets (four switchable under Libertas, all locked on under Custodia; the copy before an update is always on) and the list of copies with **Go back to this**, split into **Your files** and **The system**.
 - **Mouse for everything, keyboard for everything, readable at 150% text.** One gold (bronze on light) at a time inside the window: where the keyboard is.
 - **Built in Quickshell** as its own process and a normal window, sharing QML components with the Atrium shell and the first-start wizard (section 7).
-- **No AI** (Alex, 2026-09-30; `no-ai.md`): the Moneta page becomes **AI** while AI is off, with two choices and nothing greyed out. Turning AI on installs Moneta then; turning it off removes it and signs out, and keeps Moneta's memory until the person deletes it.
+- **No AI** (Alex, 2026-09-30; `no-ai.md`): the Cicero page becomes **AI** while AI is off, with two choices and nothing greyed out. Turning AI on installs Cicero then; turning it off removes it and signs out, and keeps Cicero's memory until the person deletes it.
 - **No night restarts** anywhere in Settings (Alex, 2026-09-30): after an update that needs one, the Updates page and a quiet notice say "Restart when you're ready".
 
 ---
@@ -51,7 +51,7 @@ Fewest pages that cover the list, grouped by how often people come (three groups
 | 6 | **Updates** | State, restart when ready, undo last update, pause (Custodia), where updates come from |
 | 7 | **Safety copies** | The safety nets, the copies to go back to |
 | 8 | **Guard rails** | Custodia or Libertas |
-| 9 | **Moneta** (named **AI** while AI is off) | Who answers (Claude, a home AI system, another AI service, No AI), sign in, voice, full access (Libertas); with No AI, the two choices and kept memory |
+| 9 | **Cicero** (named **AI** while AI is off) | Who answers (Claude, a home AI system, another AI service, No AI), sign in, voice, full access (Libertas); with No AI, the two choices and kept memory |
 | 10 | **Support** | Who helps and how to reach them, Let Support see my screen, Ask Support, what changed on this computer |
 | 11 | **About** | This computer, version, space, the support contact, copy details for Support |
 
@@ -69,7 +69,7 @@ The page name **Support** is fixed. The name in its buttons and messages comes f
 - **Light or dark follows the apps setting** (Look). Atrium defaults to light apps, so Settings is Dawn with `bronze` as the focus colour; Tessera defaults to dark, so Dusk with `sol`. Only theme tokens are used (`look.md`); the mockups show both.
 - **Sidebar** (320 px at 100% text): the search field, then the eleven pages, 48 px rows, icon and name. The current page: `stone`/`dawn-raised` background and a 3 px bar in `parchment`/`ink-2`. The sidebar scrolls on its own when it does not fit (above 150% text on a 1080p screen).
 - **Content**: one column, at most 880 px wide at 100% text (it grows with the text size, so lines stay about 70 characters), left-aligned beside the sidebar. Page title 30 px, one line under it saying what the page is for, then sections of cards with rows. A row: icon, name, one or two lines of explanation, the control on the right.
-- **Reflow.** Settings is not meant for phones. It must work tiled: at half a 1920 screen (about 950 px) the layout is unchanged (`settings-moneta-tessera.html`). Below 720 px of window width (a Tessera third, or a small laptop at 175% text), the sidebar becomes the first page and each page opens full width with a Back arrow.
+- **Reflow.** Settings is not meant for phones. It must work tiled: at half a 1920 screen (about 950 px) the layout is unchanged (`settings-cicero-tessera.html`). Below 720 px of window width (a Tessera third, or a small laptop at 175% text), the sidebar becomes the first page and each page opens full width with a Back arrow.
 
 ### 2.2 The gold rule inside Settings
 
@@ -91,14 +91,14 @@ This is also what Alex asks for on the phone: "open Settings and read me the top
 
 ### 2.4 Search
 
-`Find a setting` at the top of the sidebar, focused when Settings opens (Ctrl+F also focuses it). It searches page names, row names and a list of everyday words per row: "font", "zoom", "bigger" find Text size; "backup", "restore", "undo", "deleted" find Safety copies; "admin", "childproof" find Guard rails; "AI", "assistant", "Claude", "Moneta" find the Moneta page (the AI page while AI is off). Results replace the content column as rows (page > row); Enter opens the first. Clio writes the synonym list with the copy.
+`Find a setting` at the top of the sidebar, focused when Settings opens (Ctrl+F also focuses it). It searches page names, row names and a list of everyday words per row: "font", "zoom", "bigger" find Text size; "backup", "restore", "undo", "deleted" find Safety copies; "admin", "childproof" find Guard rails; "AI", "assistant", "Claude", "Cicero" find the Cicero page (the AI page while AI is off). Results replace the content column as rows (page > row); Enter opens the first. Clio writes the synonym list with the copy.
 
 ### 2.5 Keyboard
 
 - Tab order: search, sidebar, content, top to bottom. Up and Down move in the sidebar, Enter opens a page and moves into it. Esc from the content goes back to the sidebar item; Esc in search clears it.
 - Every control is 44 px or taller and reachable by Tab. Choice cards and tabs move with the arrow keys, Space or Enter picks. Switches toggle with Space.
 - Collapsed **Options** rows open with Enter and say so to the screen reader (expanded or collapsed).
-- Deep links for the rest of the system: `invictus-settings open <page>[/<row>]` (for example `wifi`, `guard-rails`, `safety-copies/files`). Quick settings' `More Wi-Fi settings`, Moneta's "you can do that yourself in Settings > Guard rails" and the messages all use it.
+- Deep links for the rest of the system: `invictus-settings open <page>[/<row>]` (for example `wifi`, `guard-rails`, `safety-copies/files`). Quick settings' `More Wi-Fi settings`, Cicero's "you can do that yourself in Settings > Guard rails" and the messages all use it.
 
 ### 2.6 Text size
 
@@ -168,20 +168,20 @@ See section 5.
 
 See section 4.
 
-### 3.9 Moneta
+### 3.9 Cicero
 
-(`settings-moneta-tessera.html`)
+(`settings-cicero-tessera.html`)
 
 - **Who answers**, one choice:
   - `Claude`: `Anthropic's Claude, with your own Claude account. It can do things for you after asking.` (preselected, D13)
   - `A home AI system`: `A model on this computer or on your home network. Nothing leaves your home.` Picking it asks for the address, or offers `Use this computer` when the local model package is installed (D15).
   - `Another AI service`: `An account you already have with another AI company. It answers; it can't do things by itself.` (the chat-only `openai-compatible` provider; its key goes to the keyring)
-  - `No AI`: `Guides and Support. Moneta and voice are removed from this computer.` (`none`; replaces the quiet `Turn Moneta off` link, Alex 2026-09-30). Picking it opens a confirm in the row: `Turn off AI?` / `Moneta and voice are removed from this computer, and you're signed out of Claude on this computer. Moneta's memory and past conversations stay on this computer until you delete them. Help keeps its guides and Ask Support.` / `Turn off AI` and `Cancel`, equal weight. No password: instant from a local active session, like the return to Custodia (Minerva N1, `design-no-ai.md`). What it removes and keeps: `no-ai.md` 5.
-- **Account**: `Signed in to Claude`, since when, `Working` or `Can't reach Claude`; `Switch account` and `Sign out`. Not signed in (AI on, no working credential): the Account card moves to the top with `Sign in to Claude...`, and No AI stays the switch; `no-ai.md` 2.3 (`settings-moneta-not-signed-in.html`). Sign in opens the browser; the window comes back when done. Settings never sees the token.
+  - `No AI`: `Guides and Support. Cicero and voice are removed from this computer.` (`none`; replaces the quiet `Turn Cicero off` link, Alex 2026-09-30). Picking it opens a confirm in the row: `Turn off AI?` / `Cicero and voice are removed from this computer, and you're signed out of Claude on this computer. Cicero's memory and past conversations stay on this computer until you delete them. Help keeps its guides and Ask Support.` / `Turn off AI` and `Cancel`, equal weight. No password: instant from a local active session, like the return to Custodia (Minerva N1, `design-no-ai.md`). What it removes and keeps: `no-ai.md` 5.
+- **Account**: `Signed in to Claude`, since when, `Working` or `Can't reach Claude`; `Switch account` and `Sign out`. Not signed in (AI on, no working credential): the Account card moves to the top with `Sign in to Claude...`, and No AI stays the switch; `no-ai.md` 2.3 (`settings-cicero-not-signed-in.html`). Sign in opens the browser; the window comes back when done. Settings never sees the token.
 - **Voice and limits**:
-  - `Talk to Moneta`: `Hold the pen button and speak. Your voice is turned into text on this computer, then sent.` On/Off.
-  - **`Full access`** (Alex, 2026-09-30, DS11): `Let Moneta use the terminal and every tool, like a person at the keyboard. It still asks before each change, and system changes still need your password.` **Libertas: a switch, off by default.** **Custodia: locked off** with `Custodia keeps Moneta to a fixed set of safe tools.` Turning it on asks for the password with no hold, and the password prompt is where the person reads what it means: `With full access Moneta can read everything you can on this computer, your files, mail and saved passwords included, and something it reads, like a web page or a message, could trick it into asking you for a change you did not want. It still waits for your yes each time, so say yes only to what you understand.` (Minerva release review 0.2, R1; the same facts are in `messages.tsv` and `org.invictus.sys.policy`). When this page is built it shows the sentence beside the switch, before the password is asked. Libertas was the guarded step (Minerva 12.3: its own action, `org.invictus.sys.assistant-full-access`, password every time, never cached; the value lives in `/etc/invictus/assistant`). Turning it on or off restarts Moneta with `Moneta is starting again with the new rules` (the same restart as a guard-rails switch, Minerva 1.6 G7). **It ends with Libertas**: during a timed Libertas the row says `Ends with Libertas at 15:20`, and any return to Custodia (the click, the hour running out, a restart after the hour) turns it off; the row then says `Turned off when guard rails came back on at 15:20.` Going back to Libertas needs the switch again (not the nets pattern; Minerva 12.3 says why).
-- Options: `Team and memory` (local only, connect to a team repo, or make a new one), `A command-line agent` (only while Full access is on: `generic-cli`, the command filled in by the person; with Full access off or under Custodia the row is locked and a configured agent does not start, with `Moneta's command-line agent is off. Pick who answers in Settings > Moneta.`, Minerva 12.3).
+  - `Talk to Cicero`: `Hold the pen button and speak. Your voice is turned into text on this computer, then sent.` On/Off.
+  - **`Full access`** (Alex, 2026-09-30, DS11): `Let Cicero use the terminal and every tool, like a person at the keyboard. It still asks before each change, and system changes still need your password.` **Libertas: a switch, off by default.** **Custodia: locked off** with `Custodia keeps Cicero to a fixed set of safe tools.` Turning it on asks for the password with no hold, and the password prompt is where the person reads what it means: `With full access Cicero can read everything you can on this computer, your files, mail and saved passwords included, and something it reads, like a web page or a message, could trick it into asking you for a change you did not want. It still waits for your yes each time, so say yes only to what you understand.` (Minerva release review 0.2, R1; the same facts are in `messages.tsv` and `org.invictus.sys.policy`). When this page is built it shows the sentence beside the switch, before the password is asked. Libertas was the guarded step (Minerva 12.3: its own action, `org.invictus.sys.assistant-full-access`, password every time, never cached; the value lives in `/etc/invictus/assistant`). Turning it on or off restarts Cicero with `Cicero is starting again with the new rules` (the same restart as a guard-rails switch, Minerva 1.6 G7). **It ends with Libertas**: during a timed Libertas the row says `Ends with Libertas at 15:20`, and any return to Custodia (the click, the hour running out, a restart after the hour) turns it off; the row then says `Turned off when guard rails came back on at 15:20.` Going back to Libertas needs the switch again (not the nets pattern; Minerva 12.3 says why).
+- Options: `Team and memory` (local only, connect to a team repo, or make a new one), `A command-line agent` (only while Full access is on: `generic-cli`, the command filled in by the person; with Full access off or under Custodia the row is locked and a configured agent does not start, with `Cicero's command-line agent is off. Pick who answers in Settings > Cicero.`, Minerva 12.3).
 
 ### 3.9.1 With No AI
 
@@ -192,8 +192,8 @@ The sidebar entry and the title read **AI**: the name of a thing that is not on 
 - Line: `Whether Help includes an AI assistant. It is the same for everyone who uses this computer.` (machine-wide, like Guard rails: the packages are.)
 - **Help works with**: two choice cards, the Guard rails pattern (4.1), the current one first with `On now`:
   - **No AI**: `Short how-to guides you can search, and Support when you need a person. Nothing on this computer uses AI.`
-  - **An AI assistant**: `Moneta answers questions, by voice or typing, and fixes things after asking you. It uses Claude with your own account, or another AI you choose.` and `Turn on Moneta...` with `Downloads Moneta, then asks for your password.` Clicking it opens the Who answers rows inside the card (Claude preselected, D13), then the password prompt (the polkit agent, a safety copy first; Minerva N1: its own action, `org.invictus.sys.ai-on`, the password every time, never cached, never through the help unlock), then the sign-in. The card shows `Downloading Moneta, 40%` until it is ready; the page then becomes the Moneta page.
-- **Kept from before**, only when there is something: `Moneta's memory and past conversations`, `Kept on this computer since AI was turned off on 28 September. Moneta picks them up again if you turn AI back on.`, the size, and `Delete...` (`Delete Moneta's memory?` / `This can't be undone. Your own files and notes are not touched.` / `Delete` · `Cancel`; no password).
+  - **An AI assistant**: `Cicero answers questions, by voice or typing, and fixes things after asking you. It uses Claude with your own account, or another AI you choose.` and `Turn on Cicero...` with `Downloads Cicero, then asks for your password.` Clicking it opens the Who answers rows inside the card (Claude preselected, D13), then the password prompt (the polkit agent, a safety copy first; Minerva N1: its own action, `org.invictus.sys.ai-on`, the password every time, never cached, never through the help unlock), then the sign-in. The card shows `Downloading Cicero, 40%` until it is ready; the page then becomes the Cicero page.
+- **Kept from before**, only when there is something: `Cicero's memory and past conversations`, `Kept on this computer since AI was turned off on 28 September. Cicero picks them up again if you turn AI back on.`, the size, and `Delete...` (`Delete Cicero's memory?` / `This can't be undone. Your own files and notes are not touched.` / `Delete` · `Cancel`; no password).
 - Nothing else. No Account, Voice or Full access rows, not even greyed out, and no line about what AI would add.
 
 ### 3.10 Support
@@ -245,13 +245,13 @@ Clicks from Settings: 3 (Switch to Libertas, Continue, Switch) + wait + password
 
 ### 4.3 While Libertas is on
 
-- **Timed** (`settings-guard-rails-libertas-timed.html`): a card above the two choices, `lapis` edge: `Libertas until 15:20`, `Since 14:20 today. Switched by Maria, with her password. A safety copy was made first.`, the minutes left, large, and a bar that empties (all from `/etc/invictus/guardrails-until`, Minerva 12.1). If Full access is on, one more line: `Moneta's full access ends then too.` The sidebar item shows `42 min`. The **taskbar** (Atrium) or the **bar** (Tessera) shows `Libertas · 42 min` with the shield, `lapis` outline, one click opens this page. When it ends, a message: `Guard rails are back on` / `Custodia is on again.` (`laurel`, 8 s).
+- **Timed** (`settings-guard-rails-libertas-timed.html`): a card above the two choices, `lapis` edge: `Libertas until 15:20`, `Since 14:20 today. Switched by Maria, with her password. A safety copy was made first.`, the minutes left, large, and a bar that empties (all from `/etc/invictus/guardrails-until`, Minerva 12.1). If Full access is on, one more line: `Cicero's full access ends then too.` The sidebar item shows `42 min`. The **taskbar** (Atrium) or the **bar** (Tessera) shows `Libertas · 42 min` with the shield, `lapis` outline, one click opens this page. When it ends, a message: `Guard rails are back on` / `Custodia is on again.` (`laurel`, 8 s).
 - **Until turned back on**: the same card without the countdown: `Libertas since 22 September. Switched by Maria, with her password.` No taskbar badge: someone who chose "until I turn them back on" chose it for good (Alex's own machines), and a permanent badge would be noise. The home page, the doctor and the helper digest still say it (Minerva TS11).
 - The Custodia card shows `Turn guard rails back on now`, `Instant. No password.`
 
 ### 4.4 To Custodia
 
-One click, no password, no question (Minerva 1.6: instant, local session only). The page updates at once; the Acta line is written; Moneta restarts with the new rules if it was running. If the person had turned nets off under Libertas, the Safety copies page shows them all locked on again, and their choices come back if they go to Libertas again (Minerva's nets file). Moneta's Full access is turned off, not remembered (Minerva 12.3).
+One click, no password, no question (Minerva 1.6: instant, local session only). The page updates at once; the Acta line is written; Cicero restarts with the new rules if it was running. If the person had turned nets off under Libertas, the Safety copies page shows them all locked on again, and their choices come back if they go to Libertas again (Minerva's nets file). Cicero's Full access is turned off, not remembered (Minerva 12.3).
 
 ### 4.5 Edge cases the page must show honestly
 
@@ -358,9 +358,9 @@ Before = what exists today in Invictus (Tessera tools and the terminal). Counted
 | Turn off hourly copies (Libertas) | Edit a config as root | Settings, Safety copies, the switch, password: 3 clicks + password |
 | Change motion to Calm | Launcher, `Change motion`, pick: 3 steps | Settings, Look, Calm: 3 clicks |
 | Switch to Tessera | Not possible | Settings, Desktop style, Switch to Tessera, Keep: 4 clicks |
-| Use a home AI system | First-start wizard only | Settings, Moneta, A home AI system, Use this computer: 4 clicks |
-| Turn AI off | Settings, Moneta, Turn Moneta off (provider `none`; everything stays installed) | Start, Settings, Moneta, No AI, Turn off AI: 5 clicks, 0 decisions after the first; removes it |
-| Turn AI on (from No AI) | Not possible without the wizard | Start, Settings, AI, Turn on Moneta..., Claude (preselected), password, sign in: 5 clicks + password + sign-in |
+| Use a home AI system | First-start wizard only | Settings, Cicero, A home AI system, Use this computer: 4 clicks |
+| Turn AI off | Settings, Cicero, Turn Cicero off (provider `none`; everything stays installed) | Start, Settings, Cicero, No AI, Turn off AI: 5 clicks, 0 decisions after the first; removes it |
+| Turn AI on (from No AI) | Not possible without the wizard | Start, Settings, AI, Turn on Cicero..., Claude (preselected), password, sign in: 5 clicks + password + sign-in |
 
 ---
 
@@ -380,7 +380,7 @@ Answered (Minerva, 2026-09-30, `design-simple-mode.md` section 12): 1 is 12.1 (t
 
 Verified 2026-09-30: Quickshell 0.3.1 (`extra`) package file list includes the QML modules `Bluetooth`, `Networking`, `Io`, `Services/Pipewire`, `Services/Polkit`, `Services/UPower`, and depends on `qt6-declarative` (Qt Quick Controls).
 
-Not verified: that Quickshell's `Networking` joins a secured Wi-Fi network with a password and its `Bluetooth` module pairs (the modules exist; features unread); that a Quickshell `FloatingWindow` behaves as a normal app window under hyprbars and in monocle; that Qt's accessibility bridge exposes Quickshell windows to a screen reader under Hyprland; that `claude` login can run from a button without a visible terminal (it prints a URL; the Moneta panel may need to drive it in a pty). The mockups are drawings, not the built app.
+Not verified: that Quickshell's `Networking` joins a secured Wi-Fi network with a password and its `Bluetooth` module pairs (the modules exist; features unread); that a Quickshell `FloatingWindow` behaves as a normal app window under hyprbars and in monocle; that Qt's accessibility bridge exposes Quickshell windows to a screen reader under Hyprland; that `claude` login can run from a button without a visible terminal (it prints a URL; the Cicero panel may need to drive it in a pty). The mockups are drawings, not the built app.
 
 ---
 

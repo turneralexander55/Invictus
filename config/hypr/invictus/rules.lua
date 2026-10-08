@@ -97,7 +97,7 @@ hl.window_rule({
 
 -- Blur the panels that sit on the wallpaper (docs/look.md, Hyprland). ignore_alpha
 -- keeps the blur off the fully transparent parts of a layer.
-local blurred = { "waybar", "rofi", "swaync-notification-window", "swaync-control-center", "moneta-panel" }
+local blurred = { "waybar", "rofi", "swaync-notification-window", "swaync-control-center", "cicero-panel" }
 for _, namespace in ipairs(blurred) do
     local rule = {
         name  = namespace,

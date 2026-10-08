@@ -21,7 +21,7 @@ Card {
         ["help", "Help is always here", ai ? "Ask a question by talking or typing."
                                            : "Guides for everyday things, and a way to ask Support."]
     ] : [
-        ai ? ["Super + A", "Super + A opens Moneta", "Ask, or say what to change. It asks before it does anything."]
+        ai ? ["Super + A", "Super + A opens Cicero", "Ask, or say what to change. It asks before it does anything."]
            : ["Super + Enter", "Super + Enter opens a terminal", "Super + Space opens the app launcher."],
         ["Super + /", "Super + / lists every shortcut", "Grouped, and searchable."],
         ["Snapshots", "Undo lives in the boot menu", "Pick Snapshots when the computer starts to go back to before a change."]

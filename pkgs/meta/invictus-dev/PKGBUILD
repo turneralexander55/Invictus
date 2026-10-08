@@ -6,12 +6,12 @@
 # Development: build tools, git, the two editors, JavaScript and Python,
 # rootless containers, and the search tools agents and people both use.
 # Works on a machine without a desktop too (the editors then just go
-# unused). No AI here: Claude Code is in invictus-moneta, so a No AI
+# unused). No AI here: Claude Code is in invictus-cicero, so a No AI
 # machine can still have the dev tools (design-no-ai.md N5).
 
 pkgname=invictus-dev
 pkgver=0.3.0
-pkgrel=2
+pkgrel=3
 pkgdesc='Invictus development tools'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'

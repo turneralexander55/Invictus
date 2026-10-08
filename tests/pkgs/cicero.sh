@@ -1,32 +1,32 @@
 # shellcheck shell=bash
 # Group 17 of tests/pkgs/run.sh (sourced; uses REPO, TMP, TREES, ok, bad):
-# the Moneta panel and the provider layer (design 4.2; MUSTs A6 to A9, A12,
+# the Cicero panel and the provider layer (design 4.2; MUSTs A6 to A9, A12,
 # A13; design-simple-mode SM10, SM26). The behaviour checks are in
-# moneta_tests.py; this file adds the package layout, the managed profiles'
-# keys (each checked against the Claude Code docs, design.md 11 "Moneta
+# cicero_tests.py; this file adds the package layout, the managed profiles'
+# keys (each checked against the Claude Code docs, design.md 11 "Cicero
 # panel") and the static checks for A9 and A12.
 # shellcheck disable=SC2153,SC2015 # REPO, TMP and TREES come from run.sh; ok || bad on purpose
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]] || ! declare -F ok bad >/dev/null || [[ -z "${REPO:-}" || -z "${TMP:-}" || -z "${TREES:-}" ]]; then
-    echo "tests/pkgs/moneta.sh is group 17 of tests/pkgs/run.sh: run that" >&2
+    echo "tests/pkgs/cicero.sh is group 17 of tests/pkgs/run.sh: run that" >&2
     # shellcheck disable=SC2317 # exit is reached when run, not sourced
     return 2 2>/dev/null || exit 2
 fi
 
 set +e
-echo "== Moneta panel: packages and profiles"
+echo "== Cicero panel: packages and profiles"
 MT="$TREES/invictus-tribune"
 GT="$TREES/invictus-guardrails"
 m_fail=0
 mbad() { bad "$1"; m_fail=1; }
 
 # Layout and modes of invictus-tribune.
-for f in usr/lib/invictus/moneta/moneta.py usr/lib/invictus/moneta/mcp.py; do
+for f in usr/lib/invictus/cicero/cicero.py usr/lib/invictus/cicero/mcp.py; do
     [[ -f "$MT/$f" && "$(stat -c %a "$MT/$f")" == 755 ]] || mbad "invictus-tribune: $f missing or not 0755"
 done
 for l in tribune invictus-provider; do
-    [[ -L "$MT/usr/bin/$l" && "$(readlink "$MT/usr/bin/$l")" == ../lib/invictus/moneta/moneta.py ]] \
-        || mbad "invictus-tribune: /usr/bin/$l must point at ../lib/invictus/moneta/moneta.py"
+    [[ -L "$MT/usr/bin/$l" && "$(readlink "$MT/usr/bin/$l")" == ../lib/invictus/cicero/cicero.py ]] \
+        || mbad "invictus-tribune: /usr/bin/$l must point at ../lib/invictus/cicero/cicero.py"
 done
 for p in claude-code generic-cli openai-compatible none; do
     [[ -f "$MT/usr/share/invictus/providers/$p/provider.toml" && "$(stat -c %a "$MT/usr/share/invictus/providers/$p/provider.toml")" == 644 ]] \
@@ -35,15 +35,15 @@ done
 grep -qx 'chat = \["/usr/bin/claude", "--plugin-dir", "/usr/share/invictus/claude-plugin"\]' \
     "$MT/usr/share/invictus/providers/claude-code/provider.toml" || mbad "claude-code must run /usr/bin/claude (absolute, not PATH) with the Invictus plugin"
 PL="$MT/usr/share/invictus/claude-plugin"
-python3 -c 'import json,sys; p=json.load(open(sys.argv[1])); m=json.load(open(sys.argv[2])); assert p["name"]=="invictus"; s=m["mcpServers"]["invictus"]; assert s["command"]=="/usr/bin/python3" and s["args"]==["-I","/usr/lib/invictus/moneta/mcp.py"]' \
-    "$PL/.claude-plugin/plugin.json" "$PL/.mcp.json" 2>/dev/null || mbad "plugin.json / .mcp.json: name invictus and the MCP server at /usr/lib/invictus/moneta/mcp.py, run with python3 -I"
-SH="$REPO/scripts/moneta/claude-plugin/skills/invictus-tools/SKILL.head.md"
+python3 -c 'import json,sys; p=json.load(open(sys.argv[1])); m=json.load(open(sys.argv[2])); assert p["name"]=="invictus"; s=m["mcpServers"]["invictus"]; assert s["command"]=="/usr/bin/python3" and s["args"]==["-I","/usr/lib/invictus/cicero/mcp.py"]' \
+    "$PL/.claude-plugin/plugin.json" "$PL/.mcp.json" 2>/dev/null || mbad "plugin.json / .mcp.json: name invictus and the MCP server at /usr/lib/invictus/cicero/mcp.py, run with python3 -I"
+SH="$REPO/scripts/cicero/claude-plugin/skills/invictus-tools/SKILL.head.md"
 if [[ "$(sed -n '1p;4p' "$SH" | paste -sd' ')" != "--- ---" ]] || ! grep -qx 'name: invictus-tools' "$SH" \
    || ! cmp -s <(cat "$SH" "$REPO/collegium/template/TOOLS.md") "$PL/skills/invictus-tools/SKILL.md"; then
     mbad "the invictus-tools skill must be the frontmatter plus collegium/template/TOOLS.md, unchanged"
 fi
-[[ -f "$MT/usr/share/invictus/hypr/invictus/moneta.lua" ]] || mbad "invictus-tribune must ship moneta.lua (Super+A)"
-[[ ! -e "$TREES/invictus-desktop/usr/share/invictus/hypr/invictus/moneta.lua" ]] || mbad "invictus-desktop ships moneta.lua: a No AI desktop would have Super+A"
+[[ -f "$MT/usr/share/invictus/hypr/invictus/cicero.lua" ]] || mbad "invictus-tribune must ship cicero.lua (Super+A)"
+[[ ! -e "$TREES/invictus-desktop/usr/share/invictus/hypr/invictus/cicero.lua" ]] || mbad "invictus-desktop ships cicero.lua: a No AI desktop would have Super+A"
 [[ "$(stat -c %a "$GT/usr/lib/invictus/claude-config-guard" 2>/dev/null)" == 755 ]] || mbad "invictus-guardrails must ship /usr/lib/invictus/claude-config-guard 0755 beside the profiles"
 # Janus N-L1: the hook is the /bin/sh wrapper (any exit but 0 becomes 2), the
 # Python guard beside it is 0644, and the wrapper finds that file.
@@ -59,14 +59,14 @@ for p in fixed full; do
 done
 # shellcheck source=scripts/lib/ai-set.sh
 ( . "$REPO/scripts/lib/ai-set.sh"; [[ " $AI_PKGS " == *" invictus-tribune "* ]] ) || mbad "invictus-tribune must be in the AI set (ai off removes it)"
-for f in scripts/moneta/moneta.py scripts/moneta/mcp.py scripts/guardrails/claude/config-guard.py; do
+for f in scripts/cicero/cicero.py scripts/cicero/mcp.py scripts/guardrails/claude/config-guard.py; do
     head -1 "$REPO/$f" | grep -qx '#!/usr/bin/python3 -I' || mbad "$f must run with python3 -I (no cwd or user site on sys.path)"
     python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' "$REPO/$f" || mbad "$f does not parse"
 done
 [[ $m_fail == 0 ]] && ok "invictus-tribune: panel, providers (0644), plugin with TOOLS.md as its skill, MCP server, Super+A; the guard ships with the profiles; tribune is in the AI set"
 
 # A7, A8: the managed profiles. Only keys checked against the docs.
-if python3 - "$REPO/scripts/guardrails/claude/fixed.json" "$REPO/scripts/guardrails/claude/full.json" "$REPO/scripts/moneta/claude-plugin/.mcp.json" <<'PY'
+if python3 - "$REPO/scripts/guardrails/claude/fixed.json" "$REPO/scripts/guardrails/claude/full.json" "$REPO/scripts/cicero/claude-plugin/.mcp.json" <<'PY'
 import json, sys
 MCP = json.load(open(sys.argv.pop()))["mcpServers"]["invictus"]
 A7 = ["Bash(sudo *)", "Bash(rm -rf *)", "Bash(dd *)", "Bash(mkfs*)", "Bash(btrfs subvolume delete *)",
@@ -125,7 +125,7 @@ for path in sys.argv[1:]:
         assert d.get("allowManagedMcpServersOnly") is True, ("I-1b", path)
         want = [{"serverCommand": [MCP["command"]] + MCP["args"]}]
         assert d.get("allowedMcpServers") == want, ("I-1b allowlist", d.get("allowedMcpServers"), want)
-        assert want == [{"serverCommand": ["/usr/bin/python3", "-I", "/usr/lib/invictus/moneta/mcp.py"]}], want
+        assert want == [{"serverCommand": ["/usr/bin/python3", "-I", "/usr/lib/invictus/cicero/mcp.py"]}], want
         # Janus P-L1: the allowlist does not compare env, so no server or agent may come from the
         # home at all: user agents (inline mcpServers) and user/project MCP files are not loaded,
         # and Claude's edit tools may not write them (deny rules bind Claude's tools only, not
@@ -142,7 +142,7 @@ else bad "A7/A8: the managed profiles (see the assertion above)"; fi
 # Janus L1: every print or write in the panel that interpolates a value goes
 # through ext() (one line, no control bytes, no direction overrides), except
 # values this file made itself or checked to be plain names and numbers.
-if python3 - "$REPO/scripts/moneta/moneta.py" <<'PY'
+if python3 - "$REPO/scripts/cicero/cicero.py" <<'PY'
 import re, sys
 SAFE = {"'*' if r['selected'] else ' '", "r['name']:<20", "r['kind']:<4", "p['name']", "self.child.pid", "thread",
         "rc", "n", "k", "' '.join(shlex.quote(a) for a in argv)"}
@@ -185,7 +185,7 @@ then ok "L2: the guard's hooks have short timeouts (pre <= 15 s), and its doctor
 else bad "L2: hook timeouts (see the assertion above)"; fi
 
 # Minerva's final review: the docs say what the guard does. Every fixed-profile
-# entry is in TOOLS.md's "Without Full access" item, moneta-panel.md and the A6
+# entry is in TOOLS.md's "Without Full access" item, cicero-panel.md and the A6
 # row, and none of those name user.lua as allowed without Full access; the S2
 # row carries the Wi-Fi exception and its 802.1X exclusion, note 45 and
 # first-boot.md point to it; note 37b no longer says byte-identical.
@@ -202,11 +202,11 @@ for e in entries:
     folder, name = e.rsplit("/", 1)
     assert (e in item or (folder + "/" in item and name in item)), ("TOOLS.md", e)
 assert "user.lua" not in item.split("Files a program executes")[0], "TOOLS.md lists user.lua as allowed without Full access"
-panel = open(f"{repo}/docs/moneta-panel.md").read()
+panel = open(f"{repo}/docs/cicero-panel.md").read()
 design = open(f"{repo}/docs/design.md").read()
 a6 = next(l for l in design.splitlines() if l.startswith("| A6 |"))
 for e in entries:
-    assert e in panel, ("moneta-panel.md", e)
+    assert e in panel, ("cicero-panel.md", e)
     assert e in a6, ("A6 row", e)
 s2 = next(l for l in design.splitlines() if l.startswith("| S2 |"))
 assert "Wi-Fi passwords of shared networks" in s2 and "802.1X" in s2 and "auth_admin_keep" in s2, "S2 row"
@@ -218,7 +218,7 @@ n37b = next(l for l in design.splitlines() if l.startswith("37b. "))
 assert "byte-identical" not in n37b, "note 37b"
 sm8 = next(l for l in open(f"{repo}/docs/design-simple-mode.md").read().splitlines() if l.startswith("| SM8 |"))
 assert "no Write/Edit of any file a program executes; data files on the A6 fixed list only" in sm8, "SM8"
-# Janus I-1b: the deny list is a backstop for a hook timeout, not a boundary, said where Moneta reads it and in note 28
+# Janus I-1b: the deny list is a backstop for a hook timeout, not a boundary, said where Cicero reads it and in note 28
 assert "backstop for the rare case the guard does not answer in time, not the boundary" in " ".join(tools.split()), "TOOLS.md backstop"
 n28 = next(l for l in design.splitlines() if l.startswith("28. "))
 assert "deny list is a backstop, not a boundary" in n28, "note 28 backstop"
@@ -229,11 +229,11 @@ assert "owned by `invictus-sys` (`pacman -Qo`), on ISO and adopted installs alik
 assert "a failed flush at exit would end in 120, which lets the call through" not in src, "I-5 comment"
 assert "It does not decide the exit code" in " ".join(l.strip("# ") for l in src.splitlines()), "I-5 comment"
 PY
-then ok "A6/S2 docs: TOOLS.md, moneta-panel.md, the A6 and SM8 rows match the guard's fixed list; S2 has the Wi-Fi exception, note 45 and first-boot.md point to it; note 37b fixed; TOOLS.md and note 28 call the deny list a backstop (I-1b); SM2 names invictus-sys as the mask's owner (I-2); the flush comment is right (I-5)"
+then ok "A6/S2 docs: TOOLS.md, cicero-panel.md, the A6 and SM8 rows match the guard's fixed list; S2 has the Wi-Fi exception, note 45 and first-boot.md point to it; note 37b fixed; TOOLS.md and note 28 call the deny list a backstop (I-1b); SM2 names invictus-sys as the mask's owner (I-2); the flush comment is right (I-5)"
 else bad "A6/S2 docs out of step with the guard or Minerva's text (see the assertion above)"; fi
 
 # A9: no tool of ours names the Windows VM's or the work profile's files, except
-# the deny rules that keep Moneta out of them.
+# the deny rules that keep Cicero out of them.
 hits="$(grep -rnE '/var/lib/invictus/vm|invictus/windows|winapps' "$REPO/scripts" "$REPO/config" \
         --include='*.sh' --include='*.py' --include='*.lua' 2>/dev/null)"
 [[ -z "$hits" ]] && ok "A9: no Invictus script or the panel reads the VM, Windows or WinApps paths" \
@@ -241,17 +241,17 @@ hits="$(grep -rnE '/var/lib/invictus/vm|invictus/windows|winapps' "$REPO/scripts
 
 # A12: the only code that sends anything over the network is the api
 # provider's chat client (the person's own words to the service they chose);
-# moneta_tests.py checks what that request carries.
+# cicero_tests.py checks what that request carries.
 hits="$(grep -rnE 'urlopen|requests\.post|http\.client|curl[^|]*(-d |--data|-X POST|-F )|wget[^|]*--post' \
         "$REPO/scripts" --include='*.sh' --include='*.py' 2>/dev/null \
-        | grep -v '^[^:]*scripts/dev/' | grep -vE '^[^:]*scripts/moneta/moneta\.py:[0-9]+:    with urllib\.request\.urlopen\(req, timeout=180\) as resp:$')"
+        | grep -v '^[^:]*scripts/dev/' | grep -vE '^[^:]*scripts/cicero/cicero\.py:[0-9]+:    with urllib\.request\.urlopen\(req, timeout=180\) as resp:$')"
 [[ -z "$hits" ]] && ok "A12: one network send in our tools, the chat client's request (scripts/dev excluded: never installed)" \
     || bad "A12: network sends outside the chat client: $hits"
 
-python3 -I "$REPO/tests/pkgs/moneta_tests.py" "$REPO" "$TMP" > "$TMP/moneta.out" 2>&1
+python3 -I "$REPO/tests/pkgs/cicero_tests.py" "$REPO" "$TMP" > "$TMP/cicero.out" 2>&1
 rc=$?
-grep -E '^(ok|FAIL)' "$TMP/moneta.out"
+grep -E '^(ok|FAIL)' "$TMP/cicero.out"
 if [[ $rc != 0 ]]; then
-    bad "moneta_tests.py exit $rc: $(grep -vE '^(ok|==)' "$TMP/moneta.out" | tail -5)"
+    bad "cicero_tests.py exit $rc: $(grep -vE '^(ok|==)' "$TMP/cicero.out" | tail -5)"
 fi
 set -e

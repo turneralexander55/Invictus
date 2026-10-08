@@ -1,5 +1,5 @@
 # Any command-line agent (design 4.2): the person types the command in
-# Settings > Moneta (invictus-provider set generic-cli --command -- ...).
+# Settings > Cicero (invictus-provider set generic-cli --command -- ...).
 # Its worst case is a shell, so it runs only under Libertas with Full access
 # on (design-simple-mode 12.3, SM10, SM26), as the person, with no sudo; root
 # is reachable only through invictus-sys and its password prompt (A13).

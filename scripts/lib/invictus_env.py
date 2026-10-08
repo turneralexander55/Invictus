@@ -11,7 +11,7 @@ key on stdin, which command the screens call.
     env = invictus_env.for_script(__file__)
     SHARE = env("INVICTUS_SHARE", "/usr/share/invictus")
 
-A runtime label that is not an override (the Moneta thread id, for one) is
+A runtime label that is not an override (the Cicero thread id, for one) is
 read with os.environ directly and marked "# not an override";
 tests/pkgs/firstboot.sh fails on any other direct INVICTUS_* read in a
 shipped Python script.

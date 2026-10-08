@@ -3,7 +3,7 @@
 # ok, bad): invictus-first-boot, the first-start wizard's logic (design.md
 # 2.3, no-ai.md 2, simple-mode.md 3.2), with every command it calls faked at
 # the seam: hyprctl, invictus-sys, invictus-provider (Vulcan's provider
-# layer, docs/moneta-panel.md), the terminal, invictus-theme, invictus-motion, gsettings,
+# layer, docs/cicero-panel.md), the terminal, invictus-theme, invictus-motion, gsettings,
 # nmcli, invictus-doctor and quickshell. The screens themselves are tested
 # in the real toolkit by tests/firstboot/qml.sh (container).
 # shellcheck disable=SC2153,SC2015,SC2016 # REPO, TMP, ALL, STUBS come from run.sh; ok || bad on purpose; the fakes' bodies expand when they run
@@ -35,7 +35,7 @@ if [[ "$3 $4" == "ai off" && $rc == 0 ]]; then echo off > "$FAKE_DIR/ai"; fi
 (( rc == 0 )) && echo "invictus-sys: $res snapshot=$snap"
 exit "$rc"'
 # invictus-provider: logs argv; whatever comes on stdin goes to its own file
-# invictus-provider as docs/moneta-panel.md documents it: set NAME [--endpoint
+# invictus-provider as docs/cicero-panel.md documents it: set NAME [--endpoint
 # URL], key set NAME (one line on stdin). Logs argv; the key to its own file.
 fake invictus-provider 'echo "invictus-provider $*" >> "$FAKE_DIR/log"
 case "$1 $2" in
@@ -222,7 +222,7 @@ fb look nero calm light; rc=$?
 [[ $rc == 2 ]] && ! grep -q "apply\|set" "$H/log" && ok "look refuses a theme invictus-theme does not list; nothing applied" \
     || bad "look with an unknown theme: rc $rc $(cat "$H/log")"
 
-# ---- step 3: the assistant (no-ai.md 2), against docs/moneta-panel.md ----------------
+# ---- step 3: the assistant (no-ai.md 2), against docs/cicero-panel.md ----------------
 new_home none atrium
 fb assistant none
 [[ ! -s "$H/log" ]] && grep -q '"result": "ok"' "$H/out" \
@@ -705,10 +705,10 @@ vle() { [[ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" == "$1" ]]; }
 mkdir -p "$TMP/nohelper/bin"
 cp "$FB" "$TMP/nohelper/bin/invictus-first-boot"
 cp "$REPO/theme/invictus-theme" "$TMP/nohelper/bin/invictus-theme"
-cp "$REPO/scripts/moneta/moneta.py" "$TMP/nohelper/bin/moneta.py"
-cp "$REPO/scripts/moneta/mcp.py" "$TMP/nohelper/bin/mcp.py"
+cp "$REPO/scripts/cicero/cicero.py" "$TMP/nohelper/bin/cicero.py"
+cp "$REPO/scripts/cicero/mcp.py" "$TMP/nohelper/bin/mcp.py"
 n4=""
-for s in invictus-first-boot invictus-theme moneta.py mcp.py; do
+for s in invictus-first-boot invictus-theme cicero.py mcp.py; do
     python3 "$TMP/nohelper/bin/$s" state > /dev/null 2> "$TMP/nohelper/$s.err" < /dev/null; rc=$?
     if [[ $rc == 0 ]] || grep -q Traceback "$TMP/nohelper/$s.err" || ! grep -q "invictus_env.py" "$TMP/nohelper/$s.err"; then
         n4+=" $s(rc $rc: $(tail -1 "$TMP/nohelper/$s.err"))"

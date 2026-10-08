@@ -6,7 +6,7 @@
 # invictus-guardrails, invictus-tools (so every desktop) depends on it. Files come from this repo (scripts/sys, scripts/lib) at
 # the same commit as this PKGBUILD: bump pkgrel when any of them changes.
 #
-#   /usr/bin/invictus-sys                      what people, Settings and Moneta call
+#   /usr/bin/invictus-sys                      what people, Settings and Cicero call
 #   /usr/lib/invictus/invictus-sys             the root half, run by pkexec
 #   /usr/lib/invictus/lib/sys-verbs.sh         the verb table both halves check
 #   /usr/lib/invictus/lib/pacman.sh            package names, the -Syu --needed install
@@ -39,7 +39,7 @@
 
 pkgname=invictus-sys
 pkgver=0.2.0
-pkgrel=6
+pkgrel=7
 pkgdesc='Invictus system helper: the fixed verbs that change the system, each behind its own polkit prompt'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'

@@ -19,7 +19,7 @@
 #   guardrails set libertas [--for 1h] [--by USER]
 #   guardrails expire                  the timer's run: ends a timed
 #                                      Libertas whose end has passed
-#   guardrails signal [stop]           tell a running Moneta panel to
+#   guardrails signal [stop]           tell a running Cicero panel to
 #                                      restart with the profile now in place
 #                                      (or, with stop, to end: ai off)
 #   guardrails hold-warning            the pacman hook's text (Custodia only)
@@ -266,7 +266,7 @@ notice() {  # for invictus-session to show at the next chance (design 12.1)
 }
 
 # ---- the assistant -----------------------------------------------------------------------
-# The Moneta panel (tribune, part 6) listens on
+# The Cicero panel (tribune, part 6) listens on
 # /run/user/<uid>/invictus/tribune.sock; "restart-profile" makes it end the
 # running agent (SIGTERM to its process group, SIGKILL after 5 s) and start
 # it again under the profile now in place; "stop" (ai off) makes it end the
@@ -294,8 +294,8 @@ signal_assistant() {  # signal_assistant [restart-profile|stop]
         fi
     done
     if ((sent)); then
-        if [[ "$msg" == stop ]]; then say "told $sent Moneta panel(s) to stop"
-        else say "told $sent Moneta panel(s) to restart with the new rules"; fi
+        if [[ "$msg" == stop ]]; then say "told $sent Cicero panel(s) to stop"
+        else say "told $sent Cicero panel(s) to restart with the new rules"; fi
     fi
 }
 
@@ -329,7 +329,7 @@ to_custodia() {  # to_custodia HOW
     signal_assistant
     notice "Guard rails are back on"
     local extra=""
-    [[ "$was_full" == on ]] && extra=", Moneta's full access turned off"
+    [[ "$was_full" == on ]] && extra=", Cicero's full access turned off"
     # shellcheck disable=SC2046
     acta "guard rails: $from -> custodia by $BY, $how$extra" VERB=guardrails-custodia ARGS="" RESULT=ok \
         FROM="$from" TO=custodia HOW="$how" FULL_ACCESS_WAS="$was_full" $(ctx)

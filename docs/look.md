@@ -6,9 +6,9 @@ Mockups (`docs/mockups/`, each 1920 x 1080, self-contained HTML, fonts from Goog
 
 | File | State |
 |---|---|
-| `desktop-working-notification.html` | Bar, three tiled windows with the editor focused, a Moneta notification |
+| `desktop-working-notification.html` | Bar, three tiled windows with the editor focused, a Cicero notification |
 | `desktop-launcher-open.html` | The launcher open over the same windows |
-| `desktop-moneta-panel.html` | The Moneta panel open, with an approval request |
+| `desktop-cicero-panel.html` | The Cicero panel open, with an approval request |
 | `lock-typing.html` | Lock screen, password being typed |
 | `login.html` | Login (SDDM), last user preselected |
 | `desk.html` | The first Desk sketch (superseded by `desk-*.html`, `docs/desk.md`) |
@@ -38,7 +38,7 @@ Tokens are the contract. Every surface below uses these names; engineers should 
 | Token | Hex | Use |
 |---|---|---|
 | `night` | `#14120F` | Deepest background: terminal, lock, login, boot, bar |
-| `basalt` | `#1C1A16` | Panels: launcher, notifications, Moneta panel, Desk cards |
+| `basalt` | `#1C1A16` | Panels: launcher, notifications, Cicero panel, Desk cards |
 | `stone` | `#27241F` | Raised: selected rows, hovered items, input fields |
 | `line` | `#3A352D` | 1 px borders and dividers, inactive window border |
 | `marble` | `#ECE6DA` | Primary text |
@@ -48,7 +48,7 @@ Tokens are the contract. Every surface below uses these names; engineers should 
 | `sol-bright` | `#F0C274` | Hover on a gold element; progress fill |
 | `pompeii` | `#D9725A` | Error, critical notification, failed password, battery/temperature alarm |
 | `laurel` | `#94AD7B` | Success, "snapshot taken", healthy |
-| `lapis` | `#7C9FD4` | Links and info. Also Moneta's "listening" state |
+| `lapis` | `#7C9FD4` | Links and info. Also Cicero's "listening" state |
 | `verdigris` | `#72ACA3` | Terminal cyan only |
 | `tyrian` | `#B388B0` | Terminal magenta only |
 
@@ -175,7 +175,7 @@ Option names are the Hyprland variable names; Vulcan maps them into the Lua conf
 | `misc.vfr` | `true` | |
 | `cursor.no_hardware_cursors` | keep what `0a579b7` set | That commit fixed a real bug |
 
-Layer rules (blur the panels that sit on the wallpaper): `blur` and `ignore_alpha 0.3` for namespaces `waybar`, `rofi`, `swaync-notification-window`, `swaync-control-center`, `moneta-panel`.
+Layer rules (blur the panels that sit on the wallpaper): `blur` and `ignore_alpha 0.3` for namespaces `waybar`, `rofi`, `swaync-notification-window`, `swaync-control-center`, `cicero-panel`.
 
 **Animations.** See **Motion** below. It replaces the single snappy table that was here: everyday changes keep that speed, and a few moments get more.
 
@@ -195,14 +195,14 @@ One continuous bar, not pills. The old bar had nine floating black pills and fou
 
 | Left | Centre | Right |
 |---|---|---|
-| mark (16 px, `marble`; click opens the Desk) | clock | Moneta "Now" (see below) |
+| mark (16 px, `marble`; click opens the Desk) | clock | Cicero "Now" (see below) |
 | workspaces | | tray (collapsed, `waybar` `tray` with `icon-size 16`) |
 | window title | | updates (hidden when 0) |
 | | | system alert (hidden unless hot) |
 | | | volume |
 | | | network |
 | | | notifications (swaync count, dot when unread) |
-| | | Moneta button |
+| | | Cicero button |
 
 **Other monitors (`DP-2`, `HDMI-A-2`):** left: workspaces, window title. Centre: clock. Nothing on the right. One status area, on one monitor, so there is one place to look.
 
@@ -211,13 +211,13 @@ Module details:
 - **Workspaces** (`hyprland/workspaces`, `all-outputs false`, persistent 1-3 / 4-6 / 7-9 as now). Arabic numerals in Plex Mono, 22 px wide buttons. Empty: `ash`. Has windows: `parchment`. Active: `marble` with a 2 px `sol` bar under the number (`box-shadow: inset 0 -2px #E0A64B`). Urgent: `pompeii` number. Numbers match the keys you press, so no Roman numerals here.
 - **Window title** (`hyprland/window`, `separate-outputs true`, `max-length 60`): `ash`, 13 px. Empty desktop: hidden.
 - **Clock**: `%H:%M`, Plex Sans 14 px weight 600, `marble`. Tooltip: `%A %d %B %Y`. Click toggles a calendar in the tooltip.
-- **Now** (custom module, depends on the assistant's architecture): the one thing Moneta says you are doing, for example `Now · Port waybar to Lua`, `parchment`, max 40 characters. Click opens the Desk with the keyboard on its Now card (changed 2026-09-30, `desk.md` 1.2; it opened the Moneta panel's threads, which the Desk's Switch now lists). Hidden when nothing is set. This is the ADHD anchor: one line, always in the same place. With No AI (`no-ai.md` 4) it stays, set by hand from the Desk. A running timer adds whole minutes (`· 19 min`), never seconds.
+- **Now** (custom module, depends on the assistant's architecture): the one thing Cicero says you are doing, for example `Now · Port waybar to Lua`, `parchment`, max 40 characters. Click opens the Desk with the keyboard on its Now card (changed 2026-09-30, `desk.md` 1.2; it opened the Cicero panel's threads, which the Desk's Switch now lists). Hidden when nothing is set. This is the ADHD anchor: one line, always in the same place. With No AI (`no-ai.md` 4) it stays, set by hand from the Desk. A running timer adds whole minutes (`· 19 min`), never seconds.
 - **Updates**: `󰮯 12` in `parchment`; hidden at 0. Click opens the update terminal as now.
 - **System alert** (replaces the GPU, CPU and memory pills): hidden while CPU < 90%, GPU temp < 90 °C, RAM < 90% and root disk < 90%. When one is over, shows that one reading in `pompeii`, e.g. `󰢮 94 °C`. Tooltip always lists all four. Poll every 5 s, not 2.
 - **Volume** (`pulseaudio`): icon + number, muted shows the muted icon in `ash`. Scroll 5%. Click opens `pavucontrol`.
 - **Network**: icon only; tooltip has the details. Disconnected: icon in `pompeii`.
 - **Notifications** (`custom/swaync`, from `swaync-client -swb`): bell icon, `sol` dot when there are unread ones, crossed bell in `ash` when DND is on. Click toggles the control centre.
-- **Moneta button**: the Moneta coin glyph (a circle with an `M`, drawn in the icon set as `moneta-symbolic`) in `parchment`. States: idle `parchment`; has something for you: small `sol` dot; listening (push-to-talk held): glyph in `lapis` with a 1 px `lapis` ring. Click toggles the Moneta panel. Not shown with No AI (`no-ai.md` 4).
+- **Cicero button**: the Cicero coin glyph (a circle with a `C`, drawn in the icon set as `cicero-symbolic`) in `parchment`. States: idle `parchment`; has something for you: small `sol` dot; listening (push-to-talk held): glyph in `lapis` with a 1 px `lapis` ring. Click toggles the Cicero panel. Not shown with No AI (`no-ai.md` 4).
 
 ### Rofi (launcher)
 
@@ -246,7 +246,7 @@ Module details:
 - Critical: 3 px `pompeii` bar on the left edge, stays until dismissed. Normal: 5 s. Low: 3 s.
 - Action buttons: text only, `parchment`, hover `marble` on `stone`.
 - Control centre: 400 px, full height below the bar. Top to bottom: a single "Do not disturb" switch (on = `sol` track), the list grouped by app, "Clear all" at the bottom in `ash`. Cut: the MPRIS player, volume and backlight sliders, button grid. The bar already has volume; the rest is noise.
-- Moneta notifications use the Moneta glyph as the app icon and a `lapis` title, so they are told apart from app spam at a glance.
+- Cicero notifications use the Cicero glyph as the app icon and a `lapis` title, so they are told apart from app spam at a glance.
 
 ### Lock screen (hyprlock)
 
@@ -314,21 +314,21 @@ Optional extras, public domain only: photographs from the Met Open Access and Ri
 - ISO desktop: the Sol wallpaper, the bar, and one centred card (`basalt`, radius 16, 440 px): the mark, `INVICTUS` wordmark, one line `Try it, or install it on this computer.`, and a single gold button `Install Invictus` (`night` text on `sol`, 48 px tall, radius 10). A text link under it, `Open a terminal`, in `ash`. Nothing else on screen.
 - Installer (Calamares or our own, per Minerva's architecture): sidebar `night`, sidebar text `parchment`, current step `sol` text with a 3 px `sol` left bar, content on `basalt`, primary button `sol`. Product name `Invictus`, the mark as the product logo, the Sol wallpaper as the welcome image.
 
-### The Moneta panel
+### The Cicero panel
 
-A layer-shell panel (namespace `moneta-panel`) that slides in from the right edge. It is a helper beside your work, not a window in the tiling.
+A layer-shell panel (namespace `cicero-panel`) that slides in from the right edge. It is a helper beside your work, not a window in the tiling.
 
 - 440 px wide, full height under the bar, 8 px gap to the right edge. `basalt` at 96% with blur, 1 px `line` border, radius 12.
 - Slide in `layersIn` (180 ms); `Super + A` or the bar button toggles; `Esc` closes. Opening does not steal focus from the game or the window under it until you click or start typing into it.
-- Header (48 px): Moneta glyph, `Moneta` in Plex Sans 15 px weight 600, status word in `ash` (`Ready`, `Listening`, `Thinking`, `Working on it`). Right: a collapse button.
+- Header (48 px): Cicero glyph, `Cicero` in Plex Sans 15 px weight 600, status word in `ash` (`Ready`, `Listening`, `Thinking`, `Working on it`). Right: a collapse button.
 - **Now** strip under the header: the current thread in one line, `parchment`, with a `sol` 3 px left bar. `Threads (4)` collapsed row under it; opening it shows the open threads, one line each, click to switch.
-- Conversation: Moneta's messages on no background, `marble` text, 14 px, line height 1.5. The person's messages right-aligned on `stone`, radius 12. Code blocks in Plex Mono 13 px on `night`. Tool actions she takes appear as one collapsed line (`Ran 2 commands`) with the details behind it.
-- Input: 48 px min, `stone`, radius 12, placeholder `Ask Moneta` in `ash`, `sol` border on focus. A mic glyph at the right shows push-to-talk: `ash` idle, `lapis` with a level bar while the pen button is held, `pompeii` if the mic fails.
+- Conversation: Cicero's messages on no background, `marble` text, 14 px, line height 1.5. The person's messages right-aligned on `stone`, radius 12. Code blocks in Plex Mono 13 px on `night`. Tool actions it takes appear as one collapsed line (`Ran 2 commands`) with the details behind it.
+- Input: 48 px min, `stone`, radius 12, placeholder `Ask Cicero` in `ash`, `sol` border on focus. A mic glyph at the right shows push-to-talk: `ash` idle, `lapis` with a level bar while the pen button is held, `pompeii` if the mic fails.
 - Anything that needs approval (running a command with system access) shows as a card with a 1 px `sol` border (it is where your attention is needed), the exact command in mono, and two buttons of equal weight, `Allow once` and `Deny`, both `marble` on `stone`. Neither is styled as the default, so a habit click does not approve. While the card waits, the input loses its focus border. Never pre-approved, never auto-dismissed.
 
 ### The Desk (home dashboard)
 
-Designed in `docs/desk.md` (2026-09-30), with mockups `desk-tessera.html`, `desk-card-mockups.html` and `desk-no-ai.html`. In short: the home screen of Tessera, shown and hidden with a tap of Super, three columns (you, the team, Moneta) with the claude.ai Desk's sections and words, keyboard first, one gold. The first sketch (`desk.html`, greeting, Now, Open threads, Waiting on you) is kept for history.
+Designed in `docs/desk.md` (2026-09-30), with mockups `desk-tessera.html`, `desk-card-mockups.html` and `desk-no-ai.html`. In short: the home screen of Tessera, shown and hidden with a tap of Super, three columns (you, the team, Cicero) with the claude.ai Desk's sections and words, keyboard first, one gold. The first sketch (`desk.html`, greeting, Now, Open threads, Waiting on you) is kept for history.
 Where the data comes from, how Push works and what the security rules are: `design-desk.md` (Minerva, 2026-09-30): Waiting on you, Needs you and Notes read the desk repo beside the Collegium; with No AI the Desk reads no repo.
 
 Cut from the Desk: weather, news, calendar grid, app shortcuts (that is the launcher's job), system graphs (that is btop's job).
@@ -497,7 +497,7 @@ theme/                            # repo; installed to /usr/share/invictus/theme
 | GTK 3 / 4 | `~/.config/gtk-3.0/gtk.css` and `gtk-4.0/gtk.css` each `@import` `gtk-colors.css` (the `@define-color` list under GTK above, from tokens) |
 | Qt | qt5ct/qt6ct colour scheme path points at `~/.config/invictus/current/qt-colors.conf` |
 | btop | `color_theme = "~/.config/invictus/current/btop.theme"` |
-| Moneta panel, Desk | load `~/.config/invictus/current/desk-tokens.css` (CSS custom properties with the token names) |
+| Cicero panel, Desk | load `~/.config/invictus/current/desk-tokens.css` (CSS custom properties with the token names) |
 
 ### `invictus-theme`: generate and reload
 
@@ -530,7 +530,7 @@ One command, `scripts/invictus-theme` (Python 3 standard library only: `tomllib`
 | cava | `pkill -SIGUSR1 -x cava` |
 | btop | Next launch |
 | rofi, hyprlock | Read at each launch; nothing to do |
-| Moneta panel, Desk | Watch `~/.config/invictus/current` with inotify and reload `desk-tokens.css` |
+| Cicero panel, Desk | Watch `~/.config/invictus/current` with inotify and reload `desk-tokens.css` |
 | Anything else | Executables in `~/.config/invictus/theme-hooks.d/` run with the theme id as the only argument (for example a Zed or browser theme). A hook failing is logged and does not undo the switch |
 
 5. **Remember.** The `current` link is the setting; nothing else stores it. No success notification: the desktop changing is the confirmation.
@@ -642,7 +642,7 @@ Layer rules (Hyprland layer rule effect `animation` sets the style per namespace
 |---|---|---|
 | `waybar` | `animation = "slide top"` | The bar drops in from the edge at session start |
 | `rofi` (launcher and pickers) | inherits `layersIn` `popin 94%` | Opens where you look |
-| `moneta-panel` | `animation = "slide right"` | Matches where it lives; 180 ms as in the panel spec |
+| `cicero-panel` | `animation = "slide right"` | Matches where it lives; 180 ms as in the panel spec |
 | `swaync-notification-window`, `swaync-control-center` | `no_anim = true` | swaync animates its own cards; a layer fade on top would double it |
 | `invictus-veil` | `no_anim = true` | The veil animates itself (theme switch, below) |
 
@@ -697,7 +697,7 @@ Calm and Off: no accent (`animation: none`). Critical notifications get no accen
 
 **Rofi 2.0** (launcher and the theme and motion pickers) has no animation of its own. It opens with the Hyprland `layersIn` pop (94%, 180 ms) and closes with the 120 ms fade. The selection moves instantly, which is right for a list you drive with arrow keys.
 
-**Moneta panel and Desk.** Panel: `slide right`, 180 ms in, 120 ms out. Desk: the special workspace `slidefadevert 16%`, 260 ms. New lines in the panel conversation fade in over 120 ms (Calm: none). The "Working on it" status never animates dots or spinners; it changes the word only.
+**Cicero panel and Desk.** Panel: `slide right`, 180 ms in, 120 ms out. Desk: the special workspace `slidefadevert 16%`, 260 ms. New lines in the panel conversation fade in over 120 ms (Calm: none). The "Working on it" status never animates dots or spinners; it changes the word only.
 
 ### Timing budget, checked
 
@@ -733,7 +733,7 @@ Cost: none of this adds a daemon that stays running. The glint is part of the bo
 
 ## Reused / new, and why
 
-Reused: IBM Plex Mono and the kitty font settings, the block cursor and blink curve, the master layout and its values, `resize_on_border false`, the persistent workspace split per monitor, the updates module and its script, pavucontrol and nm-connection-editor actions, Papirus, nwg-look, the SDDM compositor setup (`d43490a`), the cursor fix (`0a579b7`), and the Desk idea from Alex's Liberalitas Desk (sections Now, Waiting on you, Threads). New: the palette, the mark, the Plymouth, SDDM and btop themes, the system-alert module (replaces three stats modules), the Now module and Moneta panel (nothing like them exists), and the wallpapers (the old ones cannot ship). No shared theming tool exists yet; the engineer should generate every app's colour file from one tokens file per theme (`theme/<id>.toml`, see Themes) so a colour change is made once.
+Reused: IBM Plex Mono and the kitty font settings, the block cursor and blink curve, the master layout and its values, `resize_on_border false`, the persistent workspace split per monitor, the updates module and its script, pavucontrol and nm-connection-editor actions, Papirus, nwg-look, the SDDM compositor setup (`d43490a`), the cursor fix (`0a579b7`), and the Desk idea from Alex's Liberalitas Desk (sections Now, Waiting on you, Threads). New: the palette, the mark, the Plymouth, SDDM and btop themes, the system-alert module (replaces three stats modules), the Now module and Cicero panel (nothing like them exists), and the wallpapers (the old ones cannot ship). No shared theming tool exists yet; the engineer should generate every app's colour file from one tokens file per theme (`theme/<id>.toml`, see Themes) so a colour change is made once.
 
 Themes (2026-09-30). Reused: the Dusk token names and every surface spec above (the themes change values only), the launcher's rofi layout and selection style for the picker, the keybinding description convention in `binds.lua`, the existing `hyprpaper` daemon, and each app's own reload signal. New: `theme/<id>.toml` files, the templates, `invictus-theme` and the picker. Nothing in the repo generated app colours from one source before (`scripts/` has install, deploy and update scripts only; `config/` holds hand-written colours per app), so the generator is new; it replaces those hand-written colours rather than sitting beside them.
 

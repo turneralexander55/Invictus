@@ -298,10 +298,10 @@ else sfail "report-collect: rc $rc, $n files, $other other files"; fi
 # ran pkexec (its cgroup and environment).
 mkdir -p "$TMP/proc/$$"
 echo "0::/user.slice/user-1000.slice/session-7.scope" > "$TMP/proc/$$/cgroup"
-printf 'HOME=/h\0INVICTUS_REQUEST=moneta-thread-9\0' > "$TMP/proc/$$/environ"
+printf 'HOME=/h\0INVICTUS_REQUEST=cicero-thread-9\0' > "$TMP/proc/$$/environ"
 new_root acta custodia; export_env
 rc=0; PKEXEC_UID="$(id -u)" bash -c 'exec "$0" snapshot test' "$SYS/invictus-sys-root.sh" > "$TMP/sys.out" 2>&1 || rc=$?
-if [[ $rc == 0 ]] && acta_has "INVICTUS_SESSION=7" && acta_has "INVICTUS_REQUEST=moneta-thread-9"; then
+if [[ $rc == 0 ]] && acta_has "INVICTUS_SESSION=7" && acta_has "INVICTUS_REQUEST=cicero-thread-9"; then
     ok "A11: Acta records the logind session (7) and request id of the process that ran pkexec"
 else sfail "A11 session: rc $rc: $(paste -sd'|' "$TMP/acta.log")"; fi
 
@@ -617,14 +617,14 @@ new_root sock libertas; export_env; grd apply
 mkdir -p "$R/run/user/$me/invictus"
 listen_tribune "$R/run/user/$me/invictus/tribune.sock" "$TMP/tribune.got"
 grd set custodia
-[[ "$(got "$TMP/tribune.got")" == "restart-profile uid=$me" ]] && ok "G7: a switch sends restart-profile to the Moneta panel's socket" || gbad "tribune socket got '$(cat "$TMP/tribune.got" 2>/dev/null)'"
+[[ "$(got "$TMP/tribune.got")" == "restart-profile uid=$me" ]] && ok "G7: a switch sends restart-profile to the Cicero panel's socket" || gbad "tribune socket got '$(cat "$TMP/tribune.got" 2>/dev/null)'"
 # L1 (Janus): a /run/user/N folder whose owner is not N gets nothing.
 new_root sock2 libertas; export_env; grd apply
 other=4242; [[ "$me" == 4242 ]] && other=4243
 mkdir -p "$R/run/user/$other/invictus"
 listen_tribune "$R/run/user/$other/invictus/tribune.sock" "$TMP/tribune2.got"
 grd set custodia
-! grep -q 'told .* Moneta panel' "$TMP/grd.out" && [[ ! -s "$TMP/tribune2.got" ]] && ok "L1-socket-owner: a /run/user/$other folder owned by uid $me is skipped" || gbad "L1-socket-owner: root signalled a socket in a folder its uid does not own: '$(cat "$TMP/tribune2.got")'"
+! grep -q 'told .* Cicero panel' "$TMP/grd.out" && [[ ! -s "$TMP/tribune2.got" ]] && ok "L1-socket-owner: a /run/user/$other folder owned by uid $me is skipped" || gbad "L1-socket-owner: root signalled a socket in a folder its uid does not own: '$(cat "$TMP/tribune2.got")'"
 # L1 as root: the connection is made as the folder's owner, not as root.
 if [[ $EUID -eq 0 ]]; then
     new_root sock3 libertas; export_env; grd apply
@@ -734,10 +734,10 @@ echo off > "$R/etc/invictus/ai"; mkdir -p "$(dirname "$POL")"; printf '%s\n' "$O
 : > "$TMP/sys.log"; isys ai on
 if [[ $rc == 0 && "$(cat "$R/etc/invictus/ai")" == on && "$(stat -c %a "$R/etc/invictus/ai")" == 644 && ! -e "$POL" ]] \
    && grep -q 'pkexec action=org.invictus.sys.ai-on ' "$TMP/sys.log" \
-   && logged "pacman -Syu --needed --noconfirm -- invictus-moneta" && logged inhibit \
+   && logged "pacman -Syu --needed --noconfirm -- invictus-cicero" && logged inhibit \
    && [[ "$(snaps | head -1 | cut -d, -f2-3)" == "pre,invictus-sys ai-on " ]] \
    && acta_has "INVICTUS_VERB=ai-on" && acta_has "INVICTUS_RESULT=ok" && grep -q 'invictus-sys: ok snapshot=1' "$TMP/sys.out"; then
-    ok "NA6: ai on (org.invictus.sys.ai-on): /etc/invictus/ai on (0644), our browser policy removed, invictus-moneta in one -Syu --needed, pre/post pair, Acta"
+    ok "NA6: ai on (org.invictus.sys.ai-on): /etc/invictus/ai on (0644), our browser policy removed, invictus-cicero in one -Syu --needed, pre/post pair, Acta"
 else gbad "ai on: rc $rc: $(paste -sd'|' "$TMP/sys.log") out: $(cat "$TMP/sys.out")"; fi
 # Offline: the choice stands, the install waits for the connection. The
 # error lines are pacman 7's own (e2e-sys.sh checks them in Arch).
@@ -772,7 +772,7 @@ PEND() { rc=0; bash "$SYS/ai-pending.sh" > "$TMP/pend.out" 2>&1 || rc=$?; }
     && ok "N-L2-pending-exit-2: ai-pending exits 2 (no retry) on a failure that is not a download, with an Acta entry" \
     || gbad "N-L2-pending-exit-2: ai-pending on a bad signature: rc $rc $(cat "$TMP/pend.out")"
 : > "$TMP/sys.log"; PEND
-if [[ $rc == 0 && ! -e "$R/var/lib/invictus/ai-install-pending" ]] && logged "pacman -Syu --needed --noconfirm -- invictus-moneta" \
+if [[ $rc == 0 && ! -e "$R/var/lib/invictus/ai-install-pending" ]] && logged "pacman -Syu --needed --noconfirm -- invictus-cicero" \
    && logged "systemctl disable invictus-ai-pending.service" && acta_has "INVICTUS_ARGS=pending"; then :
 else gbad "ai-pending install: rc $rc $(cat "$TMP/pend.out")"; fi
 printf 'by = x\n' > "$R/var/lib/invictus/ai-install-pending"; echo off > "$R/etc/invictus/ai"
@@ -816,17 +816,17 @@ if [[ $EUID -eq 0 ]]; then
 fi
 mkdir -p "$R/run/user/$me/invictus"; listen_tribune "$R/run/user/$me/invictus/tribune.sock" "$TMP/tribune-ai.got"
 : > "$TMP/sys.log"
-INVICTUS_PEOPLE="$TMP/people" FAKE_INSTALLED="claude-code invictus-moneta" isys ai off
+INVICTUS_PEOPLE="$TMP/people" FAKE_INSTALLED="claude-code invictus-cicero" isys ai off
 got "$TMP/tribune-ai.got" >/dev/null
 if [[ $rc == 0 && "$(cat "$R/etc/invictus/ai")" == off && "$(stat -c %a "$R/etc/invictus/ai")" == 644 ]] \
    && grep -q 'pkexec action=org.invictus.sys.ai-off ' "$TMP/sys.log" \
    && grep -qx 'full-access = off' "$R/etc/invictus/assistant" && [[ "$(readlink "$R/etc/claude-code/managed-settings.json")" == */fixed.json ]] \
    && [[ ! -e "$R/var/lib/invictus/ai-install-pending" ]] && logged "systemctl disable --now invictus-ai-pending.service" \
-   && logged "pacman -Rs --noconfirm -- claude-code invictus-moneta" \
+   && logged "pacman -Rs --noconfirm -- claude-code invictus-cicero" \
    && [[ "$(snaps | head -1 | cut -d, -f2-3)" == "pre,invictus-sys ai-off " ]] && acta_has "INVICTUS_VERB=ai-off" && acta_has "INVICTUS_RESULT=ok"; then
     ok "NA2: ai off (org.invictus.sys.ai-off): /etc/invictus/ai off (0644), full access off and the fixed profile, the pending install cancelled, the installed AI set removed, pre/post pair, Acta"
 else gbad "ai off: rc $rc: $(paste -sd'|' "$TMP/sys.log") out: $(cat "$TMP/sys.out")"; fi
-[[ "$(cat "$TMP/tribune-ai.got" 2>/dev/null)" == "stop uid=$me" ]] && ok "N3 step 1: ai off tells the Moneta panel to stop" || gbad "ai off: tribune got '$(cat "$TMP/tribune-ai.got" 2>/dev/null)'"
+[[ "$(cat "$TMP/tribune-ai.got" 2>/dev/null)" == "stop uid=$me" ]] && ok "N3 step 1: ai off tells the Cicero panel to stop" || gbad "ai off: tribune got '$(cat "$TMP/tribune-ai.got" 2>/dev/null)'"
 if python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d == {"policies": {"GenerativeAI": {"Enabled": False, "Locked": True}}}' "$POL" 2>/dev/null \
    && [[ "$(stat -c %a "$POL")" == 644 ]]; then ok "N7/NA4: ai off writes the browser policy, root 0644, exactly policies.GenerativeAI off and locked"
 else gbad "browser policy: $(cat "$POL" 2>/dev/null)"; fi

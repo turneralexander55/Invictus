@@ -4,7 +4,7 @@
 # /usr/bin/invictus-sys by invictus-sys. Runs as you; every system change
 # goes through pkexec to /usr/lib/invictus/invictus-sys, with one polkit
 # action per verb, so the password prompt names the exact change.
-# Reference for the Moneta panel and other callers: docs/invictus-sys.md.
+# Reference for the Cicero panel and other callers: docs/invictus-sys.md.
 #
 #   invictus-sys [--request ID] VERB [ARGS]
 #
@@ -31,7 +31,7 @@
 #   guardrails apply | expire      root only: installer, package, boot, timer
 #   help                           this list
 #
-# --request ID labels the call in Acta (the Moneta thread that asked).
+# --request ID labels the call in Acta (the Cicero thread that asked).
 # Exit: 0 ok; 1 the change failed; 2 bad arguments; 3 refused; 4 busy;
 # 126 the password prompt was cancelled; 127 not allowed, or pkexec failed.
 # Env (tests): INVICTUS_LIB, INVICTUS_PKEXEC, INVICTUS_SYS_HELPER,
