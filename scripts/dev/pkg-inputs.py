@@ -20,6 +20,10 @@ of what it names.
 usage: pkg-inputs.py [--repo DIR] --check    exit 1 if a package changed without a bump
        pkg-inputs.py [--repo DIR] --update   rewrite the lock; refuses the same
                                              version with a new hash
+       pkg-inputs.py [--repo DIR] --update --rehash NAME...
+                                             also re-lock NAME at the same version: only
+                                             for a bump not yet built or published (a
+                                             second change on the branch that bumped it)
        pkg-inputs.py [--repo DIR] --inputs NAME   print one package's input files
 """
 import fnmatch
@@ -134,6 +138,9 @@ def main(argv):
                 print("\n".join(inputs(repo, d)[0]))
                 return 0
         return 1
+    rehash = set()
+    if argv[:2] == ["--update", "--rehash"] and len(argv) > 2:
+        rehash, argv = set(argv[2:]), ["--update"]
     if argv not in (["--check"], ["--update"]):
         print(__doc__, file=sys.stderr)
         return 2
@@ -150,7 +157,7 @@ def main(argv):
         for b in bad:
             print(b)
         return 1 if bad else 0
-    refused = [b for b in bad if "bump pkgrel" in b]
+    refused = [b for b in bad if "bump pkgrel" in b and b.split(":")[0] not in rehash]
     if refused:
         print("\n".join(refused) + "\nnothing written", file=sys.stderr)
         return 1

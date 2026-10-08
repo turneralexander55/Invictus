@@ -131,7 +131,10 @@ sed -i 's/^pkgrel=1$/pkgrel=2/' "$PR/pkgs/own/toy/PKGBUILD"; echo changed >> "$P
 out="$(pi --check 2>&1)" && pibad "bumped, lock not updated, --check passed"
 grep -q "run .* --update" <<< "$out" || pibad "bumped: $out"
 pi --update >/dev/null 2>&1 && pi --check >/dev/null || pibad "bumped and re-locked, --check still fails"
-[[ $p_fail == 0 ]] && ok "1b: a changed input (plain path, glob, variable path, \$root local, the PKGBUILD) fails --check and --update until pkgrel moves; other files and packages do not"
+echo again >> "$PR/s/a.sh"
+pi --update --rehash other >/dev/null 2>&1 && pibad "--rehash of another package re-locked toy"
+pi --update --rehash toy >/dev/null 2>&1 && pi --check >/dev/null || pibad "--rehash toy did not re-lock toy"
+[[ $p_fail == 0 ]] && ok "1b: a changed input (plain path, glob, variable path, \$root local, the PKGBUILD) fails --check and --update until pkgrel moves (or an unpublished bump is re-hashed by name); other files and packages do not"
 echo
 
 # ---- 2. meta fixes (design 1.2) --------------------------------------------
