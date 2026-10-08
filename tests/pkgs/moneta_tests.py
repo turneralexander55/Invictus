@@ -682,7 +682,12 @@ NL1 = os.path.join(W, "nl1")
 os.makedirs(os.path.join(NL1, "claude"), exist_ok=True)
 os.makedirs(os.path.join(NL1, "lib"), exist_ok=True)
 WRAP = os.path.join(NL1, "claude-config-guard")
-shutil.copy(os.path.join(REPO, "scripts/guardrails/claude-config-guard.sh"), WRAP)
+WRAP_SRC = os.path.join(REPO, "scripts/guardrails/claude-config-guard.sh")
+if os.path.isfile(WRAP_SRC):
+    shutil.copy(WRAP_SRC, WRAP)
+else:  # no wrapper (the code before N-L1): every wrapped check below fails, none crashes
+    with open(WRAP, "w") as f:
+        f.write("#!/bin/sh\nexit 99\n")
 os.chmod(WRAP, 0o755)
 shutil.copy(GUARD, os.path.join(NL1, "claude/config-guard.py"))
 HELPER = open(os.path.join(REPO, "scripts/lib/invictus_env.py")).read()
