@@ -280,12 +280,18 @@ scenario("no guardrails command at all fails",
 scenario("a snapshot boot that lands on the normal entry fails",
          b2={"cat /proc/cmdline": (0, CMD + "\n")}, want_rc=1,
          want_text=["FAIL  default_entry 7 did not boot snapshot 1"])
+scenario("a snapshot boot that lands on another snapshot fails",
+         b2={"cat /proc/cmdline": (0, SNAP12 + "\n")}, want_rc=1,
+         want_text=["FAIL  default_entry 7 did not boot snapshot 1"])
 scenario("a snapshot boot short of multi-user fails",
          b2={"systemctl is-active multi-user.target": (3, "inactive\n")}, want_rc=1,
          want_text=["FAIL  the snapshot boot did not reach multi-user.target"])
 scenario("a snapshot boot that never comes back fails",
          b2={"stty": None, "cat /proc/sys/kernel/random/boot_id": None}, want_rc=1, timeout=12,
          want_text=["FAIL  the snapshot boot did not come up within 12 s"])
+scenario("a reboot that never happens fails (the old boot's shell still answers, same boot id)",
+         b2=dict(BOOT1, **{"systemctl is-active multi-user.target": (0, "active\n")}), want_rc=1, timeout=12,
+         want_text=["FAIL  the snapshot boot did not come up within 12 s"], not_text=["did not boot snapshot"])
 scenario("a failed sed fails before rebooting",
          {"sed -i": (4, "sed: couldn't open temporary file /boot/sedX: Read-only file system\n")}, want_rc=1,
          want_text=["FAIL  could not make entry 7 limine's default"], not_text=["rebooting"])
