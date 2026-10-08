@@ -12,3 +12,4 @@ Bump this file to start a dev ISO build (iso.yml).
 2026-10-08 rerun: boot smoke ssh check matched gpg-agent's keyring socket (run 37836852030); now sshd units only
 2026-10-08 build after diskboot merge: installed-disk boot + snapshot boot
 2026-10-08 build after snapboot merge: remount-fs skips the overlay root; snapshot boot must finish clean
+2026-10-08 0.2.0 candidate: all security rounds, Full access copy, clean snapshot boot
