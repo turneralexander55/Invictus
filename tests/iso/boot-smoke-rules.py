@@ -104,6 +104,10 @@ scenario("an sshd socket fails (systemd-ssh-generator's local AF_UNIX socket, de
          {"systemctl list-sockets": (0, "/run/dbus/system_bus_socket dbus.socket dbus.service\n"
                                         "/run/ssh-unix-local/socket sshd-unix-local.socket sshd-unix-local@.service\n")},
          20, 1, ["FAIL  sshd is listening:", "sshd-unix-local.socket"])
+scenario("gpg-agent's ssh socket for the pacman keyring is not sshd",
+         {"systemctl list-sockets": (0, "/run/dbus/system_bus_socket dbus.socket dbus.service\n"
+                                        "/etc/pacman.d/gnupg/S.gpg-agent.ssh gpg-agent-ssh@etc-pacman.d-gnupg.socket gpg-agent@etc-pacman.d-gnupg.service\n")},
+         20, 0, ["boot smoke: passed"])
 scenario("jobs still queued after boot fail",
          {"systemctl list-jobs": (0, "12 dev-ttyS0.device start running\n")},
          20, 1, ["FAIL  jobs still queued after boot:", "dev-ttyS0.device"])

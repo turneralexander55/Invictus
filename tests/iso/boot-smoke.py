@@ -146,8 +146,14 @@ def main():
     r = sh.run("systemctl list-sockets --all --no-legend --full", 30)
     if r is None:
         problems.append("could not list the system's sockets")
-    elif any("ssh" in ln for ln in r[1].splitlines()):
-        problems.append("sshd is listening:\n" + "\n".join(ln for ln in r[1].splitlines() if "ssh" in ln))
+    else:
+        # Match sshd's own units (sshd*.socket, sshd-unix-local@.service,
+        # ssh-access.socket), not any line containing "ssh": gpg-agent's
+        # gpg-agent-ssh@ socket for the pacman keyring is not a server.
+        ssh_unit = re.compile(r"^(sshd[\w@.-]*|ssh-[\w@.-]*)\.(socket|service)$")
+        hits = [ln for ln in r[1].splitlines() if any(ssh_unit.match(t) for t in ln.split())]
+        if hits:
+            problems.append("sshd is listening:\n" + "\n".join(hits))
     r = sh.run("journalctl -b --no-pager -o short-monotonic", 90)
     if r:
         with open(os.path.join(run, "journal.txt"), "w") as f:

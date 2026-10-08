@@ -9,3 +9,4 @@ Bump this file to start a dev ISO build (iso.yml).
 2026-10-01 rerun: e2e 26/26 passed (run 36878228916); cleanup's busy rm failed the step
 2026-10-08 build after fastboot merge: zstd, watchdog, boot smoke test
 2026-10-08 build after the security round: e2e sshd mask, boot smoke
+2026-10-08 rerun: boot smoke ssh check matched gpg-agent's keyring socket (run 37836852030); now sshd units only
