@@ -18,6 +18,7 @@ case "$0" in
     /usr/*) ;;
     *) py="${0%/*}/claude/config-guard.py" ;;  # a checkout (the tests)
 esac
-/usr/bin/python3 -I "$py" "$@"
-[ "$?" -eq 0 ] && exit 0
+if /usr/bin/python3 -I "$py" "$@"; then
+    exit 0
+fi
 exit 2
