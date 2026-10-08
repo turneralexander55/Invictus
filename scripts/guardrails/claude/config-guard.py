@@ -33,6 +33,11 @@
 #      fails, the backup goes back (or the new file is removed) and Moneta is
 #      told why.
 # Any error in pre blocks the edit (exit 2): a broken guard fails closed.
+# Python exits 1 on an uncaught exception, and exit 1 lets a PreToolUse call
+# through, so the first thing this file does is install an excepthook that
+# exits 2 (Janus J-L1); everything that can raise runs after it, and the
+# lookups that used to run at import (HOME) run inside main()'s try.
+# tests/pkgs/lib/env-ast.py requires that shape in every hook file.
 # A hook that times out does not: Claude Code lets the tool call go ahead
 # (hooks docs, PreToolUse timeouts), so the profiles give pre 10 s and post
 # 60 s, and on a timeout what still holds is the managed deny rules
@@ -41,15 +46,29 @@
 # hook's 60 s, so a slow check still ends in a restore, not a kill.
 # Env (tests, honoured only from a checkout): INVICTUS_DOCTOR, HOME_OVERRIDE.
 # ------------------------------------------------------------
-import fnmatch
-import hashlib
-import json
 import os
-import pwd
-import shutil
-import subprocess
 import sys
-import time
+
+
+def _block(*_):
+    # Any exception nothing caught: block the edit (exit 2), never exit 1.
+    try:
+        sys.stderr.write("claude-config-guard failed; not allowed.\n")
+        sys.stderr.flush()
+    finally:
+        os._exit(2)
+
+
+sys.excepthook = _block
+
+import fnmatch  # noqa: E402  (after the excepthook on purpose)
+import hashlib  # noqa: E402
+import json  # noqa: E402
+import pwd  # noqa: E402
+import shutil  # noqa: E402
+import stat  # noqa: E402
+import subprocess  # noqa: E402
+import time  # noqa: E402
 
 def _invictus_env():
     # INVICTUS_* overrides work only from a checkout: scripts/lib/invictus_env.py
@@ -82,8 +101,13 @@ except Exception as e:  # fail closed: exit 1 would let the edit through
 
 DOCTOR = env("INVICTUS_DOCTOR", "/usr/bin/invictus-doctor")
 DOCTOR_TIMEOUT = 45
-HOME = os.path.realpath(env("HOME_OVERRIDE", "") or pwd.getpwuid(os.getuid()).pw_dir)
-STATE = os.path.join(HOME, ".local/state/invictus/backups")
+HOME = STATE = None  # set by setup(), inside main()'s try (Janus J-L1)
+
+
+def setup():
+    global HOME, STATE
+    HOME = os.path.realpath(env("HOME_OVERRIDE", "") or pwd.getpwuid(os.getuid()).pw_dir)
+    STATE = os.path.join(HOME, ".local/state/invictus/backups")
 
 # fixed: (folder in the home, file-name pattern, the reader that validates it).
 # A file is on the list only in that folder itself, not below it.
@@ -124,6 +148,17 @@ def decide(path, profile):
         return "Moneta edits files by their full path only."
     given = os.path.normpath(path)
     real = os.path.realpath(path)
+    if profile != "full":
+        # A hard link looks like any file to realpath and to the deny rules
+        # (Janus J-L3): under fixed, an existing target must be a regular
+        # file with one link.
+        try:
+            st = os.lstat(real)
+        except FileNotFoundError:
+            st = None
+        if st is not None and (not stat.S_ISREG(st.st_mode) or st.st_nlink > 1):
+            return (f"{path} is a link to another file or not a plain file; "
+                    "Moneta does not edit it here.")
     for p in (given, real):
         rel = rel_in_home(p)
         if rel is None:
@@ -218,12 +253,14 @@ def main():
     args = sys.argv[1:]
     if args[:1] == ["pre"] and len(args) == 2 and args[1] in ("fixed", "full"):
         try:
+            setup()
             return pre(args[1])
         except Exception as e:  # fail closed
             print(f"claude-config-guard could not check this edit ({e}); not allowed.", file=sys.stderr)
             return 2
     if args == ["post"]:
         try:
+            setup()
             return post()
         except Exception as e:
             print(f"claude-config-guard could not check the result ({e}); run invictus-doctor --hypr.", file=sys.stderr)
@@ -235,5 +272,10 @@ def main():
 if __name__ == "__main__":
     # Only exit 2 blocks a PreToolUse call; any other non-zero lets it through.
     # So the guard exits 2 or 0 (falling off the end), nothing else.
-    if main() != 0:
-        sys.exit(2)
+    rc = main()
+    try:  # a failed flush at exit would end in 120, which lets the call through
+        sys.stdout.flush()
+        sys.stderr.flush()
+    finally:
+        if rc != 0:
+            os._exit(2)

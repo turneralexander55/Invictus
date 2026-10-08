@@ -571,6 +571,12 @@ with open(os.path.join(GH, ".config/hypr/user.lua"), "w") as f:
 with open(os.path.join(GH, ".bashrc"), "w") as f:
     f.write("# bashrc\n")
 os.symlink(os.path.join(GH, ".bashrc"), os.path.join(GH, ".config/waybar/evil.css"))
+# Janus J-L3: a hard link from an allowed name to a file a program runs, a
+# FIFO with an allowed name, and a plain existing style sheet (allowed).
+os.link(os.path.join(GH, ".config/hypr/user.lua"), os.path.join(GH, ".config/waybar/hard.css"))
+os.mkfifo(os.path.join(GH, ".config/waybar/pipe.css"))
+with open(os.path.join(GH, ".config/waybar/plain.css"), "w") as f:
+    f.write("* { }\n")
 
 
 def guard(mode, path, profile=None, raw=None, **extra):
@@ -598,6 +604,8 @@ cases = {
     (".config/waybar/evil.css", "fixed"): 2, (".config/waybar/../../.bashrc", "fixed"): 2,
     (".claude/settings.json", "full"): 2, ("projects/app.py", "fixed"): 2, ("projects/app.py", "full"): 0,
     (".config/invictus/theme-hooks.d/10-evil", "fixed"): 2, (".config/invictus/theme-hooks.d/10-evil", "full"): 2,
+    (".config/waybar/hard.css", "fixed"): 2, (".config/waybar/pipe.css", "fixed"): 2,
+    (".config/waybar/plain.css", "fixed"): 0,
 }
 got = {k: guard("pre", os.path.join(GH, k[0]), k[1]).returncode for k in cases}
 got[("/etc/hosts", "full")] = guard("pre", "/etc/hosts", "full").returncode
@@ -610,6 +618,48 @@ check(got == want, "A6: fixed allows data files only (themes/*.toml, motion, way
       "non-dot home paths; symlinks and .. are followed; who-answers files, theme hooks (I5), ~/.bashrc and ~/.claude "
       "are never edited",
       f"guard decisions differ: {[(k, got[k], want[k]) for k in want if got[k] != want[k]]}")
+check(got[(".config/waybar/hard.css", "fixed")] == 2 and got[(".config/waybar/pipe.css", "fixed")] == 2
+      and got[(".config/waybar/plain.css", "fixed")] == 0,
+      "J-L3: under fixed, a hard link (waybar/hard.css to hypr/user.lua) and a FIFO are refused; a plain style sheet passes",
+      f"J-L3 hard link {got[('.config/waybar/hard.css', 'fixed')]}, fifo {got[('.config/waybar/pipe.css', 'fixed')]}, "
+      f"plain {got[('.config/waybar/plain.css', 'fixed')]}")
+os.unlink(os.path.join(GH, ".config/waybar/hard.css"))
+# Janus J-L1: a uid with no passwd entry (a userdb hiccup, a DynamicUser).
+# Python exits 1 on an uncaught exception and exit 1 lets the edit through,
+# so the guard must exit 2. Two ways: always, getpwuid made to fail in the
+# guard's own process (runpy); and, where this run can, a real uid with no
+# entry (a user namespace, or setpriv as root).
+NOPW_IN = json.dumps({"tool_input": {"file_path": os.path.join(GH, ".bashrc")}})
+nopw_env = envmap()
+sim = ("import pwd, runpy, sys\n"
+       "def nope(uid): raise KeyError(f'getpwuid(): uid not found: {uid}')\n"
+       "pwd.getpwuid = nope\n"
+       "sys.argv = [sys.argv[1], 'pre', 'fixed']\n"
+       "runpy.run_path(sys.argv[0], run_name='__main__')\n")
+r = subprocess.run([PY, "-I", "-c", sim, GUARD], input=NOPW_IN, capture_output=True, text=True, env=nopw_env, timeout=30)
+check(r.returncode == 2 and "claude-config-guard" in r.stderr, "J-L1: a guard whose passwd lookup fails blocks the edit (exit 2, not 1)",
+      f"J-L1 no passwd entry (simulated): {r.returncode} {r.stderr[-200:]!r}")
+real = None
+for how in (["unshare", "-U", "--map-user=54321", "--map-group=54321"],
+            ["setpriv", "--reuid=54321", "--regid=54321", "--clear-groups"]):
+    if how[0] == "setpriv" and os.getuid() != 0:
+        continue
+    try:
+        probe = subprocess.run(how + [PY, "-I", "-c", "import os; print(os.getuid())"],
+                               capture_output=True, text=True, timeout=30)
+    except OSError:
+        continue
+    if probe.returncode == 0 and probe.stdout.strip() == "54321":
+        real = subprocess.run(how + [PY, "-I", GUARD, "pre", "fixed"], input=NOPW_IN, capture_output=True,
+                              text=True, env=nopw_env, timeout=30)
+        real_how = how[0]
+        break
+if real is None:
+    print("note  J-L1: no way to become a uid with no passwd entry here (no user namespace, not root); "
+          "the simulated check above stands", flush=True)
+else:
+    check(real.returncode == 2 and "claude-config-guard" in real.stderr, f"J-L1: run as uid 54321 (no passwd entry, via {real_how}) the guard blocks the edit (exit 2)",
+          f"J-L1 no passwd entry ({real_how}): {real.returncode} {real.stderr[-200:]!r}")
 # The guard alone, where invictus_env.py cannot be found: still exit 2.
 LONE = os.path.join(W, "lone")
 os.makedirs(LONE, exist_ok=True)

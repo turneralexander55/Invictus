@@ -89,10 +89,15 @@ for path in sys.argv[1:]:
         # Minerva's final review, ruling 1: files a program executes, denied by rule too (holds on a hook timeout)
         for r in ("Edit(~/.config/hypr/**)", "Edit(~/.config/waybar/config*)", "Edit(~/.config/invictus/theme-hooks.d/**)"):
             assert r in p["deny"], (path, r)
+        # Janus I-1: what else starts a program at login or on a click, denied by rule so a
+        # timed-out hook still leaves them alone (forms from the permissions docs: ~/ is the
+        # home, ** crosses folders)
+        for r in ('Edit(~/.bashrc)', 'Edit(~/.bash_profile)', 'Edit(~/.profile)', 'Edit(~/.zshrc)', 'Edit(~/.zprofile)', 'Edit(~/.config/systemd/user/**)', 'Edit(~/.config/autostart/**)', 'Edit(~/.config/environment.d/**)', 'Edit(~/.local/bin/**)', 'Edit(~/.config/kitty/**)', 'Edit(~/.config/quickshell/**)'):
+            assert r in p["deny"], ("I-1", path, r)
     else:
         assert "Bash" not in p["deny"], path
 PY
-then ok "A7/A8: both profiles carry every A7 deny rule, bypass and auto mode off, updates off and the A6 guard; only documented keys; fixed also denies Edit on hypr, waybar's config and theme hooks"
+then ok "A7/A8: both profiles carry every A7 deny rule, bypass and auto mode off, updates off and the A6 guard; only documented keys; fixed also denies Edit on hypr, waybar's config, theme hooks, shell startup files, systemd user units, autostart, environment.d, ~/.local/bin, kitty and quickshell (I-1)"
 else bad "A7/A8: the managed profiles (see the assertion above)"; fi
 
 # Janus L1: every print or write in the panel that interpolates a value goes
@@ -149,7 +154,7 @@ if python3 - "$REPO" <<'PY'
 import ast, re, sys
 repo = sys.argv[1]
 src = open(f"{repo}/scripts/guardrails/claude/config-guard.py").read()
-fixed = next(n.value for n in ast.parse(src).body if isinstance(n, ast.Assign) and n.targets[0].id == "FIXED_ALLOW")
+fixed = next(n.value for n in ast.parse(src).body if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", None) == "FIXED_ALLOW")
 entries = [f"~/{e.elts[0].value}/{e.elts[1].value}" for e in fixed.elts]
 assert entries == ["~/.config/invictus/themes/*.toml", "~/.config/invictus/motion", "~/.config/waybar/*.css"], entries
 tools = open(f"{repo}/collegium/template/TOOLS.md").read()

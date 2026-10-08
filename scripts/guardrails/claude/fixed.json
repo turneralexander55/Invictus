@@ -29,7 +29,18 @@
       "Edit(~/.claude/settings.local.json)",
       "Edit(~/.config/hypr/**)",
       "Edit(~/.config/waybar/config*)",
-      "Edit(~/.config/invictus/theme-hooks.d/**)"
+      "Edit(~/.config/invictus/theme-hooks.d/**)",
+      "Edit(~/.bashrc)",
+      "Edit(~/.bash_profile)",
+      "Edit(~/.profile)",
+      "Edit(~/.zshrc)",
+      "Edit(~/.zprofile)",
+      "Edit(~/.config/systemd/user/**)",
+      "Edit(~/.config/autostart/**)",
+      "Edit(~/.config/environment.d/**)",
+      "Edit(~/.local/bin/**)",
+      "Edit(~/.config/kitty/**)",
+      "Edit(~/.config/quickshell/**)"
     ]
   },
   "disableAutoMode": "disable",
