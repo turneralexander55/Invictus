@@ -41,9 +41,14 @@ allowed="$(awk '!/^[[:space:]]*#/ && NF { print $1 }' "$LIST" | paste -sd' ')"
 
 want=()
 add() { one_of "$1" "${want[*]:-}" || want+=("$1"); }
+# A name the list does not know is skipped with a warning, not fatal: an
+# extra missing from this build must not stop the whole install. Only names
+# on the list ever reach pacman.
 for n in "$@"; do
-    [[ "$n" =~ ^[a-z0-9][a-z0-9@._+-]*$ ]] || die "bad package name '$n'"
-    one_of "$n" "$allowed" || die "'$n' is not an extra (see /usr/share/invictus/extras.list)"
+    if [[ ! "$n" =~ ^[a-z0-9][a-z0-9@._+-]*$ ]] || ! one_of "$n" "$allowed"; then
+        say "warning: skipping '${n//[^[:print:]]/?}': not an extra (see /usr/share/invictus/extras.list)"
+        continue
+    fi
     add "$n"
 done
 

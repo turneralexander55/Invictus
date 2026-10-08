@@ -19,6 +19,8 @@
 #   snapshots btrfs root: snapper has a root config and snap-pac is there
 #   kernel    each installed kernel has its image, initramfs and a boot
 #             entry; the running kernel's modules still exist
+#   extras    extras picked at install that are still not installed
+#             (pending-extras gave up after 5 boots, or is still waiting)
 #   defaults  your copies of the shipped defaults: which changed upstream
 #             since first login (never overwritten, only listed)
 #
@@ -37,6 +39,7 @@ KEYSYMS="${XKB_KEYSYMS_H:-/usr/include/xkbcommon/xkbcommon-keysyms.h}"
 BOOT="${INVICTUS_BOOT:-/boot}"
 MODULES="${INVICTUS_MODULES:-/usr/lib/modules}"
 PACMAN_CONF="${INVICTUS_PACMAN_CONF:-/etc/pacman.conf}"
+EXTRAS_PENDING="${INVICTUS_EXTRAS_PENDING:-/var/lib/invictus/pending-extras}"
 CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 MODE=all
@@ -46,7 +49,7 @@ case "${1:-}" in
     --post-update) MODE="post" ;;
     --hypr) MODE="hypr" ;;
     --diff) MODE="diff"; DIFF_PATH="${2:?--diff needs a path}" ;;
-    -h|--help) sed -n '2,28p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,29p' "$0"; exit 0 ;;
     *) echo "invictus-doctor: unknown argument $1" >&2; exit 2 ;;
 esac
 
@@ -172,6 +175,22 @@ check_kernel() {
     [[ -d "$MODULES/$running" ]] || warn "kernel: modules for the running kernel $running are gone (updated): reboot soon"
 }
 
+# ---- extras --------------------------------------------------------------------
+# Names only (a pending file could hold anything); the count is the second
+# word of pending-extras' PENDING.tries, "boot-id count".
+check_extras() {
+    local names count=0
+    [[ -e "$EXTRAS_PENDING" || -L "$EXTRAS_PENDING" ]] || { ok "extras: nothing waiting to install"; return; }
+    names="$(grep -E '^[a-z0-9][a-z0-9@._+-]*$' "$EXTRAS_PENDING" 2>/dev/null | paste -sd' ')"
+    if [[ -f "$EXTRAS_PENDING.tries" ]]; then count="$(awk 'NR == 1 { print $2 }' "$EXTRAS_PENDING.tries")"; fi
+    [[ "$count" =~ ^[0-9]+$ ]] || count=0
+    if ((count >= 5)); then
+        warn "extras: Extras not installed: ${names:-(unreadable list)}. It gave up after 5 boots. To try again: sudo rm $EXTRAS_PENDING.tries && sudo systemctl enable --now invictus-extras.service"
+    else
+        note "extras: still to install when there is internet: ${names:-(unreadable list)}"
+    fi
+}
+
 # ---- defaults ------------------------------------------------------------------
 check_defaults() {
     local rel user shipped rec u s n=0 changed=() both=() missing=()
@@ -213,7 +232,7 @@ show_diff() {
 case "$MODE" in
     diff) show_diff "$DIFF_PATH" ;;
     hypr) check_hypr ;;
-    *) check_hypr; check_pinned; check_repo; check_snapshots; check_kernel; check_defaults ;;
+    *) check_hypr; check_pinned; check_repo; check_snapshots; check_kernel; check_extras; check_defaults ;;
 esac
 
 echo
