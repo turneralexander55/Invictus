@@ -328,6 +328,14 @@ rm -f "$TMP/upd.log"; rc=0; update --noconfirm || rc=$?
 if [[ $rc == 0 && "$(sed -n 1p "$TMP/upd.log")" == "-Syu --noconfirm" ]] && ! grep -q -- -Qqo "$TMP/upd.log"; then
     ok "P-L2: no mask link: no ownership question, no --overwrite"
 else bad "P-L2 no link: rc $rc: $(paste -sd'|' "$TMP/upd.log" 2>/dev/null)"; fi
+# Janus PL-L1: that --overwrite only runs from the new updater, which arrives
+# in the very update that fails on a dev install. The one manual step must be
+# written where a person looks: both design docs, the exact command.
+plrm="sudo rm $gmask"
+if grep -qF -- "\`$plrm\`" "$REPO/docs/design-simple-mode.md" \
+    && grep -E '^56\. ' "$REPO/docs/design.md" | grep -qF -- "\`$plrm\`"; then
+    ok "PL-L1: design-simple-mode 1.3 and design.md note 56 give the one manual step for dev installs ($plrm)"
+else bad "PL-L1: the manual '$plrm' step for dev installs is missing from design-simple-mode.md or design.md note 56"; fi
 # ... and the same for -Syu --needed (install verb, pending extras, ai on: lib/pacman.sh)
 ln -sfn /dev/null "$TMP/upd-dev$gmask"
 rm -f "$TMP/upd.log"
