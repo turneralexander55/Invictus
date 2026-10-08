@@ -22,12 +22,15 @@
 #   /usr/share/polkit-1/actions/org.invictus.sys.policy   one action per verb
 #   /usr/share/invictus/sys/services.allow     units the service verb may change
 #   /usr/share/invictus/sys/protected-packages never removed; Custodia's HoldPkg
+#   /usr/lib/systemd/system/systemd-remount-fs.service.d/invictus-snapshot-overlay.conf
+#                                              a snapshot boot (rollback) skips the
+#                                              remount of its overlay root (note 57)
 #
 # Reference: docs/invictus-sys.md.
 
 pkgname=invictus-sys
 pkgver=0.2.0
-pkgrel=4
+pkgrel=5
 pkgdesc='Invictus system helper: the fixed verbs that change the system, each behind its own polkit prompt'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
@@ -60,4 +63,6 @@ package() {
     "$pkgdir/usr/share/polkit-1/actions/org.invictus.sys.policy"
   install -Dm644 -t "$pkgdir/usr/share/invictus/sys" \
     "$root/scripts/sys/services.allow" "$root/scripts/sys/protected-packages"
+  install -Dm644 "$root/scripts/systemd/remount-fs-snapshot-overlay.conf" \
+    "$pkgdir/usr/lib/systemd/system/systemd-remount-fs.service.d/invictus-snapshot-overlay.conf"
 }

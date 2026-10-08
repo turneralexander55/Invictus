@@ -658,8 +658,13 @@ fi
 sysv="$(bash -c 'source "$1"; echo "$pkgver-$pkgrel"' _ "$REPO/pkgs/own/invictus-sys/PKGBUILD")"
 toolsdeps="$(bash -c 'source "$1"; printf "%s\n" "${depends[@]}"' _ "$REPO/pkgs/own/invictus-tools/PKGBUILD")"
 toolsrel="$(bash -c 'source "$1"; echo "$pkgrel"' _ "$REPO/pkgs/own/invictus-tools/PKGBUILD")"
-grep -qx "invictus-sys>=$sysv" <<< "$toolsdeps" && (( toolsrel >= 7 )) \
-    && ok "N4: invictus-tools (pkgrel $toolsrel) depends on invictus-sys>=$sysv, the one with the helper" \
+# The floor is 0.2.0-4 (the first invictus-sys with the helper), and no
+# higher than the invictus-sys in this tree; a later invictus-sys bump does
+# not force a new invictus-tools.
+toolsmin="$(sed -n 's/^invictus-sys>=//p' <<< "$toolsdeps")"
+vle() { [[ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" == "$1" ]]; }
+[[ -n "$toolsmin" ]] && vle 0.2.0-4 "$toolsmin" && vle "$toolsmin" "$sysv" && (( toolsrel >= 7 )) \
+    && ok "N4: invictus-tools (pkgrel $toolsrel) depends on invictus-sys>=$toolsmin (the helper came in 0.2.0-4; this tree has $sysv)" \
     || bad "N4: invictus-tools depends: $(grep invictus-sys <<< "$toolsdeps"), pkgrel $toolsrel"
 # N4: without the helper the scripts say so, no traceback
 mkdir -p "$TMP/nohelper/bin"
