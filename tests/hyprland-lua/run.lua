@@ -525,6 +525,7 @@ end)
 -- Old autostart commands deliberately dropped (design 1.2).
 local REMOVED_EXECS = {
     mako = true, -- second notification daemon; swaync stays
+    xwaylandvideobridge = true, -- opened a full-screen empty window on Alex's first install (design note 62)
 }
 -- Old autostart commands that now run behind another step (docs/look.md, Themes:
 -- `invictus-theme apply` runs once at session start, before waybar).

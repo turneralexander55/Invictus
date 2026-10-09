@@ -31,7 +31,6 @@ hl.on("hyprland.start", function()
     -- System Services
     -- Core background services required for proper session behavior.
     -- ─────────────────────────────────────────────────────────────────────────
-    hl.exec_cmd("xwaylandvideobridge")
     hl.exec_cmd("systemctl --user start hyprpolkitagent")
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
     hl.exec_cmd("wl-paste --type image --watch cliphist store")
