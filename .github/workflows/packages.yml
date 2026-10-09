@@ -22,7 +22,9 @@ name: packages
 
 on:
   push:
-    branches: [main]
+    # The 0.2 work branch publishes too until it merges into main: packages.yml
+    # is not on main yet, so it cannot be started by hand (Alex, 2026-10-09).
+    branches: [main, ccr-e2dd4715-j4vnyk]
     # Own packages install files from these folders (see each PKGBUILD).
     paths:
       - 'pkgs/**'
