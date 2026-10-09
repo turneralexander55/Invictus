@@ -15,3 +15,4 @@ Bump this file to start a dev ISO build (iso.yml).
 2026-10-08 0.2.0 candidate: all security rounds, Full access copy, clean snapshot boot
 2026-10-08 0.2.0 candidate 2: assistant renamed Cicero
 2026-10-09 copytoram=n: installer source stays mounted on USB boots (Alex's hardware install)
+2026-10-09 sourcecheck: install stops before partitioning if the image is missing

@@ -305,7 +305,12 @@ def main():
                 if m:
                     check(f"{v}: {name}: installer/jobs/{m.group(2)} exists",
                           os.path.isfile(os.path.join(REPO, "installer", "jobs", m.group(2))))
-                check(f"{v}: {name} passes the target root", "${ROOT}" in cmd, cmd)
+                if name == "shellprocess@invictus-sourcecheck":
+                    # Runs before partition: no target root exists yet.
+                    check(f"{v}: {name} checks unpackfs' source",
+                          cmd.split()[1:] == [s["source"] for s in load(modules["unpackfs"])["unpack"]], cmd)
+                else:
+                    check(f"{v}: {name} passes the target root", "${ROOT}" in cmd, cmd)
 
         # --- design decisions -------------------------------------------------------
         users = load(modules["users"])
@@ -371,6 +376,8 @@ def main():
         check(f"{v}: bootloader before snapper", at("shellprocess@invictus-bootloader") < at("shellprocess@invictus-snapper"))
         check(f"{v}: fstab before snapper (it needs the /.snapshots line)", at("fstab") < at("shellprocess@invictus-snapper"))
         check(f"{v}: umount last", exe[-1] == "umount")
+        check(f"{v}: the source check runs first, before partition writes anything (note 60)",
+              exe[0] == "shellprocess@invictus-sourcecheck" and at("partition") == 1)
         steps = settings["sequence"]
         first_show = steps[0].get("show", [])
         check(f"{v}: show, exec, show (the finished page)", len(steps) == 3 and "exec" in steps[1]

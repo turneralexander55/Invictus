@@ -34,7 +34,7 @@ package() {
   # Jobs (run by Calamares shellprocess on the live system) and live scripts.
   install -Dm644 "$root/installer/jobs/lib.sh" "$pkgdir/usr/lib/invictus/installer/lib.sh"
   local j
-  for j in cleanup-live settings bootloader extras snapper; do
+  for j in sourcecheck cleanup-live settings bootloader extras snapper; do
     install -Dm755 "$root/installer/jobs/$j.sh" "$pkgdir/usr/lib/invictus/installer/$j.sh"
   done
   install -Dm755 -t "$pkgdir/usr/lib/invictus/live" "$root/installer/live/invictus-install" "$root/installer/live/session"
