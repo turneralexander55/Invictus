@@ -2,7 +2,7 @@
 # tests/pkgs/run.sh group 1b fails when a package's inputs change and its version does not.
 invictus-branding 0.1.0-1 0e92cc673d4828015bfdd22949cd733c4bc6630f82471418be528532bc45f637
 invictus-guardrails 0.2.0-7 0db10ccb8e45fd671a14aa305c8d4bee97a0837a24a1f26f28f25666cfaab2bd
-invictus-keyring 20260930-1 639ba14e858c4149a6ae8f1fa6126288328b44ad477f1e8e496274f71f44f04b
+invictus-keyring 20261009-1 6beba59b3180ca846370577db2b004fd4554e60a1cbc68dbf0e44cd8bf0d5dc3
 invictus-sys 0.2.0-7 7d49aaf7f41161079ba22f2c0ef13006fb4eb500e51a26f4e053b7579b734b72
 invictus-tools 0.1.0-11 c4a8f85a1d41edec72a4fe3c4430b43c8c98ff6e3b0568f65e64b95a396c6888
 invictus-tribune 0.2.0-4 8358d241e7d5fb2d77bc6552b45f96c8858bd5e0435a985dd4c1eb095ff2f173

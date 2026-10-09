@@ -6,7 +6,7 @@
 # refuses to build if invictus.gpg holds anything private.
 
 pkgname=invictus-keyring
-pkgver=20260930
+pkgver=20261009
 pkgrel=1
 pkgdesc='Invictus package repository signing key'
 arch=('any')
