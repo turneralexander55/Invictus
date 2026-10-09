@@ -47,7 +47,9 @@ hl.on("hyprland.start", function()
     -- Generate the current theme's colour files (Dusk on a fresh install) before
     -- the bar reads them; apps have a Dusk fallback, but rofi needs the file.
     -- `;` not `&&`: a failing theme step must not leave the desktop without a bar.
-    hl.exec_cmd(AFTER_FIRST_LOGIN .. "invictus-theme apply; waybar")
+    -- Waybar 0.15 reads only ~/.config/waybar/config or config.jsonc, not our
+    -- config.json, so it is named here (design note 64).
+    hl.exec_cmd(AFTER_FIRST_LOGIN .. "invictus-theme apply; waybar -c \"$HOME/.config/waybar/config.json\"")
 
     -- First start (design.md 2.3): only on a home first-login marked, once.
     hl.exec_cmd(AFTER_FIRST_LOGIN .. "invictus-first-boot start --if-pending")

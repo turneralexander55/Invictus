@@ -533,7 +533,7 @@ local REMOVED_EXECS = {
 -- (a brand-new home has no config yet when Hyprland starts; design note 61).
 local AFTER_FIRST_LOGIN = "systemctl --user start invictus-first-login.service; "
 local WRAPPED_EXECS = {
-    waybar = AFTER_FIRST_LOGIN .. "invictus-theme apply; waybar",
+    waybar = AFTER_FIRST_LOGIN .. "invictus-theme apply; waybar -c \"$HOME/.config/waybar/config.json\"",
     swaync = AFTER_FIRST_LOGIN .. "swaync",
     hyprpaper = AFTER_FIRST_LOGIN .. "hyprpaper",
 }
