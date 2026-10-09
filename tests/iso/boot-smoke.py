@@ -91,6 +91,14 @@ def main():
     r = sh.run("systemctl list-jobs --no-legend --full", 30)
     if r and r[1].strip() and "No jobs" not in r[1]:
         problems.append("jobs still queued after boot:\n" + r[1].rstrip())
+    # The installer's unpackfs reads the image from the boot medium, so it must
+    # still be mounted (copytoram=auto unmounted it on a USB stick; design note 60).
+    sfs = "/run/archiso/bootmnt/arch/x86_64/airootfs.sfs"
+    r = sh.run(f"test -f {sfs}", 30)
+    if r is None or r[0] != 0:
+        problems.append(f"{sfs} is missing: the installer cannot unpack the system")
+    else:
+        say("installer source present: " + sfs)
     # sshd is off on the live image too (design-simple-mode 1.3): no system
     # socket for it, including systemd-ssh-generator's AF_UNIX and AF_VSOCK ones.
     r = sh.run("systemctl list-sockets --all --no-legend --full", 30)

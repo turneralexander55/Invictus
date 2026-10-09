@@ -54,6 +54,10 @@ for e in "${entries[@]}"; do
     if grep -q '^linux' "$e"; then
         check "boot entry $n: archiso's standard parameters (Ventoy, dd)" \
             grep -Eq '^options +archisobasedir=%INSTALL_DIR% archisosearchuuid=%ARCHISO_UUID% %KERNEL_PARAMS%' "$e"
+        # copytoram=auto copies the image to RAM on a USB stick and unmounts
+        # /run/archiso/bootmnt, where Calamares' unpackfs reads airootfs.sfs
+        # (Alex's first hardware install, 2026-10-09; design note 60).
+        check "boot entry $n: copytoram=n (unpackfs reads the image from bootmnt)" grep -q ' copytoram=n ' "$e"
         check "boot entry $n: no hard-coded device path" bash -c "! grep -Eq '/dev/|root=|archisodevice=' '$e'"
     fi
 done
@@ -63,6 +67,7 @@ check "the default entry is the plain install with the splash" grep -q 'quiet sp
 check "an Advanced entry passes invictus.install=advanced" grep -q 'invictus.install=advanced' "$ISO/efiboot/loader/entries/02-invictus-advanced.conf"
 check "a safe-graphics entry passes invictus.safe=1" grep -q 'invictus.safe=1' "$ISO/efiboot/loader/entries/03-invictus-safe.conf"
 check "loopback.cfg keeps img_dev/img_loop for GRUB loopback boots" bash -c "grep -c 'img_dev=UUID=\${archiso_img_dev_uuid} img_loop=\"\${iso_path}\"' '$ISO/grub/loopback.cfg' | grep -qx 3"
+check "loopback.cfg: copytoram=n on every Invictus entry" bash -c "grep -c 'vmlinuz-linux-cachyos.* copytoram=n ' '$ISO/grub/loopback.cfg' | grep -qx 3"
 check "loopback.cfg without the Arch name in entries" bash -c "! grep -i 'menuentry.*arch' '$ISO/grub/loopback.cfg'"
 
 

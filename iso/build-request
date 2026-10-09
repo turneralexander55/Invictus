@@ -14,3 +14,4 @@ Bump this file to start a dev ISO build (iso.yml).
 2026-10-08 build after snapboot merge: remount-fs skips the overlay root; snapshot boot must finish clean
 2026-10-08 0.2.0 candidate: all security rounds, Full access copy, clean snapshot boot
 2026-10-08 0.2.0 candidate 2: assistant renamed Cicero
+2026-10-09 copytoram=n: installer source stays mounted on USB boots (Alex's hardware install)
