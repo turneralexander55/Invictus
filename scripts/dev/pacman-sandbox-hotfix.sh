@@ -78,7 +78,7 @@ try() {
     timeout 300 $PACMAN -Sy --dbpath "$db" --logfile /dev/null --debug $flag >"$log" 2>&1
     rc=$?
     {
-        echo "== pacman -Sy ${flag:-(sandbox in full)}: exit $rc after ${SECONDS}s"
+        echo "== refresh ${flag:-(sandbox in full)}: exit $rc after ${SECONDS}s"
         grep -E "Landlock|seccomp|error:|$RESOLVE" "$log" | head -n 20
     } >>"$REPORT"
     ! grep -Eq "$RESOLVE" "$log" && [[ $rc -ne 124 ]]

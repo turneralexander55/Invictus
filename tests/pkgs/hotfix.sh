@@ -67,9 +67,9 @@ else bad "hotfix: syscall filter step: rc=$hf_rc $hf_out $(cat "$hf_dir/pacman.c
 if [[ "$(sed -n 's/.*\(--disable-sandbox[a-z-]*\).*/\1/p; /--disable-sandbox/!s/.*/full/p' "$hf_dir/calls" | tr '\n' ' ')" == "full --disable-sandbox-syscalls " ]]; then
     ok "hotfix: tries the sandbox in full first, then stops at the first step that works"
 else bad "hotfix: step order: $(cat "$hf_dir/calls")"; fi
-grep -q -- '--logfile /dev/null' "$hf_dir/calls" && ! grep -q -- '--dbpath /var/lib/pacman' "$hf_dir/calls" \
-    && ok "hotfix: test runs use a throwaway database folder and no pacman.log lines" \
-    || bad "hotfix: test runs touch the real database or log: $(cat "$hf_dir/calls")"
+if grep -q -- '--logfile /dev/null' "$hf_dir/calls" && ! grep -q -- '--dbpath /var/lib/pacman' "$hf_dir/calls"; then
+    ok "hotfix: test runs use a throwaway database folder and no pacman.log lines"
+else bad "hotfix: test runs touch the real database or log: $(cat "$hf_dir/calls")"; fi
 hf syscalls "--disable-sandbox-syscalls"
 if [[ $hf_rc -eq 0 && "$hf_out" == *"already has the hotfix line (DisableSandboxSyscalls)"* ]] && [[ ! -s "$hf_dir/calls" ]] \
     && [[ "$(grep -c DisableSandbox "$hf_dir/pacman.conf")" -eq 1 ]]; then
@@ -77,33 +77,33 @@ if [[ $hf_rc -eq 0 && "$hf_out" == *"already has the hotfix line (DisableSandbox
 else bad "hotfix: second run: rc=$hf_rc $hf_out"; fi
 
 hf filesystem "--disable-sandbox-filesystem --disable-sandbox"
-[[ $hf_rc -eq 0 && "$(opt_after_download_user "$hf_dir/pacman.conf")" == DisableSandboxFilesystem ]] \
-    && ok "hotfix: the file-system rules alone when the syscall filter is not the cause" \
-    || bad "hotfix: file-system step: rc=$hf_rc $hf_out"
+if [[ $hf_rc -eq 0 && "$(opt_after_download_user "$hf_dir/pacman.conf")" == DisableSandboxFilesystem ]]; then
+    ok "hotfix: the file-system rules alone when the syscall filter is not the cause"
+else bad "hotfix: file-system step: rc=$hf_rc $hf_out"; fi
 
 hf whole "--disable-sandbox"
-[[ $hf_rc -eq 0 && "$(opt_after_download_user "$hf_dir/pacman.conf")" == DisableSandbox ]] \
-    && ok "hotfix: DisableSandbox only when neither part alone is enough" \
-    || bad "hotfix: whole step: rc=$hf_rc $hf_out"
+if [[ $hf_rc -eq 0 && "$(opt_after_download_user "$hf_dir/pacman.conf")" == DisableSandbox ]]; then
+    ok "hotfix: DisableSandbox only when neither part alone is enough"
+else bad "hotfix: whole step: rc=$hf_rc $hf_out"; fi
 
 hf nothing ""
-[[ $hf_rc -eq 1 && "$hf_out" == *"the network, not the sandbox"* && "$(cat "$hf_dir/pacman.conf")" == "$HF_CONF_ORIG" ]] \
-    && ok "hotfix: no resolution even without the sandbox: exit 1, pacman.conf untouched" \
-    || bad "hotfix: no resolution at all: rc=$hf_rc $hf_out"
+if [[ $hf_rc -eq 1 && "$hf_out" == *"the network, not the sandbox"* && "$(cat "$hf_dir/pacman.conf")" == "$HF_CONF_ORIG" ]]; then
+    ok "hotfix: no resolution even without the sandbox: exit 1, pacman.conf untouched"
+else bad "hotfix: no resolution at all: rc=$hf_rc $hf_out"; fi
 
 hf check "--disable-sandbox-syscalls" --check
-[[ $hf_rc -eq 0 && "$hf_out" == *"--check: "*"DisableSandboxSyscalls"* && "$(cat "$hf_dir/pacman.conf")" == "$HF_CONF_ORIG" ]] \
-    && ok "hotfix: --check names the step and changes nothing" \
-    || bad "hotfix: --check: rc=$hf_rc $hf_out"
+if [[ $hf_rc -eq 0 && "$hf_out" == *"--check: "*"DisableSandboxSyscalls"* && "$(cat "$hf_dir/pacman.conf")" == "$HF_CONF_ORIG" ]]; then
+    ok "hotfix: --check names the step and changes nothing"
+else bad "hotfix: --check: rc=$hf_rc $hf_out"; fi
 
 FAKE_OTHER_ERROR=1 hf mirror503 "full --disable-sandbox-syscalls --disable-sandbox-filesystem --disable-sandbox"
-[[ $hf_rc -eq 0 && "$hf_out" == *"nothing to change"* && "$(cat "$hf_dir/pacman.conf")" == "$HF_CONF_ORIG" ]] \
-    && ok "hotfix: a mirror's 503 is not a resolve failure: the sandbox stays on" \
-    || bad "hotfix: 503: rc=$hf_rc $hf_out"
+if [[ $hf_rc -eq 0 && "$hf_out" == *"nothing to change"* && "$(cat "$hf_dir/pacman.conf")" == "$HF_CONF_ORIG" ]]; then
+    ok "hotfix: a mirror's 503 is not a resolve failure: the sandbox stays on"
+else bad "hotfix: 503: rc=$hf_rc $hf_out"; fi
 
-grep -q 'Resolving timed out' "$HFT/syscalls/report.txt" 2>/dev/null || grep -q 'Resolving timed out' "$HFT/whole/report.txt" \
-    && ok "hotfix: the report keeps pacman's resolve error lines" \
-    || bad "hotfix: report lacks the error lines"
+if grep -q 'Resolving timed out' "$HFT/syscalls/report.txt" 2>/dev/null || grep -q 'Resolving timed out' "$HFT/whole/report.txt"; then
+    ok "hotfix: the report keeps pacman's resolve error lines"
+else bad "hotfix: report lacks the error lines"; fi
 
 hf bad "" --apply-everything
-[[ $hf_rc -eq 2 ]] && ok "hotfix: an unknown argument is refused (exit 2)" || bad "hotfix: unknown argument: rc=$hf_rc"
+if [[ $hf_rc -eq 2 ]]; then ok "hotfix: an unknown argument is refused (exit 2)"; else bad "hotfix: unknown argument: rc=$hf_rc"; fi
