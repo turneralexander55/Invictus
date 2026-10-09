@@ -32,7 +32,7 @@
 
 pkgname=invictus-desktop
 pkgver=0.3.0
-pkgrel=6
+pkgrel=7
 pkgdesc='Invictus desktop session shared by Tessera and Atrium, and its config'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
