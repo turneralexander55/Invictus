@@ -132,6 +132,18 @@ SNAPPER = (" # │ Type   │ Pre # │ Date                     │ User │ Cl
            " 1 │ single │       │ Thu Oct  8 10:00:00 2026 │ root │ number  │ Fresh install │ important=yes\n")
 STATUS = ("rails=custodia\neffective=custodia\nuntil=\nsince=\nby=\nfull-access=off\nai=off\n"
           "net.home=on\n")
+# pacman -Sy --debug lines from a real run (linux-cachyos 7.2.7, pacman 7.1.0.r9, 2026-10-09).
+SYNC_SANDBOX = "timeout 180 pacman -Sy --debug"
+SYNC_PLAIN = "timeout 180 pacman -Sy --disable-sandbox --debug"
+SYNC_NO_FS = "timeout 180 pacman -Sy --disable-sandbox-filesystem --debug"
+SYNC_NO_SYS = "timeout 180 pacman -Sy --disable-sandbox-syscalls --debug"
+LANDLOCK = "debug: filesystem access has been restricted to /var/lib/pacman/sync/download-YJhtwO/, Landlock ABI is 10\n"
+SECCOMP = "debug: successfully restricted 83 syscalls via seccomp\n"
+SYNC_OK = LANDLOCK + SECCOMP
+# What Alex's first install printed for every mirror (2026-10-09).
+RESOLVE_FAIL = ("error: failed retrieving file 'core.db' from geo.mirror.pkgbuild.com : "
+                "Resolving timed out after 10000 milliseconds\n"
+                "error: failed to synchronize all databases (failed to retrieve some files)\n")
 BOOT1 = {
     "stty": (0, ""),
     "systemctl is-system-running": (0, "running\n"),
@@ -157,6 +169,8 @@ BOOT1 = {
     "ss -Hlp": (0, 'u_str LISTEN 0 4096 /run/dbus/system_bus_socket 1 * 0 users:(("dbus-broker",pid=300,fd=3))\n'),
     "invictus-sys guardrails status": (0, STATUS),
     "invictus-sys guardrails check": (0, "consistent: custodia\n"),
+    "pacman-conf": (0, "DownloadUser = alpm\n"),
+    SYNC_SANDBOX: (0, SYNC_OK),
     "systemd-analyze blame": (0, "1.0s NetworkManager.service\n"),
     "systemctl stop limine-snapper-sync": (0, ""),
     "sed -i": (0, ""),
@@ -226,7 +240,8 @@ seen = scenario("a clean install boots, then boots its Fresh install snapshot", 
                            "default_entry: 7 (snapshot 1)", "snapshot boot: multi-user.target reached",
                            "/ is btrfs rw,noatime", "snapshot boot: boot finished: running",
                            "snapshot boot: systemd-remount-fs.service ActiveState=inactive Result=exec-condition",
-                           "disk boot: passed"],
+                           "pacman -Sy with the download sandbox on (Landlock ABI 10, seccomp): package databases "
+                           "refreshed", "disk boot: passed"],
                 not_text=["FAIL", "note  snapshot boot"])
 check("the clean run stopped limine-snapper-sync before editing and edited with sed",
       any(c.startswith("systemctl stop limine-snapper-sync") for c in seen)
@@ -347,6 +362,42 @@ scenario("a reboot that never happens fails (the old boot's shell still answers,
 scenario("a failed sed fails before rebooting",
          {"sed -i": (4, "sed: couldn't open temporary file /boot/sedX: Read-only file system\n")}, want_rc=1,
          want_text=["FAIL  could not make entry 7 limine's default"], not_text=["rebooting"])
+seen = scenario("pacman-sandbox-dns: the sandbox cannot resolve while pacman without it can (Alex's install) fails",
+                {SYNC_SANDBOX: (1, SYNC_OK + RESOLVE_FAIL), SYNC_PLAIN: (0, ""),
+                 SYNC_NO_FS: (1, RESOLVE_FAIL), SYNC_NO_SYS: (0, LANDLOCK)}, want_rc=1,
+                want_text=["FAIL  pacman's download sandbox cannot resolve the mirrors' names, pacman --disable-sandbox "
+                           "can (pacman-sandbox-dns)", "Resolving timed out after 10000 milliseconds",
+                           "note  pacman -Sy --disable-sandbox-filesystem: still cannot resolve",
+                           "note  pacman -Sy --disable-sandbox-syscalls: names resolve", "disk boot: FAILED"])
+check("pacman-sandbox-dns: the sandboxed run comes first, then the comparisons",
+      [c.split(" >")[0] for c in seen if c.startswith("timeout 180 pacman")] == [SYNC_SANDBOX, SYNC_PLAIN,
+                                                                                SYNC_NO_FS, SYNC_NO_SYS])
+scenario("no name resolution at all in the installed system fails (sandbox or not)",
+         {SYNC_SANDBOX: (1, SYNC_OK + RESOLVE_FAIL), SYNC_PLAIN: (1, RESOLVE_FAIL)}, want_rc=1,
+         want_text=["FAIL  the installed system cannot resolve the mirrors' names, with or without pacman's sandbox"],
+         not_text=["--disable-sandbox-filesystem:"])
+scenario("\"Could not resolve host\" is a resolve failure too",
+         {SYNC_SANDBOX: (1, SYNC_OK + "error: failed retrieving file 'extra.db' from fastly.mirror.pkgbuild.com : "
+                                      "Could not resolve host: fastly.mirror.pkgbuild.com\n"),
+          SYNC_PLAIN: (0, "")}, want_rc=1,
+         want_text=["FAIL  pacman's download sandbox cannot resolve the mirrors' names"])
+scenario("a mirror's HTTP error with the sandbox on is a note, not a failure",
+         {SYNC_SANDBOX: (1, SYNC_OK + "error: failed retrieving file 'core.db' from geo.mirror.pkgbuild.com : "
+                                      "The requested URL returned error: 503\n")}, want_rc=0,
+         want_text=["note  pacman -Sy exited 1 with no name-resolution error", "error: 503", "disk boot: passed"],
+         not_text=["FAIL", "databases refreshed"])
+scenario("a pacman -Sy that never finishes fails", {"timeout 2 pacman -Sy --debug": None}, want_rc=1, args=["--sync-timeout", "2"],
+         want_text=["FAIL  pacman -Sy (download sandbox on) did not finish within 2 s"])
+scenario("a sync with no Landlock line fails (sandbox not applied)",
+         {SYNC_SANDBOX: (0, SECCOMP)}, want_rc=1,
+         want_text=["FAIL  pacman -Sy ran without its download sandbox"], not_text=["databases refreshed"])
+scenario("a sync with no seccomp line fails (sandbox not applied)",
+         {SYNC_SANDBOX: (0, LANDLOCK)}, want_rc=1, want_text=["FAIL  pacman -Sy ran without its download sandbox"])
+scenario("no DownloadUser fails (downloads as root)", {"pacman-conf": (0, "")}, want_rc=1,
+         want_text=["FAIL  pacman has no DownloadUser = alpm"])
+scenario("a DisableSandbox option in the install fails",
+         {"pacman-conf": (0, "DownloadUser = alpm\nDisableSandboxSyscalls\n")}, want_rc=1,
+         want_text=["FAIL  the install turns pacman's download sandbox off: DisableSandboxSyscalls"])
 scenario("no root shell at all fails",
          {"stty": None, "systemctl": None, "cat": None, "uname": None}, want_rc=1, timeout=6,
          want_text=["FAIL  no root shell on the second serial port within 6 s"])
