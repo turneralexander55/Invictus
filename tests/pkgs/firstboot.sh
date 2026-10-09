@@ -137,7 +137,7 @@ if grep -qx "fb mark-pending" "$h1/fb.log" 2>/dev/null && [[ ! -e "$h2/fb.log" &
 else
     bad "first-login marking: new=$(cat "$h1/fb.log" 2>/dev/null) adopt=$(cat "$h2/fb.log" 2>/dev/null) old=$(cat "$h3/fb.log" 2>/dev/null)"
 fi
-grep -q 'hl.exec_cmd("invictus-first-boot start --if-pending")' "$REPO/config/hypr/invictus/autostart.lua" \
+grep -q 'hl.exec_cmd(AFTER_FIRST_LOGIN .. "invictus-first-boot start --if-pending")' "$REPO/config/hypr/invictus/autostart.lua" \
     && ok "Hyprland's autostart opens first start on a marked home" || bad "autostart does not run invictus-first-boot"
 [[ -x "$ALL/usr/bin/invictus-first-boot" && -f "$ALL/usr/share/invictus/first-boot/shell.qml" \
    && "$(find "$ALL/usr/share/invictus/first-boot" -name '*.qml' | wc -l)" == "$(find "$QMLDIR" -name '*.qml' | wc -l)" ]] \

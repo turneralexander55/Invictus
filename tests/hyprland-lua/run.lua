@@ -528,12 +528,17 @@ local REMOVED_EXECS = {
 }
 -- Old autostart commands that now run behind another step (docs/look.md, Themes:
 -- `invictus-theme apply` runs once at session start, before waybar).
+-- swaync, hyprpaper, the theme and first start also wait for invictus-first-login
+-- (a brand-new home has no config yet when Hyprland starts; design note 61).
+local AFTER_FIRST_LOGIN = "systemctl --user start invictus-first-login.service; "
 local WRAPPED_EXECS = {
-    waybar = "invictus-theme apply; waybar",
+    waybar = AFTER_FIRST_LOGIN .. "invictus-theme apply; waybar",
+    swaync = AFTER_FIRST_LOGIN .. "swaync",
+    hyprpaper = AFTER_FIRST_LOGIN .. "hyprpaper",
 }
 -- New at the end of the start handler, in this order (each with its reason).
 local ADDED_EXECS = {
-    "invictus-first-boot start --if-pending", -- first start (design.md 2.3), once per person
+    AFTER_FIRST_LOGIN .. "invictus-first-boot start --if-pending", -- first start (design.md 2.3), once per person
 }
 
 test("autostart runs the same commands as autostart.conf (plus first start), once at start", function(check)
@@ -717,6 +722,7 @@ local COMMAND_PACKAGES = {
     hyprctl = "hyprland",
     ["invictus-theme"] = "invictus-tools",
     ["invictus-first-boot"] = "invictus-tools",
+    ["invictus-first-login.service"] = "invictus-desktop", -- the user unit autostart waits for (note 61)
     hyprshutdown = "hyprshutdown", -- optional at runtime: the bind checks `command -v` first
     ["/usr/lib/invictus/show-keybindings"] = "invictus-tools",
     ["/usr/lib/invictus/confirm"] = "invictus-tools",

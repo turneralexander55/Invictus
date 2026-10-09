@@ -19,6 +19,13 @@
 -- See https://wiki.hypr.land/Configuring/Basics/Autostart/
 --------------------------------------------------------------------------------
 
+-- On a brand-new account SDDM starts Hyprland while the invictus-first-login
+-- user unit is still copying the defaults (Alex's first install, 2026-10-09).
+-- `systemctl --user start` on a oneshot waits for it to finish, and returns at
+-- once on later logins (its condition fails), so everything that reads those
+-- files waits for them.
+local AFTER_FIRST_LOGIN = "systemctl --user start invictus-first-login.service; "
+
 hl.on("hyprland.start", function()
     -- ─────────────────────────────────────────────────────────────────────────
     -- System Services
@@ -35,14 +42,14 @@ hl.on("hyprland.start", function()
     -- Desktop Environment
     -- Visual and interaction-layer components.
     -- ─────────────────────────────────────────────────────────────────────────
-    hl.exec_cmd("swaync")
-    hl.exec_cmd("hyprpaper")
+    hl.exec_cmd(AFTER_FIRST_LOGIN .. "swaync")
+    hl.exec_cmd(AFTER_FIRST_LOGIN .. "hyprpaper")
     hl.exec_cmd("hypridle")
     -- Generate the current theme's colour files (Dusk on a fresh install) before
     -- the bar reads them; apps have a Dusk fallback, but rofi needs the file.
     -- `;` not `&&`: a failing theme step must not leave the desktop without a bar.
-    hl.exec_cmd("invictus-theme apply; waybar")
+    hl.exec_cmd(AFTER_FIRST_LOGIN .. "invictus-theme apply; waybar")
 
     -- First start (design.md 2.3): only on a home first-login marked, once.
-    hl.exec_cmd("invictus-first-boot start --if-pending")
+    hl.exec_cmd(AFTER_FIRST_LOGIN .. "invictus-first-boot start --if-pending")
 end)
