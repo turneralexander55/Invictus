@@ -19,3 +19,4 @@ Bump this file to start a dev ISO build (iso.yml).
 2026-10-09 new accounts get the Hyprland config before Hyprland starts (skel loader, autostart waits for first-login)
 2026-10-09 xwaylandvideobridge no longer autostarted (empty window)
 2026-10-09 confirm prompt shows its question and both answers
+2026-10-09 merge pacman-dns: disk-boot checks pacman's download sandbox resolves names
