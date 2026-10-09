@@ -37,6 +37,7 @@
 #    look, the assistant step's calls and its key handling, the snapshot.
 # 19. First start with the real provider layer: the wizard's assistant step
 #    drives the real invictus-provider (only root and the keyring faked).
+# 20. scripts/dev/pacman-sandbox-hotfix.sh (build note 63), pacman faked.
 #
 # Needs lua 5.4+ for groups 7 and 10 (LUA=...), node and python3 (3.11+)
 # for 14-19.
@@ -504,6 +505,8 @@ echo
 . "$HERE/firstboot.sh"
 # shellcheck source=tests/pkgs/firstboot-panel.sh
 . "$HERE/firstboot-panel.sh"
+# shellcheck source=tests/pkgs/hotfix.sh
+. "$HERE/hotfix.sh"
 
 if [[ $fail == 0 ]]; then echo "ALL PASSED"; else echo "SOME TESTS FAILED"; fi
 exit $fail

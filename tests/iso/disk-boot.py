@@ -2,7 +2,7 @@
 """Installed-disk boot test driver (tests/iso/disk-boot.sh starts QEMU).
 
     disk-boot.py RUNDIR --env DISK.ENV [--timeout SECONDS] [--sync-wait SECONDS]
-                 [--no-snapshot-boot]
+                 [--sync-timeout SECONDS] [--no-snapshot-boot]
 
 The disk image tests/iso/e2e-jobs.sh --keep leaves behind boots through its
 own ESP: OVMF, limine (EFI/BOOT/BOOTX64.EFI), limine.conf's default entry.
@@ -26,7 +26,12 @@ Fails when, on the first boot:
     has no limine-snapper-sync entry booting it (within --sync-wait s);
   - sshd runs or a socket of sshd's own units is listening;
   - `invictus-sys guardrails status` does not show the image's rails, or
-    `invictus-sys guardrails check` says the derived files are wrong.
+    `invictus-sys guardrails check` says the derived files are wrong;
+  - pacman's download sandbox is off (no DownloadUser = alpm, a
+    DisableSandbox* option, or no Landlock/seccomp line in `pacman -Sy
+    --debug`), or `pacman -Sy` with it cannot resolve the mirrors' names
+    (with --disable-sandbox runs to tell the sandbox from the guest's DNS;
+    build note 63). Other pacman errors (a mirror down) are notes.
 Then, unless --no-snapshot-boot, it makes the Fresh install entry limine's
 default (all menu folders open, default_entry pointing at it), reboots,
 and fails unless that boot runs from the snapshot, reaches
@@ -141,6 +146,36 @@ def shell_quote(s):
     return "'" + s.replace("'", "'\\''") + "'"
 
 
+# ---- pacman's download sandbox (build note 63) -----------------------------------------
+# pacman 7 downloads in a child that switches to DownloadUser (alpm) under
+# Landlock and a seccomp filter. On Alex's first install every mirror failed
+# with "Resolving timed out" unless --disable-sandbox was given.
+RESOLVE_ERROR = re.compile(r"Resolving timed out|Could not resolve host|Couldn't resolve host")
+LANDLOCK_ON = re.compile(r"filesystem access has been restricted to .*Landlock ABI is (\d+)")
+SECCOMP_ON = re.compile(r"successfully restricted \d+ syscalls via seccomp")
+SYNC_TIMEOUT = 180
+
+
+def pacman_sync_cmd(flag="", limit=SYNC_TIMEOUT):
+    """pacman -Sy (FLAG: one of pacman's --disable-sandbox options, or none)
+    under `timeout LIMIT`, the lines that matter from its --debug log, and
+    pacman's exit status."""
+    log = "/tmp/invictus-sync.log"
+    return (f"timeout {limit} pacman -Sy{' ' + flag if flag else ''} --debug >{log} 2>&1; r=$?; "
+            f"grep -E 'Landlock|seccomp|error:|warning:|Resolving|resolve host' {log} | head -n 40; (exit $r)")
+
+
+def sandbox_config_problems(conf):
+    """Problems in `pacman-conf` output: the sandbox user unset, or a DisableSandbox* option on."""
+    problems = []
+    if not re.search(r"^DownloadUser\s*=\s*alpm\s*$", conf, re.M):
+        problems.append("pacman has no DownloadUser = alpm: downloads run as root, outside the sandbox")
+    off = re.findall(r"^(DisableSandbox\w*)", conf, re.M)
+    if off:
+        problems.append("the install turns pacman's download sandbox off: " + ", ".join(off))
+    return problems
+
+
 # ---- the run -----------------------------------------------------------------------------
 def read_env(path):
     env = {}
@@ -159,6 +194,8 @@ def main():
     ap.add_argument("--timeout", type=int, default=600, help="seconds per boot")
     ap.add_argument("--sync-wait", type=int, default=120,
                     help="seconds to wait for limine-snapper-sync's entry")
+    ap.add_argument("--sync-timeout", type=int, default=SYNC_TIMEOUT,
+                    help="seconds for each pacman -Sy in the guest")
     ap.add_argument("--no-snapshot-boot", action="store_true")
     a = ap.parse_args()
     env = read_env(a.env)
@@ -348,6 +385,41 @@ def main():
         if r is None or r[0] != 0:
             problems.append("invictus-sys guardrails check: the derived files do not match the rails:\n"
                             + (r[1].rstrip() if r else "(no answer)"))
+
+        # pacman-sandbox-dns (build note 63): updates work with pacman's
+        # download sandbox on, against the image's own mirrors.
+        sync_t = a.sync_timeout
+        sh.deadline = max(sh.deadline, time.monotonic() + 4 * (sync_t + 30) + 60)
+        conf = out("pacman-conf | grep -E '^(DownloadUser|DisableSandbox)'") or ""
+        problems.extend(sandbox_config_problems(conf))
+        r = sh.run(pacman_sync_cmd(limit=sync_t), sync_t + 30)
+        if r is None:
+            problems.append(f"pacman -Sy (download sandbox on) did not finish within {sync_t} s")
+        else:
+            rc, log = r
+            landlock = LANDLOCK_ON.search(log)
+            if not landlock or not SECCOMP_ON.search(log):
+                problems.append("pacman -Sy ran without its download sandbox (no Landlock or seccomp line in "
+                                "pacman --debug):\n" + log.rstrip())
+            if RESOLVE_ERROR.search(log):
+                plain = sh.run(pacman_sync_cmd("--disable-sandbox", sync_t), sync_t + 30)
+                if plain is not None and not RESOLVE_ERROR.search(plain[1]):
+                    problems.append("pacman's download sandbox cannot resolve the mirrors' names, pacman "
+                                    "--disable-sandbox can (pacman-sandbox-dns):\n" + log.rstrip())
+                    for flag in ("--disable-sandbox-filesystem", "--disable-sandbox-syscalls"):
+                        part = sh.run(pacman_sync_cmd(flag, sync_t), sync_t + 30)
+                        verdict = ("no answer" if part is None else "names resolve"
+                                   if not RESOLVE_ERROR.search(part[1]) else "still cannot resolve")
+                        notes.append(f"pacman -Sy {flag}: {verdict}")
+                else:
+                    problems.append("the installed system cannot resolve the mirrors' names, with or without "
+                                    "pacman's sandbox:\n" + log.rstrip())
+            elif rc != 0:
+                notes.append(f"pacman -Sy exited {rc} with no name-resolution error (a mirror's trouble, "
+                             "not the sandbox's):\n" + log.rstrip())
+            elif landlock:
+                say(f"pacman -Sy with the download sandbox on (Landlock ABI {landlock.group(1)}, seccomp): "
+                    "package databases refreshed")
 
         for cmd in ("systemd-analyze blame --no-pager | head -n 15",):
             r = sh.run(cmd, 30)
