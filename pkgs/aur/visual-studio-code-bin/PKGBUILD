@@ -1,6 +1,6 @@
 # Copied from the AUR: https://aur.archlinux.org/visual-studio-code-bin.git
-# aur-commit: 7fe183483fa69f1559b4ccd27d858d10353f81b1 (1.139.1-1, 2026-09-25)
-# Reviewed 2026-09-30 by Vulcan: repackages Microsoft's x86_64 .deb from
+# aur-commit: 228f40eb6fecca7f838721f466e29da9c5c0b4f3 (1.146.0-1, 2026-11-11)
+# Reviewed 2026-11-12 by Cicero: repackages Microsoft's x86_64 .deb from
 # update.code.visualstudio.com (the marketplace build Alex chose over
 # Code - OSS) into /usr/share/code, with a /usr/bin/code launcher that adds
 # ~/.config/code-flags.conf. The .install only prints that hint. No build
@@ -26,7 +26,7 @@
 
 pkgname=visual-studio-code-bin
 _pkgname=visual-studio-code
-pkgver=1.139.1
+pkgver=1.146.0
 pkgrel=1
 pkgdesc="Visual Studio Code (vscode): Editor for building and debugging modern web and cloud applications (official binary version)"
 arch=('x86_64')
@@ -44,11 +44,14 @@ optdepends=('glib2: Needed for move to trash functionality'
             'libdbusmenu-glib: Needed for KDE global menu'
             'org.freedesktop.secrets: Needed for settings sync'
              # See https://github.com/MicrosoftDocs/live-share/issues/4650
-            'icu69: Needed for live share' )
+            'icu69: Needed for live share'
+            # See https://code.visualstudio.com/docs/agents/run/agent-sandboxing#_check-platform-availability
+            'bubblewrap: Agent host sandboxing' 'socat: Agent host sandboxing'
+            )
 source=("${_pkgname}-bin.sh")
 source_x86_64=("code_${pkgver}_amd64.deb::https://update.code.visualstudio.com/${pkgver}/linux-deb-x64/stable")
 sha256sums=('bd0d9edf69283ebdf4e73e0a7b168d2fcf50acbd01f63674cad93ed4fe42fdad')
-sha256sums_x86_64=('cc8e35cf69ff4c7e515e19fa981bf6aba41f61ddb61c79370e9fe460c5dbaf8b')
+sha256sums_x86_64=('f83565f7f11a60b256807fe2216da8405f9728f193754959695242eecd148992')
 
 package() {
   bsdtar -xf data.tar.xz -C "${pkgdir}/"
