@@ -31,8 +31,12 @@ get_cached_result() {
         local current_time
         current_time=$(date +%s)
         local age=$((current_time - cache_time))
+        # Packages changed since the count was cached (any pacman or paru
+        # transaction touches the local database): the count is stale.
+        local db_time
+        db_time=$(stat -c %Y /var/lib/pacman/local 2>/dev/null || echo 0)
 
-        if [[ $age -lt $CACHE_MAX_AGE ]]; then
+        if [[ $age -lt $CACHE_MAX_AGE && $db_time -le $cache_time ]]; then
             cat "$CACHE_FILE"
             return 0
         fi

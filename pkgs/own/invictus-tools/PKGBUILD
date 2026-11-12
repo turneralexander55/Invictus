@@ -10,6 +10,7 @@
 #   first-start screens; Quickshell comes with invictus-desktop)
 #   /usr/lib/invictus/show-keybindings, confirm            (Hyprland binds)
 #   /usr/lib/invictus/waybar/{alert,updates}               (waybar modules)
+#   /usr/share/libalpm/hooks/95-invictus-waybar-updates.hook  (counter refresh after any transaction)
 #   /usr/lib/invictus/lib/defaults.sh                      (shared shell code)
 #   /usr/lib/invictus/pending-extras, invictus-extras.service, and
 #   /usr/share/invictus/extras.list                         (installer extras)
@@ -19,7 +20,7 @@
 
 pkgname=invictus-tools
 pkgver=0.1.0
-pkgrel=11
+pkgrel=12
 pkgdesc='Invictus commands: theme, motion, update, doctor, and the scripts the desktop runs'
 arch=('any')
 url='https://github.com/turneralexander55/invictus'
@@ -63,6 +64,8 @@ package() {
     install -Dm755 "$root/scripts/waybar/$f.sh" "$lib/waybar/$f"
   done
 
+  install -Dm644 "$root/scripts/pacman-hooks/95-invictus-waybar-updates.hook" \
+    "$pkgdir/usr/share/libalpm/hooks/95-invictus-waybar-updates.hook"
   install -Dm644 "$root/scripts/lib/defaults.sh" "$lib/lib/defaults.sh"
   # Installer extras (docs/packages.md, "Extras"): the list the installer's
   # extras job and pending-extras accept, and the service that installs

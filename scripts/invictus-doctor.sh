@@ -189,11 +189,48 @@ check_snapshots() {
 }
 
 # ---- kernel --------------------------------------------------------------------
+# limine-mkinitcpio-hook (limine-entry-tool) does not use /boot/vmlinuz-<k>: it
+# copies the kernel and initramfs to /boot/<machine-id>/<k>/ and writes those
+# paths into limine.conf as "path:" (or "kernel_path:") and "module_path:"
+# lines, "boot():/<rel>#<sha>" (2026-11-10: that layout made the old check
+# FAIL on every update). The first entry naming vmlinuz-<k> is the live one;
+# later ones are snapshot entries pointing into limine_history/.
+# limine_kernel <k> <conf>: prints "<kernel file> <initramfs file or ->", or
+# nothing when the conf has no such entry.
+limine_kernel() {
+    awk -v k="$1" -v boot="$BOOT" '
+        function file(v) { sub(/^[ \t]*[a-z_]*path:[ \t]*/, "", v); sub(/#.*/, "", v); sub(/^boot\(\):/, boot, v); return v }
+        kern == "" && $0 ~ "^[ \t]*(kernel_)?path:.*vmlinuz-" k "([#[:space:]]|$)" { kern = file($0); next }
+        kern != "" && $0 ~ /^[ \t]*module_path:/ { mod = file($0); exit }
+        kern != "" && $0 ~ /^[ \t]*\// { exit }
+        END { if (kern != "") print kern, (mod == "" ? "-" : mod) }
+    ' "$2" 2>/dev/null
+}
+
 check_kernel() {
-    local k found=0 entries
+    local k found=0 entries conf c lim kern mod
     for k in linux linux-lts linux-zen linux-hardened linux-cachyos; do
         pacman -Q "$k" >/dev/null 2>&1 || continue
         found=1
+        # /boot is often the ESP mounted root-only: as a person we cannot look.
+        if [[ -d "$BOOT" ]] && ! ls -- "$BOOT" >/dev/null 2>&1; then
+            note "kernel: cannot read $BOOT as $(id -un) (sudo invictus-doctor checks the boot files)"
+            continue
+        fi
+        conf=""
+        for c in "$BOOT"/limine.conf "$BOOT"/limine/limine.conf "$BOOT"/EFI/limine/limine.conf; do
+            [[ -f "$c" ]] && { conf="$c"; break; }
+        done
+        lim=""
+        [[ -n "$conf" ]] && lim="$(limine_kernel "$k" "$conf")"
+        if [[ -n "$lim" ]]; then
+            read -r kern mod <<< "$lim"
+            if [[ ! -f "$kern" ]]; then fail "kernel: $conf boots $kern for $k, and that file is missing"
+            elif [[ "$mod" == - ]]; then warn "kernel: $conf boots $kern for $k with no module_path (initramfs) line"
+            elif [[ ! -f "$mod" ]]; then fail "kernel: $conf boots $k with initramfs $mod, and that file is missing"
+            else ok "kernel: $k has image, initramfs and a Limine entry (${kern#"$BOOT"/})"; fi
+            continue
+        fi
         [[ -f "$BOOT/vmlinuz-$k" ]] || { fail "kernel: $k is installed but $BOOT/vmlinuz-$k is missing"; continue; }
         [[ -f "$BOOT/initramfs-$k.img" ]] || { fail "kernel: $BOOT/initramfs-$k.img is missing"; continue; }
         entries="$( { cat "$BOOT"/limine.conf "$BOOT"/limine/limine.conf "$BOOT"/EFI/limine/limine.conf \

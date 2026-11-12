@@ -79,7 +79,7 @@
       "interval": 600,
       "exec": "/usr/lib/invictus/waybar/updates",
       "return-type": "json",
-      "on-click": "kitty --hold invictus-update && pkill -RTMIN+8 waybar",
+      "on-click": "kitty --hold invictus-update; pkill -RTMIN+8 waybar",
       "signal": 8,
       "tooltip": true
     },

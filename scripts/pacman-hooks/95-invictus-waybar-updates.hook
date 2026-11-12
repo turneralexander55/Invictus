@@ -1,0 +1,16 @@
+# Refresh the waybar update counter right after any install, upgrade or
+# removal, however it was run (invictus-update, pacman, paru, Settings).
+# updates.sh drops its cached count when the package database is newer than
+# the cache, so the signal makes every bar recount at once. Root may signal
+# the person's waybar; no waybar running is fine.
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = Refreshing the waybar update counter...
+When = PostTransaction
+Exec = /bin/sh -c '/usr/bin/pkill -RTMIN+8 -x waybar || true'
