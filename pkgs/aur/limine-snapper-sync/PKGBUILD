@@ -1,6 +1,6 @@
 # Copied from the AUR: https://aur.archlinux.org/limine-snapper-sync.git
-# aur-commit: b3c82aded52032687a76922f2dee9497600818f2 (1.32.1-1, 2026-10-03)
-# Reviewed 2026-11-12 by Cicero (first copy by Vulcan 2 for the ISO):
+# aur-commit: cc400d06650c5bb746f44e8128399fcacc6fe179 (1.32.0, 2026-09-20)
+# Reviewed 2026-09-30 by Vulcan (first copy by Vulcan 2 for the ISO):
 # builds limine-snapper-sync from Zesko's GitLab tag with the GraalVM
 # native-image compiler (a bundled JDK, not a system one), installs shell
 # hooks under /etc/boot and /usr/bin and one binary. No install scripts.
@@ -23,7 +23,7 @@
 # Maintainer: Zesko
 
 pkgname="limine-snapper-sync"
-pkgver=1.32.1
+pkgver=1.32.0
 pkgrel=1
 pkgdesc="Integrates Limine boot entries with Snapper snapshots."
 arch=('x86_64')
@@ -49,10 +49,10 @@ optdepends=(
 	'b3sum: Fast Blake3 hash function to prevent duplication.'
 	'xxhash: Fast hashing utility for deduplication with shorter hashes.'
 )
-makedepends=('git' 'gradle' 'gettext')
+makedepends=('git' 'gradle')
 backup=(etc/limine-snapper-sync.conf)
 conflicts=('limine-snapper-cli' 'limine-snapper-sync-git')
-sha256sums=('c2a8a9618fc481e036fbfeb2016b2991c593abbcea871c13adc1af5d23eb2337'
+sha256sums=('6bcc1d3ace58030204260a9a4d40d500c4822416be1b1c6edd153d1df0796b3d'
             '5a67080f60be27e998b2d8a48975600f9c1fd0d5e3bffa3abeca03064d3b4596')
 sha256sums_x86_64=('3f4a89de8eaa96f2ed677f09957c7e872cd8467aad3537f8b5394c1b8c4b942e')
 
