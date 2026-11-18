@@ -1,6 +1,6 @@
 # Copied from the AUR: https://aur.archlinux.org/claude-code.git
-# aur-commit: e59d9450242fbb73ff7b106f86aab9afe4ea3a80 (2.1.326-1, 2026-11-16)
-# Reviewed 2026-11-17 by Autobump: installs Anthropic's prebuilt x86_64
+# aur-commit: 2e9ed8d671744d1ee588adba6fb69f50296a69ee (2.1.327-1, 2026-11-17)
+# Reviewed 2026-11-18 by Autobump: installs Anthropic's prebuilt x86_64
 # binary from downloads.claude.ai into /opt with a /usr/bin wrapper that
 # turns off Claude Code's self-update (pacman updates it). No build step,
 # no install scripts. The AUR repo is updated by a bot every release
@@ -26,7 +26,7 @@
 # Automation repository: https://github.com/fabifont/claude-code-aur
 
 pkgname=claude-code
-pkgver=2.1.326
+pkgver=2.1.327
 pkgrel=1
 pkgdesc="An agentic coding tool that lives in your terminal"
 arch=('x86_64')
@@ -55,9 +55,9 @@ source_x86_64=("claude-${pkgver}-x86_64::${_dl}/linux-x64/claude")
 validpgpkeys=('31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE') # Anthropic Claude Code Release Signing <security@anthropic.com>
 
 sha256sums=('4a4cc1762fb1d992a66347dcf94c60a27d328391d8074c13e8ae9d5c4182413b'
-            '883e153b05d4a34e4225cdc90d692e4415ed4e46b26434b6430f128b6b8beb1e'
-            '50db46627c45106962392b8e367da37b7dec71fc0dd15f30b5e456272cb894d8')
-sha256sums_x86_64=('b6b3647d981130dc44fc670846ae97b6cde531ffb667cf9c4d17cfcafb38cb37')
+            '9d2eb8df972ef777fde7e580266169ba8d7c8d4336cd5bcecaee4432e2e92f58'
+            '01740f95b89d6d25dbb475e5110fc1fdfa73c27bec66bd77560123400c4e3b22')
+sha256sums_x86_64=('343c744baa14bfd38286a7cb90871051f04379956da6c5b803a9e66019a76ac9')
 
 prepare() {
 	# Invictus: the binary must be the one the signed manifest names.
