@@ -1,6 +1,6 @@
 # Copied from the AUR: https://aur.archlinux.org/visual-studio-code-bin.git
-# aur-commit: 228f40eb6fecca7f838721f466e29da9c5c0b4f3 (1.146.0-1, 2026-11-11)
-# Reviewed 2026-11-12 by Cicero: repackages Microsoft's x86_64 .deb from
+# aur-commit: 2e0372fb14fbc1b39b655e6f324bbd758c9c1c66 (1.147.0-1, 2026-11-18)
+# Reviewed 2026-11-18 by Autobump: repackages Microsoft's x86_64 .deb from
 # update.code.visualstudio.com (the marketplace build Alex chose over
 # Code - OSS) into /usr/share/code, with a /usr/bin/code launcher that adds
 # ~/.config/code-flags.conf. The .install only prints that hint. No build
@@ -26,7 +26,7 @@
 
 pkgname=visual-studio-code-bin
 _pkgname=visual-studio-code
-pkgver=1.146.0
+pkgver=1.147.0
 pkgrel=1
 pkgdesc="Visual Studio Code (vscode): Editor for building and debugging modern web and cloud applications (official binary version)"
 arch=('x86_64')
@@ -51,7 +51,7 @@ optdepends=('glib2: Needed for move to trash functionality'
 source=("${_pkgname}-bin.sh")
 source_x86_64=("code_${pkgver}_amd64.deb::https://update.code.visualstudio.com/${pkgver}/linux-deb-x64/stable")
 sha256sums=('bd0d9edf69283ebdf4e73e0a7b168d2fcf50acbd01f63674cad93ed4fe42fdad')
-sha256sums_x86_64=('f83565f7f11a60b256807fe2216da8405f9728f193754959695242eecd148992')
+sha256sums_x86_64=('749efcdf5008a8323d76773b836199cdecf708fdb993f0f0544d9475176837ab')
 
 package() {
   bsdtar -xf data.tar.xz -C "${pkgdir}/"
