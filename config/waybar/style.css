@@ -2,7 +2,7 @@
    Waybar: one continuous bar (docs/look.md, Waybar)
    ------------------------------------------------------------
    Colours are tokens, never hex:
-   - colors-fallback.css   Dusk, loaded first (covers tokens a stale generated
+   - colors-fallback.css   Nox Aurea, loaded first (covers tokens a stale generated
      file lacks; it cannot cover a missing file, see the note below)
    - ../invictus/current/waybar-colors.css   the current theme, written by
      invictus-theme; loaded second so it wins

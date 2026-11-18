@@ -31,7 +31,7 @@ What changed from hyprdots: the old look was black pills on a busy bar, a white 
 
 ## Palette
 
-Tokens are the contract. Every surface below uses these names; engineers should never type a hex that is not in this table. The Dusk values below live in `theme/dusk.toml`; other themes (see Themes) use the same names with other values.
+Tokens are the contract. Every surface below uses these names; engineers should never type a hex that is not in this table. The Dusk values below are the brand palette: the login screen, boot splash, boot menu and installer keep them. The desktop themes (see Themes; Nox Aurea is the default) use the same names with other values, in `theme/<id>.toml`.
 
 ### Dark (default): "Dusk"
 
@@ -298,12 +298,10 @@ Remove `nordic-darker-theme` (AUR). Its cold blue fights the warm palette and it
 
 Remove `Berserk.jpg` (copyrighted art), `girl.png` and `blossom.png` (source and licence unknown) from the default set. Alex can keep them in his own home folder.
 
-The default set is made by us from the palette, as SVG sources plus a 3840 x 2160 PNG export in `assets/wallpapers/`, licensed CC BY 4.0 (Alex as author; see `assets/wallpapers/LICENSE.md`). Other sizes (5120 x 1440 ultrawide, 2560 x 1440) are rendered from the SVG by the theme generator with `rsvg-convert`; every SVG uses `preserveAspectRatio="xMidYMax slice"`, so a wider screen keeps the horizon and loses sky. Each file has a little grain (`feTurbulence`, 2.8% overlay) so the dark gradients do not band.
+The default set is one wallpaper per theme (see Themes, "Wallpapers per theme"), in `assets/wallpapers/` as JPEG in three cuts (3840 x 2160, 5120 x 1440 ultrawide, 2160 x 3840 portrait), licensed CC BY 4.0 (Alex as author; the house emblems are CC BY 3.0 from game-icons.net; see `assets/wallpapers/LICENSE.md`). The first set (Sol, Arcade, Selene, Pharos, drawn as SVG) was retired on 2026-11-18; the Sol drawing stays as the installer's welcome image (`installer/branding/invictus/source/welcome.svg`). Each theme also gets two generated ones:
 
-1. **Sol** (default, `sol.svg`): a low sun just above a horizon between two low hills, `sol` fading through `#3B2A17` into `night`, a faint reflection on the ground, and the mark's nine rays at about 4%, blurred, fanning up from the sun. The sun sits in the lower third so the bar and the centre stay dark. Mockups use this one.
-2. **Stoa**: a row of column silhouettes in `basalt` against a `night` to `stone` sky; very low contrast.
-3. **Radiate**: the mark's nine rays at huge scale, `line` on `night`, off to one side.
-4. **Night**: flat `night` with 1.5% noise, for anyone who wants nothing.
+1. **Radiate**: the mark's nine rays at huge scale, `line` on `night`, off to one side.
+2. **Night**: flat `night` with 1.5% noise, for anyone who wants nothing.
 
 Optional extras, public domain only: photographs from the Met Open Access and Rijksmuseum collections (both CC0), for example Roman coins of Aurelian showing Sol, or Roman architecture. Each file gets its source URL and licence in `assets/wallpapers/SOURCES.md`. Wikimedia Commons only for files marked public domain or CC0.
 
@@ -335,112 +333,50 @@ Cut from the Desk: weather, news, calendar grid, app shortcuts (that is the laun
 
 ## Themes
 
-Alex asked for more looks (2026-09-30): a Roman one, a Greek one, and so on, on a Super key. Dusk stays the default. Three more, each from one clear source. See `docs/mockups/themes.html`.
+Alex asked for more looks (2026-09-30), and on 2026-11-18 replaced the first four (Dusk, Porphyry, Aegean, Alexandria, which were placeholders) with six Roman ones: one for the sun and one for marble, and four for the great houses, each with its emblem on the wallpaper. **Nox Aurea is the default.** Every theme keeps gold (or, in Marmor, white marble) as the one focus colour; the house colour lives in the ground and the stone.
 
-| Theme | Source | Concept | Focus (`sol`) | Wallpaper |
-|---|---|---|---|---|
-| **Dusk** (default) | Roman: Sol Invictus, a stoa at sunset | Warm dark stone, marble-white text, and one gold: the sun. | gold `#E0A64B` | Sol |
-| **Porphyry** | Roman: imperial porphyry and Tyrian purple, the stone and dye kept for emperors | Dark porphyry, travertine-white text, Tyrian purple for focus. | Tyrian `#CE93C8` | Arcade |
-| **Aegean** | Greek: the Aegean at night, Pentelic marble and sea blue | Cool marble grey in shadow, and the blue of the sea for focus. | sea blue `#6DB3F2` | Selene |
-| **Alexandria** | Egyptian and Greek: the lapis-blue tomb ceilings of Egypt, papyrus, the Pharos light | Lapis night, papyrus-white text, lamp gold for focus. | lamp gold `#E6B652` | Pharos |
+| Theme | Source | Concept | Focus (`sol`) | `night` | `marble` on `night` | `night` on `sol` | Lowest text pair | GNOME accent |
+|---|---|---|---|---|---|---|---|---|
+| **Nox Aurea** (default) | Roman: Sol Invictus, the unconquered sun, in gold on black marble | Black marble, ivory text, and one metal: gold. | `#D9A441` | `#0B0A08` | 15.9 | 8.8 | 5.5 | `yellow` |
+| **Brutii** | Roman: the house of Brutus, forest green and the daggers of the Ides | Forest green, ivory text, gold for focus. | `#E2AE52` | `#07130C` | 15.5 | 9.4 | 5.3 | `green` |
+| **Julii** | Roman: the house of Caesar, legion crimson and the eagle standard | Legion crimson, ivory text, gold for focus. | `#E2AE52` | `#160809` | 15.7 | 9.7 | 5.7 | `red` |
+| **Marmor** | Roman: carved Carrara marble and the cut letters of an inscription | White marble and charcoal. No colour, only stone. | `#F7F4EE` | `#131313` | 16.0 | 16.9 | 4.8 | `slate` |
+| **Pompeii** | Roman: the house of Pompey the Great, Tyrian purple and Neptune's trident | Tyrian purple, pale lilac text, gold for focus. | `#E2AE52` | `#110717` | 16.1 | 9.8 | 5.6 | `purple` |
+| **Scipii** | Roman: the house of Scipio Africanus, sea blue and the winged sceptre | Deep sea blue, cool white text, pale gold for focus. | `#E6C36E` | `#060D19` | 16.7 | 11.5 | 5.8 | `blue` |
 
-Why these four and not more:
-
-- **Porphyry, not "Pompeii red".** A red Roman theme would put the focus colour next to the error colour (`pompeii`), and the "you are here" rule would stop working. Porphyry keeps the Roman red in the stone and moves focus to Tyrian purple, the other imperial colour.
-- **Aegean, not red-figure pottery.** Attic black-and-terracotta is the most famous Greek palette, but terracotta focus sits too close to error red again, and worse for red-green colour blindness. Sea blue is Greek, calm, and survives every colour-blindness simulation we ran.
-- **Alexandria earns its place** because it is the only other one with a different ground: a blue-black night instead of warm or cool stone. It keeps gold focus, so it is the gentlest step away from Dusk for someone who likes the gold but wants a change. It also ties the set together: a Greek city in Egypt, later Roman.
-- **Byzantine and Etruscan left out.** Byzantine is gold on dark, so it would be Dusk again with a new name. Etruscan is terracotta and black, the same focus-versus-error clash as Attic. Four is also enough to pick from without comparing: every choice is one row in the picker.
+"Lowest text pair" is the lowest WCAG contrast of any text token (`marble`, `parchment`, `ash`, `sol`, `pompeii`, `laurel`, `lapis`) on `night`, `basalt` or `stone`; every one passes AA (4.5). The full token values are in `theme/<id>.toml`, the single source; `invictus-theme check <id>` re-measures every rule below.
 
 ### Rules every theme keeps
 
-1. **Same token names.** Every theme defines all 14 dark tokens, 11 light tokens and the 23 terminal values in the same files with the same names. The names are roles, not colours: in Aegean, `sol` is blue and `lapis` (info) is sea green. No app reads a hex; they read tokens.
-2. **Focus only.** `sol` still means "you are here" and nothing else. The same surfaces use it in every theme. Terminal yellow may equal `sol` (as in Dusk and Alexandria); nothing in the shell may.
+1. **Same token names.** Every theme defines all 14 dark tokens, 11 light tokens and the 23 terminal values in the same files with the same names. The names are roles, not colours: in Marmor, `sol` is white marble. No app reads a hex; they read tokens.
+2. **Focus only.** `sol` still means "you are here" and nothing else. The same surfaces use it in every theme. Terminal yellow may equal `sol`; nothing in the shell may.
 3. **Contrast.** Every text token passes WCAG AA (4.5) on `night`, `basalt` and `stone`, `night` text on a `sol` button passes, terminal bright black passes on the background, and every light token passes on `dawn`, `dawn-surface` and `dawn-raised`. Numbers below; `invictus-theme check` re-measures them and refuses to install a theme that fails.
-4. **Focus stays apart from status.** `sol` must differ from `pompeii` (error), `laurel` (success), `lapis` (info) and `parchment` (secondary text) by a CIE76 ΔE of at least 10 under simulated deuteranopia and protanopia (Machado 2009). All four pass; the closest pair is Porphyry focus against info, 12 under deuteranopia. That check is why Aegean's info colour moved to sea green and Porphyry's to verdigris green.
+4. **Focus stays apart from status.** `sol` must differ from `pompeii` (error), `laurel` (success), `lapis` (info) and `parchment` (secondary text) by a CIE76 ΔE of at least 10 under simulated deuteranopia and protanopia (Machado 2009). All six pass; `invictus-theme check <id>` prints the measured pairs.
 5. **ADHD rules hold.** No theme adds motion, gradients on working surfaces, transparency behind text, or a second accent. Only colour, wallpaper and the shape of the one notification accent change (see Motion); layout, type, sizes and timings are identical, so a switch never moves anything under your hands.
-6. **Shell stays dark.** Each theme has its own light set for apps and the Desk; the bar, launcher, notifications and lock stay dark, as with Dusk and Dawn.
-
-### Contrast, measured (WCAG 2.x)
-
-Dusk is the table under Palette above. Colour-blind separation of `sol`, ΔE deutan/protan: Dusk error 22/33, success 33/29; Porphyry error 54/51, info 12/25; Aegean error 73/59, info 36/38, secondary text 41/36; Alexandria error 24/37, success 33/29.
-
-#### Porphyry
-
-| Token | Hex | on `night` | on `basalt` | on `stone` |
-|---|---|---|---|---|
-| `night` | `#151012` | | | |
-| `basalt` | `#1D1618` | | | |
-| `stone` | `#291F22` | | | |
-| `line` | `#3F3034` | | | |
-| `marble` | `#EEE4DF` | 15.1 | 14.2 | 12.8 |
-| `parchment` | `#C6B4AF` | 9.5 | 8.9 | 8.0 |
-| `ash` | `#A08D89` | 6.0 | 5.6 | 5.1 |
-| `sol` | `#CE93C8` | 7.7 | 7.3 | 6.6 |
-| `pompeii` | `#E57A5E` | 6.5 | 6.2 | 5.5 |
-| `laurel` | `#9DB380` | 8.2 | 7.8 | 7.0 |
-| `lapis` | `#7FB8B0` | 8.4 | 8.0 | 7.1 |
-| `sol-bright` | `#E0B0DB` | 10.2 | 9.7 | 8.7 |
-| `verdigris` | `#76AFA5` | 7.6 | | |
-| `tyrian` | `#CE93C8` | 7.7 | | |
-
-`night` on `sol` 7.7; `line` on `night` 1.51 (divider only). Light: `ink` `#241A1C` 13.2, `ink-2` `#4D3D40` 8.0, `ink-muted` `#6E5B5E` 4.9, `bronze` `#86407F` 5.4, `pompeii-dark` `#A9412B` 4.7, `laurel-dark` `#4E6B35` 4.7, `lapis-dark` `#2B6A62` 4.9 (lowest of `dawn`, `dawn-surface`, `dawn-raised`); backgrounds `dawn` `#F5EEEC`, `dawn-surface` `#FBF7F6`, `dawn-raised` `#EBE1DE`, `dawn-line` `#D8C9C5`.
-
-#### Aegean
-
-| Token | Hex | on `night` | on `basalt` | on `stone` |
-|---|---|---|---|---|
-| `night` | `#101416` | | | |
-| `basalt` | `#161B1E` | | | |
-| `stone` | `#1F2629` | | | |
-| `line` | `#2F393D` | | | |
-| `marble` | `#E6EAE8` | 15.3 | 14.3 | 12.6 |
-| `parchment` | `#B4BDBB` | 9.6 | 9.0 | 8.0 |
-| `ash` | `#8D9896` | 6.2 | 5.8 | 5.2 |
-| `sol` | `#6DB3F2` | 8.3 | 7.8 | 6.9 |
-| `pompeii` | `#E27C68` | 6.5 | 6.0 | 5.4 |
-| `laurel` | `#AEB872` | 8.7 | 8.2 | 7.2 |
-| `lapis` | `#62C3B6` | 8.8 | 8.3 | 7.3 |
-| `sol-bright` | `#9CCBF6` | 10.8 | 10.2 | 9.0 |
-| `verdigris` | `#62C3B6` | 8.8 | | |
-| `tyrian` | `#C095C9` | 7.4 | | |
-
-`night` on `sol` 8.3; `line` on `night` 1.56 (divider only). Light: `ink` `#161C1E` 13.7, `ink-2` `#3B4547` 7.8, `ink-muted` `#586466` 4.9, `bronze` `#22609E` 5.1, `pompeii-dark` `#A8432C` 4.8, `laurel-dark` `#5A6624` 5.0, `lapis-dark` `#1C6B62` 5.0 (lowest of `dawn`, `dawn-surface`, `dawn-raised`); backgrounds `dawn` `#EEF1F0`, `dawn-surface` `#F8FAF9`, `dawn-raised` `#E1E6E5`, `dawn-line` `#C9D1CF`.
-
-#### Alexandria
-
-| Token | Hex | on `night` | on `basalt` | on `stone` |
-|---|---|---|---|---|
-| `night` | `#0F111B` | | | |
-| `basalt` | `#151826` | | | |
-| `stone` | `#1E2233` | | | |
-| `line` | `#2E3449` | | | |
-| `marble` | `#EDE6D4` | 15.1 | 14.2 | 12.7 |
-| `parchment` | `#C0B79F` | 9.4 | 8.8 | 7.9 |
-| `ash` | `#9A9482` | 6.2 | 5.8 | 5.2 |
-| `sol` | `#E6B652` | 10.0 | 9.4 | 8.4 |
-| `pompeii` | `#E57C64` | 6.6 | 6.2 | 5.6 |
-| `laurel` | `#A0BC84` | 9.0 | 8.4 | 7.5 |
-| `lapis` | `#5FC6C0` | 9.2 | 8.7 | 7.8 |
-| `sol-bright` | `#F4CD7E` | 12.4 | 11.7 | 10.4 |
-| `verdigris` | `#5FC6C0` | 9.2 | | |
-| `tyrian` | `#BB93C9` | 7.3 | | |
-
-`night` on `sol` 10.0; `line` on `night` 1.53 (divider only). Light: `ink` `#1B1C26` 13.0, `ink-2` `#434453` 7.4, `ink-muted` `#626170` 4.7, `bronze` `#7E5A0E` 4.8, `pompeii-dark` `#A8432C` 4.6, `laurel-dark` `#4E6B35` 4.6, `lapis-dark` `#1E6E6A` 4.6 (lowest of `dawn`, `dawn-surface`, `dawn-raised`); backgrounds `dawn` `#F3EEE2`, `dawn-surface` `#FAF8F1`, `dawn-raised` `#E8E1D0`, `dawn-line` `#D3C9B3`.
+6. **Shell stays dark.** Each theme has its own light set for apps and the Desk; the bar, launcher, notifications and lock stay dark.
 
 ### Wallpapers per theme
 
-Each theme names one wallpaper in its token file. All are ours, made from that theme's tokens, SVG source plus 3840 x 2160 and 5120 x 1440 PNG exports, CC BY 4.0 with Alex as author, like Sol. Every composition keeps the motif in the lower third and the top dark, so the bar and the centre of the screen stay quiet.
+Each theme names one wallpaper in its token file. Each is a house emblem (or the sun, or the numeral I) in gold inside a laurel wreath, the house name in Cinzel under it and a Greek-key band at the top and bottom, on a ground in that theme's `night` and stone colours with film grain. Three cuts per theme in `assets/wallpapers/`, JPEG (quality 92, no chroma subsampling; the grain keeps the gradients from banding):
 
-| Wallpaper | Theme | Composition |
+| Cut | Used on |
+|---|---|
+| `<id>-3840x2160.jpg` | ordinary landscape screens, the lock screen and the login default |
+| `<id>-5120x1440.jpg` | ultrawides (width at least twice the height) |
+| `<id>-2160x3840.jpg` | rotated (portrait) screens, or any screen taller than wide |
+
+| Wallpaper | Theme | Emblem |
 |---|---|---|
-| **Sol** | Dusk | As above: a low sun over a horizon. |
-| **Arcade** | Porphyry | A two-tier Roman aqueduct in `basalt`, receding in perspective from the left edge to the right horizon, its round arches open onto a sky that runs from `night` at the top to deep porphyry (`#43222D`) at the horizon, with a faint `sol` glow (16%) behind the arches on the left. |
-| **Selene** | Aegean | A full moon low on the right, `marble` at 88% with faint maria and a soft halo, over a flat sea in `basalt`, a dark headland on the left of the horizon, and a broken path of short horizontal strokes on the water in `sol-bright` fading from 38% to 10%. |
-| **Pharos** | Alexandria | A lapis sky from `night` to `#1B2142` at the horizon, 40 sparse five-pointed stars in `sol` from 14% (high) to 34% (low) (the stars painted on Egyptian tomb ceilings), and the Pharos as a three-tier stepped silhouette on a rock on the right, with one `sol-bright` lamp, a faint beam to the left (10% fading to 0) and its reflection on the water. |
+| `nox` | Nox Aurea | the radiate sun |
+| `brutii` | Brutii | daggers (Lorc, game-icons.net, CC BY 3.0) |
+| `julii` | Julii | the eagle (Lorc, game-icons.net, CC BY 3.0) |
+| `marmor` | Marmor | the numeral I |
+| `pompeii` | Pompeii | the trident (Lorc, game-icons.net, CC BY 3.0) |
+| `scipii` | Scipii | the winged sceptre (Delapouite, game-icons.net, CC BY 3.0) |
 
-Radiate and Night are drawn from tokens (`line` rays on `night`; flat `night` with noise), so the generator renders them for whichever theme is on; they stay available to anyone who picks them in the wallpaper setting.
+Credits and licences: `assets/wallpapers/LICENSE.md`. Radiate and Night are drawn from tokens (`line` rays on `night`; flat `night` with noise), so the generator renders them for whichever theme is on; they stay available to anyone who picks them in the wallpaper setting.
 
-**Lock and login.** The lock screen uses the same composition for every theme: current wallpaper blurred, the mark in `sol`, the clock in `marble`, the date in `parchment`, the field in `basalt` with a `sol` border while typing, `pompeii` for a wrong password. One rotating quote list for all themes. The login screen (SDDM), the boot splash and the boot menu stay Dusk: they run before the user session, they need root to change, and the brand's front door should look the same on every machine. The cost: after picking Porphyry, login and lock no longer look identical. Acceptable for a first version; see Concerns in the hand-back.
+**Lock and login.** The lock screen uses the same composition for every theme: current wallpaper blurred, the mark in `sol`, the clock in `marble`, the date in `parchment`, the field in `basalt` with a `sol` border while typing, `pompeii` for a wrong password. One rotating quote list for all themes. The login screen (SDDM), the boot splash and the boot menu stay Dusk: they run before the user session, they need root to change, and the brand's front door should look the same on every machine. The cost: login (Dusk) and lock (the current theme) no longer look identical. Acceptable for a first version; see Concerns in the hand-back.
 
 ### The switcher
 
@@ -451,8 +387,8 @@ Keys considered and not used: `Super + C` (the usual copy key on other desktops,
 **The picker** is rofi in `dmenu` mode with its own theme file, built from the same launcher styles:
 
 - Opens where the launcher opens: 560 px wide, centred, 18% from the top, `basalt` at 94% with blur, 1 px `line` border, radius 12, padding 12.
-- Header: `Theme` in Plex Sans 14 px weight 600 `marble`. No search field (four rows need no search) and no mode bar.
-- One row per theme, 64 px tall, in the order: Dusk, then the others alphabetically, then any user themes. Each row: a 44 px swatch (radius 8, 1 px border in that theme's `line`), the name in 15 px `marble`, the concept in 12.5 px `ash` under it (one line, max 62 characters, which the concepts above keep to).
+- Header: `Theme` in Plex Sans 14 px weight 600 `marble`. No search field (six rows need no search) and no mode bar.
+- One row per theme, 64 px tall, in the order: the default (Nox Aurea), then the others alphabetically, then any user themes. Each row: a 44 px swatch (radius 8, 1 px border in that theme's `line`), the name in 15 px `marble`, the concept in 12.5 px `ash` under it (one line, max 62 characters, which the concepts above keep to).
 - **Swatch.** Generated from the theme's own tokens, so it is always right: that theme's `night` as the ground, the 16 px mark scaled to 26 px in that theme's `sol`, and a 10 px foot in `basalt` with a `marble` and an `ash` bar. Rendered by the generator to `swatches/<id>.png` (rofi row icon, `element-icon size 44px`).
 - The current theme is preselected (`-selected-row`) and has a check glyph in `parchment` on the right. Selection is the launcher's: `stone` background and 3 px `sol` bar, in the *current* theme's colours.
 - Hint line: `Enter apply   Esc close`, 12 px `ash`.
@@ -465,7 +401,7 @@ Taps and decisions: before, changing the look meant editing config files and log
 
 ```
 theme/                            # repo; installed to /usr/share/invictus/theme/
-  dusk.toml porphyry.toml aegean.toml alexandria.toml
+  nox.toml brutii.toml julii.toml marmor.toml pompeii.toml scipii.toml
   templates/                      # one file per target, {{token}} placeholders
     hyprland-colors.lua  waybar-colors.css  rofi-colors.rasi  kitty-colors.conf
     swaync-colors.css    hyprlock-colors.conf  gtk-colors.css  qt-colors.conf
@@ -475,9 +411,9 @@ theme/                            # repo; installed to /usr/share/invictus/theme
 ~/.config/invictus/current -> ~/.local/state/invictus/theme/<id>/   # the only thing apps point at
 ```
 
-**Token file schema** (`theme/<id>.toml`, all four follow it exactly):
+**Token file schema** (`theme/<id>.toml`, all six follow it exactly):
 
-- `[meta]`: `id`, `name`, `source`, `concept` (max 62 characters), `wallpaper` (a name in `assets/wallpapers/`), `lock = "standard"`, `gnome-accent` (the nearest named GNOME accent: `yellow`, `purple`, `blue`, ...), `papirus-folders = "grey"` (grey in every theme; folders are never the focus colour), `default` (true only for Dusk).
+- `[meta]`: `id`, `name`, `source`, `concept` (max 62 characters), `wallpaper` (a name in `assets/wallpapers/`), `lock = "standard"`, `gnome-accent` (the nearest named GNOME accent: `yellow`, `purple`, `blue`, ...), `papirus-folders` (the Papirus folder colour nearest the house colour: `yellow`, `green`, `red`, `grey`, `violet`, `blue`), `default` (true only for Nox Aurea).
 - `[dark]`: `night basalt stone line marble parchment ash sol sol-bright pompeii laurel lapis verdigris tyrian`.
 - `[light]`: `dawn dawn-surface dawn-raised dawn-line ink ink-2 ink-muted bronze pompeii-dark laurel-dark lapis-dark`. `bronze` is the light-mode focus colour, whatever its hue.
 - `[terminal]`: `background foreground selection-background selection-foreground cursor cursor-text url color0` to `color15`.
@@ -488,7 +424,7 @@ theme/                            # repo; installed to /usr/share/invictus/theme
 
 | App | Line in its static config |
 |---|---|
-| Hyprland | `invictus/colors.lua` loads `~/.config/invictus/current/hyprland-colors.lua` with `require` and exposes `c.sol`, `c.stone`... (falls back to its built-in Dusk values for any token the file does not supply) |
+| Hyprland | `invictus/colors.lua` loads `~/.config/invictus/current/hyprland-colors.lua` with `require` and exposes `c.sol`, `c.stone`... (falls back to its built-in Nox Aurea values for any token the file does not supply) |
 | waybar | `@import url("../invictus/current/waybar-colors.css");` at the top of `style.css` |
 | rofi | `@import "~/.config/invictus/current/rofi-colors.rasi"` in the launcher and picker themes |
 | kitty | `include ~/.config/invictus/current/kitty-colors.conf` |
@@ -507,7 +443,7 @@ One command, `scripts/invictus-theme` (Python 3 standard library only: `tomllib`
 |---|---|
 | `invictus-theme pick` | Opens the picker (what the key and the launcher entry run) |
 | `invictus-theme set <id>` | Generates and switches |
-| `invictus-theme apply` | Re-generates the current theme and reloads; run once at session start before waybar, so a fresh install or an updated template is always in place. No `current` link yet means Dusk |
+| `invictus-theme apply` | Re-generates the current theme and reloads; run once at session start before waybar, so a fresh install or an updated template is always in place. No `current` link yet means the default theme (Nox Aurea) |
 | `invictus-theme list` | Prints `id name` per theme, current one marked |
 | `invictus-theme check [<id>]` | Validates the schema and re-measures every contrast rule above; non-zero exit on any failure. Run in the repo tests and before `set` loads a user theme |
 
@@ -520,7 +456,7 @@ One command, `scripts/invictus-theme` (Python 3 standard library only: `tomllib`
 
 | Surface | How it picks up the change |
 |---|---|
-| Wallpaper | `hyprctl hyprpaper reload <monitor>,<path>` for each monitor, with the 5120 x 1440 export on ultrawide outputs |
+| Wallpaper | `hyprctl hyprpaper wallpaper <monitor>,<path>,cover` for each monitor (hyprpaper 0.8 has no `reload`), with the 5120 x 1440 cut on ultrawide outputs and the 2160 x 3840 cut on rotated ones |
 | Hyprland borders, groupbar, `misc.background_color` | `hyprctl reload` (re-runs the Lua, which reads the new `hyprland-colors.lua`). If game mode is on, skip this step; leaving game mode already reloads |
 | waybar | `pkill -SIGUSR2 -x waybar` (reloads config and style) |
 | swaync | `swaync-client --reload-css` |
@@ -560,7 +496,7 @@ Rules at every level:
 2. **Nothing loops.** Every animation runs once and stops. No `loop` style on `borderangle`, no pulsing icons, no breathing borders. The only thing that moves continuously is the push-to-talk level bar, and only while the button is held.
 3. **Exits are faster than entries** (about 60%).
 4. **Motion goes where your eyes already are.** Flourishes play on the thing you just acted on (the window you opened, the picker you used). Things in the corner of the eye (notifications) get the smallest motion that still says "new".
-5. **Themes change the shape of an accent, never the timing or the amount of motion.** Timings are the same in all four themes.
+5. **Themes change the shape of an accent, never the timing or the amount of motion.** Timings are the same in every theme.
 6. Calm and Off also set `org.gnome.desktop.interface enable-animations` to false (Showcase sets it true), so GTK apps follow.
 7. Kitty follows the level too (Alex, 2026-09-30, keeping his original cursor animation): Showcase is his exact blink and trail values, Calm is the shorter set, Off has no trail and no blink (Surfaces, Kitty).
 
@@ -684,16 +620,16 @@ Off: `animation = global, 0`. hyprlock reads its config at launch, so the level 
 
 Calm: 120 ms. Off: `transition: none`. Nothing else in the bar moves. The system alert appears without motion (it is already red).
 
-**swaync 0.12.6** (GTK 4). Cards slide in from the right; the slide is swaync's own, and its length is `"transition-time"` in `config.json` (Showcase 220, Calm 150, Off 0). On top of the slide, a one-shot CSS accent per theme, 300 ms, on `.notification-row .notification` (GTK 4 CSS supports `@keyframes`). The accent is the only part that differs between themes:
+**swaync 0.12.6** (GTK 4). Cards slide in from the right; the slide is swaync's own, and its length is `"transition-time"` in `config.json` (Showcase 220, Calm 150, Off 0). On top of the slide, a one-shot CSS accent, 300 ms, on `.notification-row .notification` (GTK 4 CSS supports `@keyframes`). The accent is the only part that differs between themes:
 
 | Theme | Accent | How (cheap: one keyframe, opacity and box-shadow only) |
 |---|---|---|
-| Dusk | **Sunrise bar**: the 3 px left bar rises from the bottom, and a warm light washes in from the left edge and fades | `box-shadow: inset 3px 0 @sol, inset 24px 0 32px -24px alpha(@sol,.5)` to `inset 3px 0 @sol` |
-| Porphyry | **Dye**: the card border starts Tyrian and bleeds back to `line` | `border-color` from `@sol` to `@line` |
-| Aegean | **Ripple**: one ring spreads from the app icon and fades | `box-shadow: 0 0 0 0 alpha(@sol,.6)` to `0 0 0 14px alpha(@sol,0)` on `.notification-default-action .image` |
-| Alexandria | **Beam**: one pass of lamp light across the card, left to right | `background-position` of a faint `@sol-bright` linear gradient from -100% to 200% |
+| Every theme (default) | **Sunrise bar**: the 3 px left bar rises from the bottom, and a warm light washes in from the left edge and fades | `box-shadow: inset 3px 0 @sol, inset 24px 0 32px -24px alpha(@sol,.5)` to `inset 3px 0 @sol` |
+| Optional | **Dye**: the card border starts in `sol` and bleeds back to `line` | `border-color` from `@sol` to `@line` |
+| Optional | **Ripple**: one ring spreads from the app icon and fades | `box-shadow: 0 0 0 0 alpha(@sol,.6)` to `0 0 0 14px alpha(@sol,0)` on `.notification-default-action .image` |
+| Optional | **Beam**: one pass of lamp light across the card, left to right | `background-position` of a faint `@sol-bright` linear gradient from -100% to 200% |
 
-Calm and Off: no accent (`animation: none`). Critical notifications get no accent in any theme: the `pompeii` bar is already there and they must not look festive. The mockup shows Dusk's bar and Aegean's ripple. Whether GTK 4 animates `background-position` (Alexandria) is not tested; if it does not, Alexandria uses Dusk's sunrise bar.
+Calm and Off: no accent (`animation: none`). Critical notifications get no accent in any theme: the `pompeii` bar is already there and they must not look festive. The mockup shows Dusk's bar and Aegean's ripple. Whether GTK 4 animates `background-position` (the beam) is not tested; if it does not, the theme uses the sunrise bar.
 
 **Rofi 2.0** (launcher and the theme and motion pickers) has no animation of its own. It opens with the Hyprland `layersIn` pop (94%, 180 ms) and closes with the 120 ms fade. The selection moves instantly, which is right for a list you drive with arrow keys.
 

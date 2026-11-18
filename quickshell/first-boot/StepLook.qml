@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
-// Tessera step 2, look (design.md 2.3; docs/look.md): the theme (Dusk, the
-// Roman one, by default), motion (Showcase by default in Tessera) and
+// Tessera step 2, look (design.md 2.3; docs/look.md): the theme (Nox Aurea,
+// black and gold, by default), motion (Showcase by default in Tessera) and
 // whether apps are light or dark. Next applies all three through
 // invictus-theme, invictus-motion and gsettings.
 import QtQuick
@@ -24,8 +24,8 @@ Card {
     onBack: wiz.back()
     Component.onCompleted: {
         if (!wiz || !wiz.st) return
-        const cur = themes.find(t => t.current) || themes.find(t => t.id === "dusk") || themes[0]
-        theme_ = cur ? cur.id : "dusk"
+        const cur = themes.find(t => t.current) || themes.find(t => t.id === "nox") || themes[0]
+        theme_ = cur ? cur.id : "nox"
         motion = wiz.st.motion || "showcase"
         apps = wiz.st.apps || "dark"
     }

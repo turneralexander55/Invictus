@@ -1,6 +1,6 @@
-/* Entrance accent, Alexandria: the beam. One pass of lamp light across the card, left
+/* Entrance accent, optional: the beam. One pass of lamp light across the card, left
    to right. Used instead of ../accent.css. Not tested: if GTK 4 does not animate
-   background-position, Alexandria uses ../accent.css (the sunrise bar). */
+   background-position, use ../accent.css (the sunrise bar). */
 @keyframes beam {
     from { background-position: -100% 0; }
     to   { background-position: 200% 0; }

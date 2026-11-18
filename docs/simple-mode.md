@@ -219,7 +219,7 @@ Replaces Minerva's seven-step first-boot wizard for a Atrium user (design.md 2.3
 | Minerva's step | In Atrium |
 |---|---|
 | Monitors | Automatic (2.8), plus one question when there is more than one screen (screen 2 below) |
-| Look | Dusk, Calm motion, light apps. Changeable in Settings > Look |
+| Look | Nox Aurea, Calm motion, light apps. Changeable in Settings > Look |
 | Assistant provider | Becomes screen 3, "How should Help work?": an AI assistant or No AI |
 | Collegium | Not shown. Local-only, created silently so Help has a memory (AI only; not created with No AI). The helper can connect one later remotely |
 | Windows VM | Not shown |
@@ -349,7 +349,7 @@ Taps: find how to print: Help, type `print`, the guide: 2 clicks and a word. Ask
 
 | From look.md | In Atrium |
 |---|---|
-| Tokens and the four themes (Dusk, Porphyry, Aegean, Alexandria) | All of them. Settings > Look shows the theme picker's rows as four big cards with the same generated swatches; Dusk is the default. No key |
+| Tokens and the six themes (Nox Aurea, Brutii, Julii, Marmor, Pompeii, Scipii) | All of them. Settings > Look shows the theme picker's rows as six big cards with the same generated swatches; Nox Aurea is the default. No key |
 | Gold means you are here | Unchanged: the app in front in the taskbar, the focused field, keyboard selection in Start, a focused floating window's border, and the one next step on install and first-start screens |
 | Status colours (laurel, lapis, pompeii) | Unchanged, on message cards (4.1) |
 | Wallpapers per theme | All of them, in Settings > Look |

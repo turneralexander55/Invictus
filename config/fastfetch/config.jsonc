@@ -1,6 +1,6 @@
 {
   // Colours use the terminal's palette (fastfetch cannot include a generated file),
-  // so the theme's terminal colours apply: yellow is the logo (Dusk's sol),
+  // so the theme's terminal colours apply: yellow is the logo (the default theme's sol),
   // white is parchment, light_white is marble, light_black is bright black.
   "logo": {
     "type": "file",

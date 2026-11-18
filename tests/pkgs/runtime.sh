@@ -86,10 +86,11 @@ SHARE="$ALL/usr/share/invictus"
 first_login() { # HOME, then args
     local h="$1"; shift
     HOME="$h" XDG_CONFIG_HOME="" XDG_STATE_HOME="" INVICTUS_STATE="" INVICTUS_SHARE="$SHARE" \
-        INVICTUS_DEFAULTS_SH="$REPO/scripts/lib/defaults.sh" PATH="$TMP/nobin:$PATH" \
+        INVICTUS_DEFAULTS_SH="$REPO/scripts/lib/defaults.sh" PATH="$TMP/nobin:$PATH" INVICTUS_THEME_CMD="${INVICTUS_THEME_CMD:-/nonexistent}" \
         bash "$FL" "$@"
 }
-# Keep the old init steps from touching this machine.
+# Keep the old init steps from touching this machine (INVICTUS_THEME_CMD
+# above: the real invictus-theme apply would reload the live desktop).
 mkdir -p "$TMP/nobin"
 for c in systemctl xdg-user-dirs-update fc-cache; do printf '#!/bin/sh\nexit 0\n' > "$TMP/nobin/$c"; chmod +x "$TMP/nobin/$c"; done
 n_defaults="$(cd "$SHARE/config" && find . -type f | wc -l)"

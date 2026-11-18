@@ -1,0 +1,67 @@
+# Invictus theme: Julii. Schema: docs/look.md, "Themes".
+# Edit colours here only; invictus-theme generates every app file from this.
+
+[meta]
+id = "julii"
+name = "Julii"
+source = "Roman: the house of Caesar, legion crimson and the eagle standard"
+concept = "Legion crimson, ivory text, gold for focus."
+wallpaper = "julii"   # assets/wallpapers/julii-<size>.jpg (3840x2160, 5120x1440, 2160x3840)
+lock = "standard"
+gnome-accent = "red"
+papirus-folders = "red"
+default = false
+
+[dark]
+night = "#160809"
+basalt = "#1F0C0E"
+stone = "#2C1215"
+line = "#4C2327"
+marble = "#F3E4CE"
+parchment = "#CDB6A3"
+ash = "#A78F86"
+sol = "#E2AE52"
+sol-bright = "#F6D48C"
+pompeii = "#F0866C"
+laurel = "#A3BC86"
+lapis = "#8FAEDF"
+verdigris = "#7FB8AD"
+tyrian = "#C898C4"
+
+[light]   # apps and the Desk only; the shell stays dark
+dawn = "#F7EFE9"
+dawn-surface = "#FCF8F5"
+dawn-raised = "#EEE2DA"
+dawn-line = "#DCCBC1"
+ink = "#241718"
+ink-2 = "#4E3A3A"
+ink-muted = "#705A58"
+bronze = "#8E2A2A"
+pompeii-dark = "#A8432C"
+laurel-dark = "#476330"
+lapis-dark = "#2F5A99"
+
+[terminal]   # Roman terminal look, 2026-11-18 (terminal-look/palettes.toml)
+background = "#160809"
+foreground = "#F3E4CE"
+selection-background = "#671C2A"
+selection-foreground = "#F3E4CE"
+cursor = "#F54B6B"
+cursor-text = "#160809"
+url = "#ABC8EE"
+color0 = "#2C1215"
+color1 = "#F8824C"
+color2 = "#A2C488"
+color3 = "#E4C062"
+color4 = "#8EB1DD"
+color5 = "#F54B6B"
+color6 = "#8FC3BF"
+color7 = "#CDB6A3"
+color8 = "#967F77"
+color9 = "#FFA680"
+color10 = "#BEDAA8"
+color11 = "#F8D98F"
+color12 = "#ABC8EE"
+color13 = "#FF788A"
+color14 = "#AED9D6"
+color15 = "#F3E4CE"

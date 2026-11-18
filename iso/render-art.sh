@@ -21,7 +21,7 @@ CHECK=false
 jobs=(
     "$BRAND/logo.png|$ROOT/docs/brand/invictus-mark.svg|256|256"
     "$BRAND/icon.png|$ROOT/docs/brand/invictus-mark.svg|64|64"
-    "$BRAND/welcome.png|$ROOT/assets/wallpapers/sol.svg|960|540"
+    "$BRAND/welcome.png|$BRAND/source/welcome.svg|960|540"   # the Sol artwork (was assets/wallpapers/sol.svg)
 )
 for f in "$BRAND"/art/*.svg; do
     jobs+=("$BRAND/$(basename "${f%.svg}").png|$f|480|300")
@@ -42,7 +42,9 @@ for j in "${jobs[@]}"; do
         # Compare commit times, not file mtimes: a fresh checkout (CI, a
         # merge) writes files in any order, so mtimes say nothing.
         if [[ ! -f "$out" ]]; then echo "missing: ${out#"$ROOT"/}"; stale=1; continue; fi
-        st=$(git -C "$ROOT" log -1 --format=%ct -- "$src" 2>/dev/null || true)
+        # --follow --diff-filter=AM: a rename (welcome.svg moved from
+        # assets/wallpapers/sol.svg) is not a change to the drawing.
+        st=$(git -C "$ROOT" log -1 --format=%ct --follow --diff-filter=AM -- "$src" 2>/dev/null || true)
         ot=$(git -C "$ROOT" log -1 --format=%ct -- "$out" 2>/dev/null || true)
         if [[ -n "$st" && -n "$ot" ]]; then
             if (( st > ot )); then echo "stale: ${out#"$ROOT"/}"; stale=1; fi

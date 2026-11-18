@@ -4,7 +4,7 @@
 #
 #   tests/theme/run.sh
 #
-# 1. check passes on all four themes.
+# 1. check passes on all six themes.
 # 2. Broken themes fail check: missing token, low contrast, focus too
 #    close to an error colour for colour-blind users, over-long concept.
 # 3. generate writes every template's file for every theme; files parse
@@ -16,7 +16,7 @@
 #    theme changes nothing.
 # 5. pick with a stub rofi.
 # 6. The shipped app configs in config/: no hand-written colours outside the
-#    fallback files, fallbacks equal generated Dusk, every app loads the generated
+#    fallback files, fallbacks equal the generated default (Nox Aurea), every app loads the generated
 #    file, waybar/swaync/rofi/kitty/fastfetch settings from docs/look.md, alert.sh.
 # 7. shellcheck of this file and scripts/waybar/alert.sh.
 # ------------------------------------------------------------
@@ -25,7 +25,7 @@ set -uo pipefail
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd -- "$HERE/../.." && pwd)"
 TOOL="$REPO/theme/invictus-theme"
-THEMES=(dusk porphyry aegean alexandria)
+THEMES=(nox brutii julii marmor pompeii scipii)
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -52,7 +52,7 @@ new_env() { # sets HOME and stub env vars; $1 = subdir name
 #!/usr/bin/env bash
 echo "$s \$*" >> "$TMP/$1/calls"
 if [[ "\$*" == *"-j monitors"* ]]; then
-  echo '[{"name":"DP-1","width":5120,"height":1440},{"name":"DP-2","width":2560,"height":1440}]'
+  echo '[{"name":"DP-1","width":5120,"height":1440},{"name":"DP-2","width":2560,"height":1440},{"name":"HDMI-A-2","width":1920,"height":1080,"transform":1}]'
 elif [[ "$s" == gsettings && "\$1" == get ]]; then
   echo "'adw-gtk3-dark'"
 elif [[ "$s" == rofi ]]; then
@@ -74,19 +74,19 @@ STUB
 }
 calls() { cat "$TMP/$1/calls"; }
 
-echo "1. check on the four themes"
+echo "1. check on the six themes"
 new_env t1
 for t in "${THEMES[@]}"; do expect "check $t" "$TOOL" check "$t"; done
 expect "check (all)" "$TOOL" check
-expect "list shows four" test "$("$TOOL" list | wc -l)" -eq 4
-expect "list puts dusk first" bash -c "'$TOOL' list | head -1 | grep -q dusk"
+expect "list shows six" test "$("$TOOL" list | wc -l)" -eq 6
+expect "list puts the default (nox) first" bash -c "'$TOOL' list | head -1 | grep -q nox"
 
 echo "2. broken themes fail check"
 new_env t2
 mkdir -p "$HOME/.config/invictus/themes"
 U="$HOME/.config/invictus/themes"
-mk() { # id, sed expression applied to dusk.toml
-    sed -e "s/^id = .*/id = \"$1\"/" -e "$2" "$REPO/theme/dusk.toml" > "$U/$1.toml"
+mk() { # id, sed expression applied to nox.toml
+    sed -e "s/^id = .*/id = \"$1\"/" -e "$2" "$REPO/theme/nox.toml" > "$U/$1.toml"
 }
 mk missing '/^tyrian = /d'
 mk lowcontrast 's/^ash = .*/ash = "#3A352D"/'
@@ -106,9 +106,9 @@ expect "cvd names the pair" bash -c "'$TOOL' check cvd | grep -q 'colour-blind'"
 expect "user themes appear in list after built-ins" bash -c "'$TOOL' list | tail -1 | grep -q ' nosection\$\| nosection '"
 # a theme with an unknown token in a template must not generate
 mkdir -p "$TMP/badtpl/templates"
-cp "$REPO/theme/dusk.toml" "$TMP/badtpl/"
+cp "$REPO/theme/nox.toml" "$TMP/badtpl/"
 echo '{{nope}}' > "$TMP/badtpl/templates/x.txt"
-expect_not "unknown template token fails" env INVICTUS_THEME_DIR="$TMP/badtpl" "$TOOL" generate dusk "$TMP/badtpl-out"
+expect_not "unknown template token fails" env INVICTUS_THEME_DIR="$TMP/badtpl" "$TOOL" generate nox "$TMP/badtpl-out"
 expect "and writes nothing" test ! -e "$TMP/badtpl-out/x.txt"
 
 echo "3. generate"
@@ -121,7 +121,7 @@ for t in "${THEMES[@]}"; do
     for tpl in "$REPO"/theme/templates/*; do
         expect "$t: $(basename "$tpl") written" test -s "$out/$(basename "$tpl")"
     done
-    expect "$t: no placeholders left" bash -c "! grep -rl '{{' '$out'"
+    expect "$t: no placeholders left" bash -c "! grep -rlI '{{' '$out'"
     expect "$t: Lua parses" luac -p "$out/hyprland-colors.lua"
     expect "$t: Lua returns sol" lua -e "local c = dofile('$out/hyprland-colors.lua'); assert(c.sol:match('^rgb%(%x%x%x%x%x%x%)$'))"
     for f in "$out"/*.svg; do expect "$t: $(basename "$f") is XML" python3 -c "import sys,xml.dom.minidom as m; m.parse(sys.argv[1])" "$f"; done
@@ -136,7 +136,7 @@ import sys; s=open(sys.argv[1]).read(); assert s.count('{')==s.count('}') and s.
 import json, re, sys
 d = json.load(open(sys.argv[1]))
 toks = [k for k in d if k not in ('theme', 'wallpaper')]
-assert d['wallpaper'].endswith('.png'), d['wallpaper']
+assert d['wallpaper'].endswith(('.jpg', '.png')), d['wallpaper']
 assert len(toks) == 25, len(toks)
 assert all(re.fullmatch(r'#[0-9A-Fa-f]{6}', d[k]) for k in toks), d" "$out/qml-tokens.json"
     expect "$t: kitty has 16 colours" test "$(grep -c '^color[0-9]* #' "$out/kitty-colors.conf")" -eq 16
@@ -159,23 +159,23 @@ while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && out="$2"; shift; done
 echo png > "$out"
 STUB
 chmod +x "$TMP/rsvg"
-expect "generate with rsvg stub" env INVICTUS_RSVG="$TMP/rsvg" "$TOOL" generate dusk "$TMP/gen-png"
+expect "generate with rsvg stub" env INVICTUS_RSVG="$TMP/rsvg" "$TOOL" generate nox "$TMP/gen-png"
 for f in swatch.png radiate-3840x2160.png radiate-5120x1440.png night-3840x2160.png night-5120x1440.png; do
     expect "rsvg: $f written" test -s "$TMP/gen-png/$f"
 done
 # generate reads no repo path: works from another cwd with only arguments
-expect "generate from another cwd" bash -c "cd / && '$TOOL' generate aegean '$TMP/cwd-out'"
-expect "themes differ in sol" bash -c "! diff -q '$TMP/gen-dusk/kitty-colors.conf' '$TMP/gen-aegean/kitty-colors.conf'"
+expect "generate from another cwd" bash -c "cd / && '$TOOL' generate scipii '$TMP/cwd-out'"
+expect "themes differ in sol" bash -c "! diff -q '$TMP/gen-nox/kitty-colors.conf' '$TMP/gen-scipii/kitty-colors.conf'"
 
 echo "4. apply (stubbed reloads)"
 new_env t4
-expect "apply dusk" "$TOOL" apply dusk
+expect "apply nox" "$TOOL" apply nox
 S="$HOME/.local/state/invictus/theme"
 C="$HOME/.config/invictus/current"
-expect "current is a link to dusk" test "$(readlink "$C")" = "$S/dusk"
+expect "current is a link to nox" test "$(readlink "$C")" = "$S/nox"
 expect "current/hyprland-colors.lua readable" test -s "$C/hyprland-colors.lua"
 expect "no temp folder left" test -z "$(find "$S" -maxdepth 1 -name '.*' -not -path "$S")"
-expect "list marks dusk current" bash -c "'$TOOL' list | grep -q '^\* dusk'"
+expect "list marks nox current" bash -c "'$TOOL' list | grep -q '^\* nox'"
 for want in "hyprctl reload" "pkill -SIGUSR2 -x waybar" "swaync-client --reload-css" "pkill -SIGUSR1 -x kitty" \
     "gsettings set org.gnome.desktop.interface accent-color yellow" "pkill -SIGUSR1 -x cava"; do
     expect "ran: $want" grep -qxF "$want" "$TMP/t4/calls"
@@ -184,43 +184,52 @@ expect "gtk theme toggled and restored" bash -c "grep -q 'gtk-theme Adwaita-dark
 expect "reload order: waybar after hyprland" bash -c "[ \$(grep -n '^hyprctl reload' '$TMP/t4/calls' | cut -d: -f1) -lt \$(grep -n 'x waybar' '$TMP/t4/calls' | cut -d: -f1) ]"
 expect "no notification on success" bash -c "! grep -q '^notify-send' '$TMP/t4/calls'"
 
-# wallpapers found: ultrawide gets the 5120 export, other gets 3840
+# wallpapers found: ultrawide gets the 5120 export, a rotated screen the
+# 2160x3840 portrait cut, other gets 3840. hyprpaper 0.8 has no "reload":
+# the tool sets each one with "hyprpaper wallpaper <monitor>,<file>,cover".
 : > "$TMP/t4/calls"
-touch "$INVICTUS_WALLPAPERS/sol-3840x2160.png" "$INVICTUS_WALLPAPERS/sol-5120x1440.png"
-"$TOOL" apply dusk >/dev/null 2>&1
-expect "ultrawide gets 5120 wallpaper" grep -qF "hyprpaper reload DP-1,$INVICTUS_WALLPAPERS/sol-5120x1440.png" "$TMP/t4/calls"
-expect "other output gets 3840 wallpaper" grep -qF "hyprpaper reload DP-2,$INVICTUS_WALLPAPERS/sol-3840x2160.png" "$TMP/t4/calls"
-expect "hyprlock file carries the wallpaper path" grep -qF "$INVICTUS_WALLPAPERS/sol-3840x2160.png" "$C/hyprlock-colors.conf"
+touch "$INVICTUS_WALLPAPERS/nox-3840x2160.jpg" "$INVICTUS_WALLPAPERS/nox-5120x1440.jpg" "$INVICTUS_WALLPAPERS/nox-2160x3840.jpg"
+"$TOOL" apply nox >/dev/null 2>&1
+expect "ultrawide gets 5120 wallpaper" grep -qxF "hyprctl hyprpaper wallpaper DP-1,$INVICTUS_WALLPAPERS/nox-5120x1440.jpg,cover" "$TMP/t4/calls"
+expect "other output gets 3840 wallpaper" grep -qxF "hyprctl hyprpaper wallpaper DP-2,$INVICTUS_WALLPAPERS/nox-3840x2160.jpg,cover" "$TMP/t4/calls"
+expect "rotated output gets the portrait wallpaper" grep -qxF "hyprctl hyprpaper wallpaper HDMI-A-2,$INVICTUS_WALLPAPERS/nox-2160x3840.jpg,cover" "$TMP/t4/calls"
+expect "no hyprpaper reload (hyprpaper 0.8 has none)" bash -c "! grep -q 'hyprpaper reload' '$TMP/t4/calls'"
+expect "hyprlock file carries the wallpaper path" grep -qF "$INVICTUS_WALLPAPERS/nox-3840x2160.jpg" "$C/hyprlock-colors.conf"
+# a PNG wallpaper is still found, and a missing cut falls back to 3840
+: > "$TMP/t4/calls"
+touch "$INVICTUS_WALLPAPERS/julii-3840x2160.png"
+"$TOOL" apply julii >/dev/null 2>&1
+expect "png wallpaper found, missing cuts fall back to 3840" bash -c "[ \$(grep -cF 'hyprctl hyprpaper wallpaper' '$TMP/t4/calls') -eq 3 ] && ! grep 'hyprpaper wallpaper' '$TMP/t4/calls' | grep -vqF '$INVICTUS_WALLPAPERS/julii-3840x2160.png,cover'"
 
 # switch theme, link moves, old folder kept
 : > "$TMP/t4/calls"
-expect "apply aegean" "$TOOL" apply aegean
-expect "current now aegean" test "$(readlink "$C")" = "$S/aegean"
-expect "dusk folder kept" test -d "$S/dusk"
-expect "aegean accent is blue" grep -qxF "gsettings set org.gnome.desktop.interface accent-color blue" "$TMP/t4/calls"
-expect "apply with no id keeps current" bash -c "'$TOOL' apply && test \"\$(readlink '$C')\" = '$S/aegean'"
-expect "set is apply" bash -c "'$TOOL' set porphyry && test \"\$(readlink '$C')\" = '$S/porphyry'"
+expect "apply scipii" "$TOOL" apply scipii
+expect "current now scipii" test "$(readlink "$C")" = "$S/scipii"
+expect "nox folder kept" test -d "$S/nox"
+expect "scipii accent is blue" grep -qxF "gsettings set org.gnome.desktop.interface accent-color blue" "$TMP/t4/calls"
+expect "apply with no id keeps current" bash -c "'$TOOL' apply && test \"\$(readlink '$C')\" = '$S/scipii'"
+expect "set is apply" bash -c "'$TOOL' set brutii && test \"\$(readlink '$C')\" = '$S/brutii'"
 
 # game mode skips the Hyprland reload only
 : > "$TMP/t4/calls"
 touch "$INVICTUS_GAMEMODE_FILE"
-"$TOOL" apply alexandria >/dev/null 2>&1
+"$TOOL" apply marmor >/dev/null 2>&1
 expect "game mode: no hyprctl reload" bash -c "! grep -qx 'hyprctl reload' '$TMP/t4/calls'"
 expect "game mode: waybar still reloaded" grep -qF "x waybar" "$TMP/t4/calls"
-expect "game mode: link still switched" test "$(readlink "$C")" = "$S/alexandria"
+expect "game mode: link still switched" test "$(readlink "$C")" = "$S/marmor"
 rm -f "$INVICTUS_GAMEMODE_FILE"
 
 # a failing reload step: switch stands, one notification names it
 : > "$TMP/t4/calls"
 export STUB_FAIL="--reload-css"
-"$TOOL" apply dusk >/dev/null 2>&1
-expect "failed step: still switched" test "$(readlink "$C")" = "$S/dusk"
+"$TOOL" apply nox >/dev/null 2>&1
+expect "failed step: still switched" test "$(readlink "$C")" = "$S/nox"
 expect "failed step: later steps still ran" grep -qF "x cava" "$TMP/t4/calls"
 expect "failed step: exactly one notify-send" test "$(grep -c '^notify-send' "$TMP/t4/calls")" -eq 1
 expect "failed step: notification names swaync" grep -q '^notify-send.*swaync' "$TMP/t4/calls"
 export STUB_FAIL="reload"
 : > "$TMP/t4/calls"
-"$TOOL" apply dusk >/dev/null 2>&1
+"$TOOL" apply nox >/dev/null 2>&1
 expect "several failures: still one notify-send" test "$(grep -c '^notify-send' "$TMP/t4/calls")" -eq 1
 unset STUB_FAIL
 
@@ -229,52 +238,52 @@ mkdir -p "$HOME/.config/invictus/theme-hooks.d"
 # shellcheck disable=SC2016
 printf '#!/bin/sh\necho "$1" > "%s/hook-ran"\nexit 1\n' "$TMP/t4" > "$HOME/.config/invictus/theme-hooks.d/10-test"
 chmod +x "$HOME/.config/invictus/theme-hooks.d/10-test"
-"$TOOL" apply aegean >/dev/null 2>&1
-expect "hook got the theme id" test "$(cat "$TMP/t4/hook-ran")" = aegean
-expect "failing hook: switch stands" test "$(readlink "$C")" = "$S/aegean"
+"$TOOL" apply scipii >/dev/null 2>&1
+expect "hook got the theme id" test "$(cat "$TMP/t4/hook-ran")" = scipii
+expect "failing hook: switch stands" test "$(readlink "$C")" = "$S/scipii"
 rm -rf "$HOME/.config/invictus/theme-hooks.d"
 
 # a theme that fails check changes nothing and notifies once, critical
 mkdir -p "$HOME/.config/invictus/themes"
-sed -e 's/^id = .*/id = "broken"/' -e 's/^ash = .*/ash = "#3A352D"/' "$REPO/theme/dusk.toml" > "$HOME/.config/invictus/themes/broken.toml"
+sed -e 's/^id = .*/id = "broken"/' -e 's/^ash = .*/ash = "#3A352D"/' "$REPO/theme/nox.toml" > "$HOME/.config/invictus/themes/broken.toml"
 : > "$TMP/t4/calls"
 expect_not "apply broken exits non-zero" "$TOOL" apply broken
-expect "broken: current unchanged" test "$(readlink "$C")" = "$S/aegean"
+expect "broken: current unchanged" test "$(readlink "$C")" = "$S/scipii"
 expect "broken: no folder made" test ! -e "$S/broken"
 expect "broken: critical notification 'Theme not changed'" grep -q '^notify-send.*-u critical.*Theme not changed' "$TMP/t4/calls"
 expect "broken: no reload ran" bash -c "! grep -qE '^(hyprctl|pkill|swaync)' '$TMP/t4/calls'"
 expect_not "apply unknown exits non-zero" "$TOOL" apply nosuchtheme
 rm -f "$HOME/.config/invictus/themes/broken.toml"
 
-# a fresh HOME with no current: apply with no id gives Dusk
+# a fresh HOME with no current: apply with no id gives the default, Nox Aurea
 new_env t4b
 "$TOOL" apply >/dev/null 2>&1
-expect "fresh install applies Dusk" test "$(readlink "$HOME/.config/invictus/current")" = "$HOME/.local/state/invictus/theme/dusk"
+expect "fresh install applies the default (nox)" test "$(readlink "$HOME/.config/invictus/current")" = "$HOME/.local/state/invictus/theme/nox"
 
 echo "5. pick (stub rofi)"
 new_env t5
-"$TOOL" apply dusk >/dev/null 2>&1
+"$TOOL" apply nox >/dev/null 2>&1
 S="$HOME/.local/state/invictus/theme"; C="$HOME/.config/invictus/current"
 : > "$TMP/t5/calls"
-export STUB_ROFI_CHOICE=2   # third row: dusk, aegean, alexandria
+export STUB_ROFI_CHOICE=2   # third row: nox, brutii, julii
 "$TOOL" pick >/dev/null 2>&1
-expect "pick applies the chosen row (alexandria)" test "$(readlink "$C")" = "$S/alexandria"
+expect "pick applies the chosen row (julii)" test "$(readlink "$C")" = "$S/julii"
 rofi_line="$(grep '^rofi' "$TMP/t5/calls")"
 expect "rofi in dmenu mode with the picker theme" bash -c "[[ '$rofi_line' == *-dmenu* && '$rofi_line' == *rofi-picker.rasi* ]]"
 expect "current row preselected" grep -q -- "-selected-row 0" "$TMP/t5/calls"
-expect "rows are Dusk first, then alphabetical" python3 -c "
+expect "rows are the default first, then alphabetical" python3 -c "
 import re,sys
 s=open('$TMP/t5/rofi-stdin').read().split('|')
-names=[re.search(r'<b>(\w+)</b>', r).group(1) for r in s]
-assert names==['Dusk','Aegean','Alexandria','Porphyry'], names"
+names=[re.search(r'<b>([^<]+)</b>', r).group(1) for r in s]
+assert names==['Nox Aurea','Brutii','Julii','Marmor','Pompeii','Scipii'], names"
 expect "every row has a swatch icon that exists" python3 -c "
 import os,re
 for r in open('$TMP/t5/rofi-stdin').read().split('|'):
     p=r.split('\x1f')[1].strip()
     assert os.path.getsize(p)>0, p"
-expect "swatch icons live outside the theme folders" test -s "$HOME/.local/state/invictus/swatches/dusk.svg"
-expect "current theme has the check glyph" bash -c "grep -q 'Dusk</b>   ✓' '$TMP/t5/rofi-stdin'"
-expect "concept is on the second line" bash -c "grep -q 'Lapis night' '$TMP/t5/rofi-stdin'"
+expect "swatch icons live outside the theme folders" test -s "$HOME/.local/state/invictus/swatches/nox.svg"
+expect "current theme has the check glyph" bash -c "grep -q 'Nox Aurea</b>   ✓' '$TMP/t5/rofi-stdin'"
+expect "concept is on the second line" bash -c "grep -q 'Legion crimson' '$TMP/t5/rofi-stdin'"
 # picking the current theme does nothing
 : > "$TMP/t5/calls"
 export STUB_ROFI_CHOICE=2
@@ -283,58 +292,58 @@ expect "picking the current theme reloads nothing" bash -c "! grep -qE '^(hyprct
 # Esc (empty output) changes nothing
 export STUB_ROFI_CHOICE=
 "$TOOL" pick >/dev/null 2>&1
-expect "Esc changes nothing" test "$(readlink "$C")" = "$S/alexandria"
-# fresh install: pick sets Dusk up first
+expect "Esc changes nothing" test "$(readlink "$C")" = "$S/julii"
+# fresh install: pick sets the default up first
 new_env t5b
 export STUB_ROFI_CHOICE=
 "$TOOL" pick >/dev/null 2>&1
-expect "pick on a fresh install has Dusk in place" test -s "$HOME/.config/invictus/current/rofi-picker.rasi"
+expect "pick on a fresh install has the default in place" test -s "$HOME/.config/invictus/current/rofi-picker.rasi"
 # Janus M1: a theme id is a path part. A planted theme whose id climbs out of
 # its folder, or is absolute, must not write anywhere (swatches, apply).
 new_env t5m
 mkdir -p "$HOME/.config/invictus/themes" "$HOME/Pictures"
 echo "family photo" > "$HOME/Pictures/holiday.svg"
-for evil in "../../../../Pictures/holiday" "$HOME/Pictures/holiday" "Dusk Two"; do
+for evil in "../../../../Pictures/holiday" "$HOME/Pictures/holiday" "Nox Two"; do
     n=$((${n:-0} + 1))
-    sed "s#^id = \"dusk\"#id = \"$evil\"#; s#^default = true#default = false#" "$REPO/theme/dusk.toml" > "$HOME/.config/invictus/themes/evil$n.toml"
+    sed "s#^id = \"nox\"#id = \"$evil\"#; s#^default = true#default = false#" "$REPO/theme/nox.toml" > "$HOME/.config/invictus/themes/evil$n.toml"
 done
 "$TOOL" swatches > "$TMP/t5m/sw" 2>/dev/null
 "$TOOL" apply "../../../../Pictures/holiday" >/dev/null 2>&1; rc_apply=$?
 "$TOOL" apply "$HOME/Pictures/holiday" >/dev/null 2>&1; rc_abs=$?
 expect "M1: a theme id that climbs out (or is absolute, or has a space) writes no swatch outside swatches/" \
-    bash -c "[[ \"\$(cat '$HOME/Pictures/holiday.svg')\" == 'family photo' ]] && ! grep -qi -e Pictures -e 'Dusk Two' '$TMP/t5m/sw' && ! ls '$HOME/Pictures' | grep -q png"
+    bash -c "[[ \"\$(cat '$HOME/Pictures/holiday.svg')\" == 'family photo' ]] && ! grep -qi -e Pictures -e 'Nox Two' '$TMP/t5m/sw' && ! ls '$HOME/Pictures' | grep -q png"
 expect "M1: such a theme is skipped by list, and apply refuses a path as an id" \
-    bash -c "! '$TOOL' list 2>/dev/null | grep -qi -e Pictures -e 'Dusk Two' && [[ $rc_apply != 0 && $rc_abs != 0 ]] && [[ \"\$(cat '$HOME/Pictures/holiday.svg')\" == 'family photo' ]] && [[ ! -e '$HOME/.local/state/invictus/theme/../../../../Pictures' || -z \"\$(ls -A '$HOME/Pictures' | grep -v holiday.svg)\" ]]"
+    bash -c "! '$TOOL' list 2>/dev/null | grep -qi -e Pictures -e 'Nox Two' && [[ $rc_apply != 0 && $rc_abs != 0 ]] && [[ \"\$(cat '$HOME/Pictures/holiday.svg')\" == 'family photo' ]] && [[ ! -e '$HOME/.local/state/invictus/theme/../../../../Pictures' || -z \"\$(ls -A '$HOME/Pictures' | grep -v holiday.svg)\" ]]"
 unset n
 # Janus N1: every field of a theme file is checked when it loads (a schema),
 # so no meta string reaches a generated file as code. Each planted theme is
-# Dusk with one field changed; each must be skipped.
+# Nox Aurea with one field changed; each must be skipped.
 new_env t5n
 mkdir -p "$HOME/.config/invictus/themes"
 plant() {  # plant N SED-EXPRESSION [EXTRA-LINES]
-    sed "s#^id = \"dusk\"#id = \"evil$1\"#; s#^default = true#default = false#; $2" "$REPO/theme/dusk.toml" > "$HOME/.config/invictus/themes/evil$1.toml"
+    sed "s#^id = \"nox\"#id = \"evil$1\"#; s#^default = true#default = false#; $2" "$REPO/theme/nox.toml" > "$HOME/.config/invictus/themes/evil$1.toml"
     [[ -n "${3:-}" ]] && printf '%s\n' "$3" >> "$HOME/.config/invictus/themes/evil$1.toml"
     return 0
 }
-plant 1 's#^name = "Dusk"#name = "Dusk Two\\nJANUS_MARKER = 1 --"#'
-plant 2 's#^name = "Dusk"#name = "Dusk */ evil { }"#'
-plant 3 's#^name = "Dusk"#name = "Dusk \\" x"#'
-plant 4 's#^name = "Dusk"#name = "Dusk -- comment"#'
-plant 5 's#^wallpaper = "sol".*#wallpaper = "../../x"#'
+plant 1 's#^name = "Nox Aurea"#name = "Nox Two\\nJANUS_MARKER = 1 --"#'
+plant 2 's#^name = "Nox Aurea"#name = "Nox */ evil { }"#'
+plant 3 's#^name = "Nox Aurea"#name = "Nox \\" x"#'
+plant 4 's#^name = "Nox Aurea"#name = "Nox -- comment"#'
+plant 5 's#^wallpaper = "nox".*#wallpaper = "../../x"#'
 plant 6 's#^gnome-accent = "yellow".*#gnome-accent = "yellow; rm"#'
 plant 7 's#^concept = .*#concept = "a\\u0007b"#'
 plant 8 '' '[evil]
 x = "#000000"'
-plant 9 's#^name = "Dusk"#name = 7#'
-plant 10 's#^sol = "\#E0A64B"#sol = "\#E0A64B; x"#'
-plant 11 's#^papirus-folders = "grey"#papirus-folders = "grey\\nx"#'
+plant 9 's#^name = "Nox Aurea"#name = 7#'
+plant 10 's#^sol = "\#D9A441"#sol = "\#D9A441; x"#'
+plant 11 's#^papirus-folders = "yellow"#papirus-folders = "yellow\\nx"#'
 plant 12 's#^source = .*#source = "Rome <!-- x"#'
-plant 13 's#^sol = "\#E0A64B"#sol = "\#E0A64B\\n"#'
+plant 13 's#^sol = "\#D9A441"#sol = "\#D9A441\\n"#'
 "$TOOL" list > "$TMP/t5n/list" 2> "$TMP/t5n/err"
 expect "N1: thirteen themes with a bad field (newline, */, quote, --, path wallpaper, accent, control byte, unknown section, number name, bad colour, newline, <!--, a colour ending in a newline) are all skipped" \
     bash -c "! grep -q evil '$TMP/t5n/list' && [[ \$(grep -c 'skipping' '$TMP/t5n/err') == 13 ]]"
 expect_not "N1: apply refuses a skipped theme" "$TOOL" apply evil1
-expect "N1: the shipped themes still load" bash -c "[[ \$('$TOOL' list 2>/dev/null | wc -l) == 4 ]]"
+expect "N1: the shipped themes still load" bash -c "[[ \$('$TOOL' list 2>/dev/null | wc -l) == 6 ]]"
 # escaping on output too: a meta string that slips past the schema (here
 # written straight into a Theme) is cleaned before it reaches a file
 expect "N1: render cleans a meta string on output (no newline, no */, no \", no --)" python3 -c "
@@ -353,7 +362,7 @@ new_env t5c
 expect "swatches: one '<id> <path>' line per theme, each file written and drawn in that theme's sol" python3 -c "
 import os, sys, tomllib, xml.dom.minidom as m
 lines = [l.split(' ', 1) for l in open(sys.argv[1]).read().splitlines()]
-assert sorted(i for i, _ in lines) == ['aegean', 'alexandria', 'dusk', 'porphyry'], lines
+assert sorted(i for i, _ in lines) == ['brutii', 'julii', 'marmor', 'nox', 'pompeii', 'scipii'], lines
 for i, p in lines:
     assert p.startswith(os.environ['HOME'] + '/.local/state/invictus/swatches/' + i + '.'), p
     if p.endswith('.svg'):
@@ -364,9 +373,9 @@ for i, p in lines:
         assert os.path.getsize(p) > 0, p" "$TMP/t5c/sw" "$REPO/theme"
 
 echo "6. the shipped app configs (config/)"
-DUSK_OUT="$TMP/dusk-out"
-"$TOOL" generate dusk "$DUSK_OUT" >/dev/null 2>&1
-if config_out=$(python3 "$HERE/config_checks.py" "$REPO" "$DUSK_OUT" 2>&1); then
+DEFAULT_OUT="$TMP/nox-out"
+"$TOOL" generate nox "$DEFAULT_OUT" >/dev/null 2>&1
+if config_out=$(python3 "$HERE/config_checks.py" "$REPO" "$DEFAULT_OUT" 2>&1); then
     n=$(grep -c '^ok' <<<"$config_out")
     pass "config checks: $n passed"
 else

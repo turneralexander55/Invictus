@@ -3,7 +3,7 @@
 
 Prints "ok <what>" or "FAIL <what>" per check and exits non-zero if any failed.
 
-usage: config_checks.py <repo root> <generated Dusk folder>
+usage: config_checks.py <repo root> <generated default-theme (Nox Aurea) folder>
 """
 import json
 import re
@@ -85,7 +85,7 @@ check(fallbacks == sorted([
     "rofi/themes/colors-fallback.rasi", "swaync/colors-fallback.css", "waybar/colors-fallback.css",
 ]), "the fallback files are exactly the expected six", str(fallbacks))
 
-# ------------------------------------------------- 2. fallbacks are Dusk, as generated
+# ------------------------------------------------- 2. fallbacks are the default theme (Nox Aurea), as generated
 pairs = [
     ("waybar/colors-fallback.css", "waybar-colors.css"),
     ("swaync/colors-fallback.css", "swaync-colors.css"),
@@ -96,17 +96,17 @@ pairs = [
 for fb, gen in pairs:
     a = (config / fb).read_text().split("\n")[1:]
     b = (dusk / gen).read_text().split("\n")[1:]
-    check(a == b, f"{fb} equals the generated Dusk {gen} (after the header line)")
-    check((config / fb).read_text().split("\n")[0].lstrip("/*# ").startswith("Dusk"), f"{fb} says it is the Dusk fallback")
+    check(a == b, f"{fb} equals the generated Nox Aurea {gen} (after the header line)")
+    check((config / fb).read_text().split("\n")[0].lstrip("/*# ").startswith("Nox Aurea"), f"{fb} says it is the Nox Aurea fallback")
 
-# colors.lua fallback = generated Dusk hyprland-colors.lua
+# colors.lua fallback = generated Nox Aurea hyprland-colors.lua
 def lua_table(text):
     return dict(re.findall(r'(\w+)\s*=\s*"([^"]*)"', text))
 
 gen_lua = lua_table((dusk / "hyprland-colors.lua").read_text())
 fb_lua = lua_table((config / "hypr/invictus/colors.lua").read_text().split("local GENERATED")[0])
 diff = {k: (fb_lua.get(k), v) for k, v in gen_lua.items() if fb_lua.get(k) != v}
-check(not diff, "hypr colors.lua fallback equals the generated Dusk hyprland-colors.lua", str(diff))
+check(not diff, "hypr colors.lua fallback equals the generated Nox Aurea hyprland-colors.lua", str(diff))
 
 # ------------------------------------------------- 3. every app loads the generated file
 def has(path, needle):
@@ -206,7 +206,7 @@ check("mpris" not in swaync["widgets"] and "volume" not in swaync["widgets"] and
 check(swaync["widgets"][0] == "dnd" and swaync["widgets"][1] == "notifications", "control centre: Do not disturb, then the list")
 acc = (config / "swaync/accent.css").read_text()
 check("@keyframes sunrise" in acc and "300ms" in acc and "inset 3px 0 @sol" in acc and acc.count("animation: none") >= 1,
-      "swaync: Dusk's sunrise accent, 300 ms, none on critical")
+      "swaync: the default sunrise accent, 300 ms, none on critical")
 for name, needle in (("dye", "border-color"), ("ripple", "0 0 0 14px"), ("beam", "background-position")):
     t = (config / f"swaync/accents/{name}.css").read_text()
     check(f"@keyframes {name}" in t and needle in t and "300ms" in t and "animation: none" in t, f"swaync accent {name} ships, 300 ms, none on critical")
@@ -255,7 +255,7 @@ cava_cfg = (config / "cava/config").read_text()
 check(not re.search(r"^shader", cava_cfg, re.M) and (config / "cava/shaders").is_dir(), "cava: no shader by default, shaders still shipped")
 ff_logo = (config / "fastfetch/logo.txt").read_text().rstrip("\n").split("\n")
 check(len(ff_logo) == 9 and all(l.startswith("$1") for l in ff_logo), "fastfetch logo is 9 lines in colour 1")
-check(fastfetch["logo"]["color"] == {"1": "yellow"} and fastfetch["logo"]["type"] == "file", "fastfetch logo coloured with the terminal's yellow (sol in Dusk)")
+check(fastfetch["logo"]["color"] == {"1": "yellow"} and fastfetch["logo"]["type"] == "file", "fastfetch logo coloured with the terminal's yellow (sol in the default theme)")
 mods = [m if isinstance(m, str) else m["type"] for m in fastfetch["modules"]]
 check(mods == ["title", "separator", "os", "kernel", "uptime", "packages", "wm", "terminal", "shell", "cpu", "gpu", "memory", "disk"],
       "fastfetch modules: title, OS, kernel, uptime, packages, WM, terminal, shell, CPU, GPU, memory, disk", str(mods))

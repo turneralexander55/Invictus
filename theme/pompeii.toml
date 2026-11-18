@@ -1,0 +1,67 @@
+# Invictus theme: Pompeii. Schema: docs/look.md, "Themes".
+# Edit colours here only; invictus-theme generates every app file from this.
+
+[meta]
+id = "pompeii"
+name = "Pompeii"
+source = "Roman: the house of Pompey the Great, Tyrian purple and Neptune's trident"
+concept = "Tyrian purple, pale lilac text, gold for focus."
+wallpaper = "pompeii"   # assets/wallpapers/pompeii-<size>.jpg (3840x2160, 5120x1440, 2160x3840)
+lock = "standard"
+gnome-accent = "purple"
+papirus-folders = "violet"
+default = false
+
+[dark]
+night = "#110717"
+basalt = "#190C21"
+stone = "#251331"
+line = "#402552"
+marble = "#F1E4F3"
+parchment = "#C8B4CC"
+ash = "#A08DA6"
+sol = "#E2AE52"
+sol-bright = "#F6D48C"
+pompeii = "#F0866C"
+laurel = "#A6BF8A"
+lapis = "#90B2E4"
+verdigris = "#7DBBB0"
+tyrian = "#D79DE2"
+
+[light]   # apps and the Desk only; the shell stays dark
+dawn = "#F5EEF6"
+dawn-surface = "#FBF7FC"
+dawn-raised = "#EBDFEE"
+dawn-line = "#D8C7DC"
+ink = "#21172A"
+ink-2 = "#49394F"
+ink-muted = "#6A5870"
+bronze = "#6B2A86"
+pompeii-dark = "#A8432C"
+laurel-dark = "#476330"
+lapis-dark = "#2F5A99"
+
+[terminal]   # Roman terminal look, 2026-11-18 (terminal-look/palettes.toml)
+background = "#110717"
+foreground = "#F1E4F3"
+selection-background = "#5A2F61"
+selection-foreground = "#F1E4F3"
+cursor = "#D978E8"
+cursor-text = "#110717"
+url = "#A1C5F5"
+color0 = "#251331"
+color1 = "#F8875A"
+color2 = "#9EC894"
+color3 = "#E8BE62"
+color4 = "#82AEE6"
+color5 = "#D978E8"
+color6 = "#8DC7C8"
+color7 = "#C8B4CC"
+color8 = "#8F7D95"
+color9 = "#FFAB8A"
+color10 = "#BBDEB3"
+color11 = "#FAD890"
+color12 = "#A1C5F5"
+color13 = "#E999F6"
+color14 = "#AEDDDE"
+color15 = "#F1E4F3"

@@ -1,5 +1,5 @@
 /* Launcher (docs/look.md, Rofi). Colours are tokens, never hex:
-   colors-fallback.rasi is Dusk; the current theme's file loads after it and wins.
+   colors-fallback.rasi is Nox Aurea; the current theme's file loads after it and wins.
    The fallback covers tokens a stale generated file lacks. A missing generated file
    is not covered: rofi shows an error popup (checked on 1.7.5), so
    invictus-theme apply must have run (autostart.lua does). */

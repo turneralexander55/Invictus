@@ -1,4 +1,4 @@
-/* Entrance accent, Aegean: the ripple. One ring spreads from the app icon and fades.
+/* Entrance accent, optional: the ripple. One ring spreads from the app icon and fades.
    Used instead of ../accent.css. */
 @keyframes ripple {
     from { box-shadow: 0 0 0 0 alpha(@sol, .6); }

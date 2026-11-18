@@ -197,9 +197,9 @@ expect_pixels() {  # expect_pixels NAME FILE gold:none|some
 # The themes with real swatches, drawn by the theme tool from the checkout.
 THEMES_JSON="$(INVICTUS_STATE="$W/theme" python3 - "$SRC/theme/invictus-theme" <<'EOF'
 import json, subprocess, sys
-names = {"dusk": "Dusk", "porphyry": "Porphyry", "aegean": "Aegean", "alexandria": "Alexandria"}
+names = {"nox": "Nox Aurea", "brutii": "Brutii", "julii": "Julii", "marmor": "Marmor", "pompeii": "Pompeii", "scipii": "Scipii"}
 sw = dict(l.split(" ", 1) for l in subprocess.run([sys.argv[1], "swatches"], capture_output=True, text=True).stdout.splitlines())
-print(json.dumps([{"id": i, "name": n, "current": i == "dusk", "swatch": sw.get(i, "")} for i, n in names.items()]))
+print(json.dumps([{"id": i, "name": n, "current": i == "nox", "swatch": sw.get(i, "")} for i, n in names.items()]))
 EOF
 )"
 [[ "$THEMES_JSON" == *'.svg"'* || "$THEMES_JSON" == *'.png"'* ]] || bad "invictus-theme swatches drew nothing"

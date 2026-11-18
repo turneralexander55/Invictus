@@ -1,0 +1,67 @@
+# Invictus theme: Scipii. Schema: docs/look.md, "Themes".
+# Edit colours here only; invictus-theme generates every app file from this.
+
+[meta]
+id = "scipii"
+name = "Scipii"
+source = "Roman: the house of Scipio Africanus, sea blue and the winged sceptre"
+concept = "Deep sea blue, cool white text, pale gold for focus."
+wallpaper = "scipii"   # assets/wallpapers/scipii-<size>.jpg (3840x2160, 5120x1440, 2160x3840)
+lock = "standard"
+gnome-accent = "blue"
+papirus-folders = "blue"
+default = false
+
+[dark]
+night = "#060D19"
+basalt = "#0A1424"
+stone = "#111F35"
+line = "#223656"
+marble = "#EAEEF5"
+parchment = "#B9C2D2"
+ash = "#8F9AAE"
+sol = "#E6C36E"
+sol-bright = "#F7E0A6"
+pompeii = "#EE846C"
+laurel = "#A2C08A"
+lapis = "#8FB6EE"
+verdigris = "#7CBDB4"
+tyrian = "#C49CD0"
+
+[light]   # apps and the Desk only; the shell stays dark
+dawn = "#EEF2F7"
+dawn-surface = "#F8FAFC"
+dawn-raised = "#E0E7F0"
+dawn-line = "#C7D2E0"
+ink = "#141C28"
+ink-2 = "#364457"
+ink-muted = "#556377"
+bronze = "#2A5596"
+pompeii-dark = "#A8432C"
+laurel-dark = "#476330"
+lapis-dark = "#2F5A99"
+
+[terminal]   # Roman terminal look, 2026-11-18 (terminal-look/palettes.toml)
+background = "#060D19"
+foreground = "#EAEEF5"
+selection-background = "#1A4B6B"
+selection-foreground = "#EAEEF5"
+cursor = "#48B8FE"
+cursor-text = "#060D19"
+url = "#B9B3F6"
+color0 = "#111F35"
+color1 = "#F7806E"
+color2 = "#8ED09C"
+color3 = "#E6CC7B"
+color4 = "#A199E9"
+color5 = "#48B8FE"
+color6 = "#88D4D3"
+color7 = "#B9C2D2"
+color8 = "#7F899C"
+color9 = "#FFA495"
+color10 = "#B0E6BA"
+color11 = "#FBE5A4"
+color12 = "#B9B3F6"
+color13 = "#8ACFFF"
+color14 = "#ADEAE9"
+color15 = "#EAEEF5"

@@ -1,16 +1,16 @@
-/* Dusk fallback for when ~/.config/invictus/current is missing; the generated file loads after this one and wins. Kept equal to the generated Dusk file by tests/theme/run.sh. */
-@define-color night #14120F;
-@define-color basalt #1C1A16;
-@define-color stone #27241F;
-@define-color line #3A352D;
-@define-color marble #ECE6DA;
-@define-color parchment #BDB4A3;
-@define-color ash #968E7F;
-@define-color sol #E0A64B;
-@define-color sol-bright #F0C274;
-@define-color pompeii #D9725A;
-@define-color laurel #94AD7B;
-@define-color lapis #7C9FD4;
-@define-color verdigris #72ACA3;
-@define-color tyrian #B388B0;
-@define-color bar-bg rgba(20,18,15,0.82);
+/* Nox Aurea fallback (the default theme) for when ~/.config/invictus/current is missing; the generated file loads after this one and wins. Kept equal to the generated Nox Aurea file by tests/theme/run.sh. */
+@define-color night #0B0A08;
+@define-color basalt #131210;
+@define-color stone #1E1C18;
+@define-color line #352F26;
+@define-color marble #EFE6D2;
+@define-color parchment #C2B8A3;
+@define-color ash #9A917F;
+@define-color sol #D9A441;
+@define-color sol-bright #F2D38A;
+@define-color pompeii #E0775E;
+@define-color laurel #9BB481;
+@define-color lapis #84A5D8;
+@define-color verdigris #76B0A6;
+@define-color tyrian #B98DB6;
+@define-color bar-bg rgba(11,10,8,0.82);

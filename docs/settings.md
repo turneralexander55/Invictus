@@ -140,7 +140,7 @@ Changes to screens use the **keep-this card** (6.1 of `simple-mode.md`, 20 secon
 
 ### 3.4 Look
 
-- **Theme**: four cards with the generated swatches (Dusk, Porphyry, Aegean, Alexandria), the current one checked. Applies with the theme switch ceremony (`invictus-theme apply`).
+- **Theme**: six cards with the generated swatches (Nox Aurea, Brutii, Julii, Marmor, Pompeii, Scipii), the current one checked. Applies with the theme switch ceremony (`invictus-theme apply`).
 - **Wallpaper**: the theme's wallpapers, and `Choose a picture...`.
 - **Apps**: `Light` / `Dark` (Atrium default Light, Tessera Dark). The shell stays dark.
 - **Motion**: `Showcase` (small flourishes when windows open and at log in), `Calm` (gentle fades only), `Off` (no animation). One line under: `Games turn motion off by themselves while you play.` Uses `invictus-motion set`.

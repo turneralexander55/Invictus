@@ -1,0 +1,67 @@
+# Invictus theme: Nox Aurea. Schema: docs/look.md, "Themes".
+# Edit colours here only; invictus-theme generates every app file from this.
+
+[meta]
+id = "nox"
+name = "Nox Aurea"
+source = "Roman: Sol Invictus, the unconquered sun, in gold on black marble"
+concept = "Black marble, ivory text, and one metal: gold."
+wallpaper = "nox"   # assets/wallpapers/nox-<size>.jpg (3840x2160, 5120x1440, 2160x3840)
+lock = "standard"
+gnome-accent = "yellow"
+papirus-folders = "yellow"
+default = true
+
+[dark]
+night = "#0B0A08"
+basalt = "#131210"
+stone = "#1E1C18"
+line = "#352F26"
+marble = "#EFE6D2"
+parchment = "#C2B8A3"
+ash = "#9A917F"
+sol = "#D9A441"
+sol-bright = "#F2D38A"
+pompeii = "#E0775E"
+laurel = "#9BB481"
+lapis = "#84A5D8"
+verdigris = "#76B0A6"
+tyrian = "#B98DB6"
+
+[light]   # apps and the Desk only; the shell stays dark
+dawn = "#F5F0E6"
+dawn-surface = "#FCF9F3"
+dawn-raised = "#EBE4D6"
+dawn-line = "#D8CEBC"
+ink = "#211D17"
+ink-2 = "#494237"
+ink-muted = "#6A6153"
+bronze = "#85570F"
+pompeii-dark = "#A8432C"
+laurel-dark = "#476330"
+lapis-dark = "#2F5A99"
+
+[terminal]   # Roman terminal look, 2026-11-18 (terminal-look/palettes.toml)
+background = "#0B0A08"
+foreground = "#EFE6D2"
+selection-background = "#604719"
+selection-foreground = "#EFE6D2"
+cursor = "#E9AF41"
+cursor-text = "#0B0A08"
+url = "#ACC5E5"
+color0 = "#1E1C18"
+color1 = "#E37F64"
+color2 = "#AAC58F"
+color3 = "#EAE196"
+color4 = "#8FADD4"
+color5 = "#E9AF41"
+color6 = "#90BFBA"
+color7 = "#C2B8A3"
+color8 = "#898171"
+color9 = "#F19D86"
+color10 = "#C4DCAF"
+color11 = "#F8F1B4"
+color12 = "#ACC5E5"
+color13 = "#FACA78"
+color14 = "#AFD5D1"
+color15 = "#EFE6D2"

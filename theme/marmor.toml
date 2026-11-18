@@ -1,0 +1,67 @@
+# Invictus theme: Marmor. Schema: docs/look.md, "Themes".
+# Edit colours here only; invictus-theme generates every app file from this.
+
+[meta]
+id = "marmor"
+name = "Marmor"
+source = "Roman: carved Carrara marble and the cut letters of an inscription"
+concept = "White marble and charcoal. No colour, only stone."
+wallpaper = "marmor"   # assets/wallpapers/marmor-<size>.jpg (3840x2160, 5120x1440, 2160x3840)
+lock = "standard"
+gnome-accent = "slate"
+papirus-folders = "grey"
+default = false
+
+[dark]
+night = "#131313"
+basalt = "#1B1B1A"
+stone = "#272726"
+line = "#3E3D3B"
+marble = "#F1EEE8"
+parchment = "#BDB9B1"
+ash = "#96928A"
+sol = "#F7F4EE"
+sol-bright = "#FFFFFF"
+pompeii = "#E0806A"
+laurel = "#9DB58A"
+lapis = "#8AA9D6"
+verdigris = "#7DB3AA"
+tyrian = "#BC93BA"
+
+[light]   # apps and the Desk only; the shell stays dark
+dawn = "#F1EEE8"
+dawn-surface = "#FAF8F4"
+dawn-raised = "#E6E2DA"
+dawn-line = "#CFCAC0"
+ink = "#1A1918"
+ink-2 = "#42403D"
+ink-muted = "#625F5A"
+bronze = "#3A3836"
+pompeii-dark = "#A8432C"
+laurel-dark = "#476330"
+lapis-dark = "#2F5A99"
+
+[terminal]   # Roman terminal look, 2026-11-18 (terminal-look/palettes.toml)
+background = "#131313"
+foreground = "#F1EEE8"
+selection-background = "#3E3D3B"
+selection-foreground = "#F1EEE8"
+cursor = "#FFFFFF"
+cursor-text = "#131313"
+url = "#AEC5E3"
+color0 = "#272726"
+color1 = "#D88575"
+color2 = "#B3D2A9"
+color3 = "#DEC996"
+color4 = "#92ADD1"
+color5 = "#FFFFFF"
+color6 = "#A1C6C6"
+color7 = "#BDB9B1"
+color8 = "#86837C"
+color9 = "#E7A293"
+color10 = "#CFE9C6"
+color11 = "#F3E2B8"
+color12 = "#AEC5E3"
+color13 = "#FFFFFF"
+color14 = "#BEDDDC"
+color15 = "#F1EEE8"

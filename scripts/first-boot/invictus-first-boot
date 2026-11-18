@@ -90,7 +90,7 @@ if os.path.realpath(__file__).startswith("/usr/"):
 
 REQUEST = "first-start"            # the label invictus-sys writes to Acta
 SNAPSHOT_DESCRIPTION = "First boot done"
-THEMES_FALLBACK = ["dusk"]
+THEMES_FALLBACK = ["nox"]
 MOTIONS = ("showcase", "calm", "off")
 
 # The wizard's steps, in order (design.md 2.3; simple-mode.md 3.2 for Atrium).
@@ -786,9 +786,9 @@ def cmd_finish(args):
     if args:
         raise Fail("usage: finish", 2)
     # Atrium asks no look question (simple-mode.md 3.2): its defaults are
-    # the theme in use (Dusk on a new home), Calm motion and light apps.
+    # the theme in use (Nox Aurea, the default, on a new home), Calm motion and light apps.
     if flavor() == "atrium" and "look" not in read_record():
-        current = next((t["id"] for t in themes() if t["current"]), "dusk")
+        current = next((t["id"] for t in themes() if t["current"]), "nox")
         apply_look(current, "calm", "light")
     rc, word, snap = sys_call("snapshot", SNAPSHOT_DESCRIPTION)
     snapshot = snap if rc == 0 else None

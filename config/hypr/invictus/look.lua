@@ -4,7 +4,7 @@
 --                                                                            --
 --------------------------------------------------------------------------------
 -- The look from docs/look.md: gaps, borders, rounding, dimming, shadows, blur.
--- Colours come from invictus/colors.lua (the current theme, with Dusk as the
+-- Colours come from invictus/colors.lua (the current theme, with Nox Aurea as the
 -- fallback), never typed here. Animations are in invictus/motion.lua.
 -- Refer to https://wiki.hypr.land/Configuring/Basics/Variables/
 --------------------------------------------------------------------------------

@@ -433,7 +433,7 @@ end)
 
 -- Config keys whose old value intentionally differs or is gone.
 -- A value here is the exact new value. The look ones come from docs/look.md
--- (Hyprland table); the colours are the Dusk fallbacks, Showcase level.
+-- (Hyprland table); the colours are the default theme's (Nox Aurea) fallbacks, Showcase level.
 local KEY_CHANGES = {
     ["dwindle.pseudotile"]    = "removed", -- removed in 0.55
     ["general.allow_tearing"] = true,      -- gaming addition (invictus/gaming.lua)
@@ -441,8 +441,8 @@ local KEY_CHANGES = {
     ["general.gaps_in"]                = 4,
     ["general.gaps_out"]               = 8,
     ["general.border_size"]            = 2,
-    ["general.col.active_border"]      = { colors = { "rgb(E0A64B)", "rgb(F0C274)", "rgb(E0A64B)" }, angle = 45 },
-    ["general.col.inactive_border"]    = "rgb(27241F)",
+    ["general.col.active_border"]      = { colors = { "rgb(D9A441)", "rgb(F2D38A)", "rgb(D9A441)" }, angle = 45 },
+    ["general.col.inactive_border"]    = "rgb(1E1C18)",
     ["decoration.rounding"]            = 8,
     ["decoration.active_opacity"]      = 1.0,
     ["decoration.inactive_opacity"]    = 1.0,
@@ -788,15 +788,15 @@ local function noProblems(L, check)
     for _, w in ipairs(L.state.warnings) do check(false, w) end
 end
 
-local DUSK = { night = "rgb(14120F)", stone = "rgb(27241F)", line = "rgb(3A352D)", marble = "rgb(ECE6DA)",
-               sol = "rgb(E0A64B)", sol_bright = "rgb(F0C274)" }
+local NOX = { night = "rgb(0B0A08)", stone = "rgb(1E1C18)", line = "rgb(352F26)", marble = "rgb(EFE6D2)",
+              sol = "rgb(D9A441)", sol_bright = "rgb(F2D38A)" }
 
-test("look (Dusk fallback, Showcase): every value in the Hyprland table of docs/look.md", function(check)
+test("look (Nox Aurea fallback, Showcase): every value in the Hyprland table of docs/look.md", function(check)
     local cfg = configOf(L0)
     local want = {
         ["general.gaps_in"] = 4, ["general.gaps_out"] = 8, ["general.border_size"] = 2,
-        ["general.col.active_border"] = { colors = { DUSK.sol, DUSK.sol_bright, DUSK.sol }, angle = 45 },
-        ["general.col.inactive_border"] = DUSK.stone,
+        ["general.col.active_border"] = { colors = { NOX.sol, NOX.sol_bright, NOX.sol }, angle = 45 },
+        ["general.col.inactive_border"] = NOX.stone,
         ["general.layout"] = "master", ["general.resize_on_border"] = false,
         ["decoration.rounding"] = 8, ["decoration.rounding_power"] = 2,
         ["decoration.active_opacity"] = 1.0, ["decoration.inactive_opacity"] = 1.0,
@@ -807,12 +807,12 @@ test("look (Dusk fallback, Showcase): every value in the Hyprland table of docs/
         ["decoration.blur.enabled"] = true, ["decoration.blur.size"] = 6, ["decoration.blur.passes"] = 3,
         ["decoration.blur.noise"] = 0.015, ["decoration.blur.vibrancy"] = 0.1,
         ["decoration.blur.new_optimizations"] = true, ["decoration.blur.xray"] = false,
-        ["group.col.border_active"] = DUSK.sol, ["group.col.border_inactive"] = DUSK.stone,
+        ["group.col.border_active"] = NOX.sol, ["group.col.border_inactive"] = NOX.stone,
         ["group.groupbar.font_family"] = "IBM Plex Sans", ["group.groupbar.font_size"] = 12,
-        ["group.groupbar.col.active"] = DUSK.sol, ["group.groupbar.col.inactive"] = DUSK.line,
-        ["group.groupbar.text_color"] = DUSK.marble,
+        ["group.groupbar.col.active"] = NOX.sol, ["group.groupbar.col.inactive"] = NOX.line,
+        ["group.groupbar.text_color"] = NOX.marble,
         ["misc.disable_hyprland_logo"] = true, ["misc.disable_splash_rendering"] = true,
-        ["misc.force_default_wallpaper"] = 0, ["misc.background_color"] = DUSK.night,
+        ["misc.force_default_wallpaper"] = 0, ["misc.background_color"] = NOX.night,
         ["misc.focus_on_activate"] = false,
     }
     for key, v in pairs(want) do
@@ -939,7 +939,7 @@ test("motion off: animations.enabled = false, no animation leaf, no glint gradie
     noProblems(L, check)
     check(configOf(L)["animations.enabled"] == false, "animations.enabled = " .. show(configOf(L)["animations.enabled"]))
     check(#L.state.animations == 0, #L.state.animations .. " animation leaves still set")
-    check(configOf(L)["general.col.active_border"] == DUSK.sol, "Off should use the solid focus border")
+    check(configOf(L)["general.col.active_border"] == NOX.sol, "Off should use the solid focus border")
     for _, name in ipairs({ "motion-waybar", "motion-cicero-panel" }) do
         check(layerRule(L, name) == nil, "layer animation " .. name .. " set in Off")
     end
@@ -948,7 +948,7 @@ end)
 
 test("motion calm: solid border, no glint leaf, no slides, layer animations absent", function(check)
     local L = withLevel("calm")
-    check(configOf(L)["general.col.active_border"] == DUSK.sol, "Calm border should be solid focus colour")
+    check(configOf(L)["general.col.active_border"] == NOX.sol, "Calm border should be solid focus colour")
     for _, a in ipairs(L.state.animations) do
         check(not (a.style or ""):match("^slide") or (a.style or ""):match("^slidefade"), a.leaf .. ": slide style in Calm")
         check(not (a.style or ""):match("^slidefade"), a.leaf .. ": slidefade in Calm (no slides)")
@@ -958,7 +958,7 @@ end)
 
 test("motion showcase: gradient glint border and the layer slides", function(check)
     local L = withLevel("showcase")
-    check(deepEqual(configOf(L)["general.col.active_border"], { colors = { DUSK.sol, DUSK.sol_bright, DUSK.sol }, angle = 45 }),
+    check(deepEqual(configOf(L)["general.col.active_border"], { colors = { NOX.sol, NOX.sol_bright, NOX.sol }, angle = 45 }),
         "border " .. show(configOf(L)["general.col.active_border"]))
     check(layerRule(L, "motion-waybar").animation == "slide top", "waybar slide")
     check(layerRule(L, "motion-cicero-panel").animation == "slide right", "panel slide")
@@ -966,7 +966,7 @@ end)
 
 test("motion: level names are case-insensitive and the file may end with a newline", function(check)
     local L = withLevel("Calm\n")
-    check(#L.state.animations > 0 and configOf(L)["animations.enabled"] == true and configOf(L)["general.col.active_border"] == DUSK.sol,
+    check(#L.state.animations > 0 and configOf(L)["animations.enabled"] == true and configOf(L)["general.col.active_border"] == NOX.sol,
         "'Calm' not read as calm")
     L = withLevel("  OFF  \n")
     check(configOf(L)["animations.enabled"] == false, "'  OFF' not read as off")
@@ -1013,7 +1013,7 @@ local function readTokens(path)
     return t
 end
 
-for _, id in ipairs({ "dusk", "porphyry", "aegean", "alexandria" }) do
+for _, id in ipairs({ "nox", "brutii", "julii", "marmor", "pompeii", "scipii" }) do
     test("colours: theme " .. id .. " (real generator output) reaches borders, groups and background", function(check)
         local ok, dir = installTheme(id)
         check(ok, "invictus-theme generate " .. id .. " failed (needs python3 >= 3.11)")
@@ -1039,17 +1039,17 @@ for _, id in ipairs({ "dusk", "porphyry", "aegean", "alexandria" }) do
     end)
 end
 
-test("colours: switching theme and reloading changes the borders (Dusk to Porphyry)", function(check)
-    local ok1 = installTheme("dusk")
+test("colours: switching theme and reloading changes the borders (Nox Aurea to Scipii)", function(check)
+    local ok1 = installTheme("nox")
     local a = configOf(withLevel("calm"))["general.col.active_border"]
-    local ok2 = installTheme("porphyry")
+    local ok2 = installTheme("scipii")
     local b = configOf(withLevel("calm"))["general.col.active_border"]
     check(ok1 and ok2, "generate failed")
-    check(a == "rgb(E0A64B)" and b == "rgb(CE93C8)", "dusk " .. show(a) .. ", porphyry " .. show(b))
+    check(a == "rgb(D9A441)" and b == "rgb(E6C36E)", "nox " .. show(a) .. ", scipii " .. show(b))
     uninstallTheme()
 end)
 
-test("colours: a missing, broken, partial or hostile generated file falls back to Dusk", function(check)
+test("colours: a missing, broken, partial or hostile generated file falls back to Nox Aurea", function(check)
     local cases = {
         { "missing", nil },
         { "syntax error", "return {{{" },
@@ -1067,10 +1067,10 @@ test("colours: a missing, broken, partial or hostile generated file falls back t
         check(L.mainOk, name .. ": config raised " .. tostring(L.mainErr))
         for _, e in ipairs(L.state.errors) do check(false, name .. ": " .. e) end
         local cfg = configOf(L)
-        local wantSol = (name == "partial") and "rgb(112233)" or DUSK.sol
+        local wantSol = (name == "partial") and "rgb(112233)" or NOX.sol
         check(cfg["general.col.active_border"] == wantSol, name .. ": active_border " .. show(cfg["general.col.active_border"]))
-        check(cfg["general.col.inactive_border"] == DUSK.stone, name .. ": inactive_border " .. show(cfg["general.col.inactive_border"]))
-        check(cfg["misc.background_color"] == DUSK.night, name .. ": background " .. show(cfg["misc.background_color"]))
+        check(cfg["general.col.inactive_border"] == NOX.stone, name .. ": inactive_border " .. show(cfg["general.col.inactive_border"]))
+        check(cfg["misc.background_color"] == NOX.night, name .. ": background " .. show(cfg["misc.background_color"]))
         check(cfg["decoration.blur.size"] == 6, name .. ": rest of the config did not load")
         os.execute('rm -rf "' .. SCRATCH_HOME .. '/.config/invictus/current"')
     end

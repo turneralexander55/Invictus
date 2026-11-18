@@ -21,7 +21,7 @@ start" (notes 38 to 46).
 | Wi-Fi | when offline | | not built (hook) | |
 | Which screen is in front of you? | with 2+ screens | | `StepScreens.qml` | `monitors-write NAME` (60 s: `auto`) |
 | 1 Monitors | | with 2+ screens | `StepMonitors.qml` | `monitors-write MAIN NAME=X,Y...` |
-| 2 Look | not asked: Dusk, Calm, light apps at `finish` | yes | `StepLook.qml` | `look THEME MOTION light\|dark` |
+| 2 Look | not asked: Nox Aurea, Calm, light apps at `finish` | yes | `StepLook.qml` | `look THEME MOTION light\|dark` |
 | 3 How should Help work? | yes | yes | `StepAssistant.qml` | `assistant ...`, `signin` |
 | 4 Collegium | | AI only | not built (hook) | |
 | 5 Windows | | | not built (hook) | |
@@ -35,7 +35,7 @@ so monitors.lua always says what the computer has.
 later release adds `Step<Name>.qml` (it gets `wiz`, `theme` and `screenName`
 like the others, and calls `wiz.next()`), and a subcommand if it needs one.
 `needs_ai` steps drop out after No AI. Atrium asks no look question: `finish`
-applies the theme in use (Dusk on a new home), Calm and light apps.
+applies the theme in use (Nox Aurea on a new home), Calm and light apps.
 
 ## Rules it keeps
 

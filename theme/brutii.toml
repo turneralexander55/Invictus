@@ -1,0 +1,67 @@
+# Invictus theme: Brutii. Schema: docs/look.md, "Themes".
+# Edit colours here only; invictus-theme generates every app file from this.
+
+[meta]
+id = "brutii"
+name = "Brutii"
+source = "Roman: the house of Brutus, forest green and the daggers of the Ides"
+concept = "Forest green, ivory text, gold for focus."
+wallpaper = "brutii"   # assets/wallpapers/brutii-<size>.jpg (3840x2160, 5120x1440, 2160x3840)
+lock = "standard"
+gnome-accent = "green"
+papirus-folders = "green"
+default = false
+
+[dark]
+night = "#07130C"
+basalt = "#0B1B12"
+stone = "#12271A"
+line = "#22422F"
+marble = "#EFE8CF"
+parchment = "#C2BDA2"
+ash = "#98977F"
+sol = "#E2AE52"
+sol-bright = "#F6D48C"
+pompeii = "#EC8268"
+laurel = "#A9CC8C"
+lapis = "#8FB0E0"
+verdigris = "#7EC2B4"
+tyrian = "#C598C2"
+
+[light]   # apps and the Desk only; the shell stays dark
+dawn = "#EFF3EA"
+dawn-surface = "#F8FAF5"
+dawn-raised = "#E2E9DB"
+dawn-line = "#C9D4C0"
+ink = "#17201A"
+ink-2 = "#394A3D"
+ink-muted = "#57695B"
+bronze = "#2F6A3F"
+pompeii-dark = "#A8432C"
+laurel-dark = "#476330"
+lapis-dark = "#2F5A99"
+
+[terminal]   # Roman terminal look, 2026-11-18 (terminal-look/palettes.toml)
+background = "#07130C"
+foreground = "#EFE8CF"
+selection-background = "#165837"
+selection-foreground = "#EFE8CF"
+cursor = "#3BD389"
+cursor-text = "#07130C"
+url = "#AAC8F0"
+color0 = "#12271A"
+color1 = "#F67B64"
+color2 = "#C6D977"
+color3 = "#E8B960"
+color4 = "#8CB1E0"
+color5 = "#3BD389"
+color6 = "#82CCD5"
+color7 = "#C2BDA2"
+color8 = "#878771"
+color9 = "#FE9F8C"
+color10 = "#E0F0A1"
+color11 = "#FAD38D"
+color12 = "#AAC8F0"
+color13 = "#79E7A8"
+color14 = "#A6E2E9"
+color15 = "#EFE8CF"

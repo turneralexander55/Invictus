@@ -6,7 +6,7 @@ Spec: docs/look.md, section "Themes". Python 3.11+, standard library only.
   invictus-theme list
   invictus-theme check [<id>]
   invictus-theme generate <id> <outdir> [--wallpapers DIR]
-  invictus-theme apply [<id>]        (alias: set <id>; no id = current, else Dusk)
+  invictus-theme apply [<id>]        (alias: set <id>; no id = current, else the default)
   invictus-theme pick
   invictus-theme swatches            write every theme's swatch; print "<id> <path>"
                                      (the picker's icons; first start's Look step)
@@ -305,7 +305,7 @@ def load_file(path):
 
 
 def all_themes():
-    """Dusk first, other built-ins alphabetically, then user themes.
+    """The default theme first, other built-ins alphabetically, then user themes.
     A user theme with a built-in id replaces it."""
     found = {}
     order = []
@@ -483,13 +483,23 @@ def output_name(tpl):
     return tpl.name
 
 
+WALLPAPER_EXTS = (".jpg", ".png")
+
+
+def wallpaper_file(folder, stem):
+    """folder/<stem>.jpg or folder/<stem>.png, whichever exists (JPEG first), else None."""
+    for ext in WALLPAPER_EXTS:
+        c = Path(folder) / f"{stem}{ext}"
+        if c.exists():
+            return c
+    return None
+
+
 def wallpaper_path(t):
     name = t.meta.get("wallpaper", "")
     wd = wallpaper_dir()
-    for cand in (wd / f"{name}-3840x2160.png", wd / f"{name}.png"):
-        if cand.exists():
-            return cand
-    return wd / f"{name}-3840x2160.png"
+    return (wallpaper_file(wd, f"{name}-3840x2160") or wallpaper_file(wd, name)
+            or wd / f"{name}-3840x2160.jpg")
 
 
 def render_all(t, wallpaper):
@@ -514,7 +524,11 @@ def rsvg_to_png(svg, png, width, height=None):
 def generate(t, outdir, wallpapers=None):
     """Write every app file for theme t into outdir. All templates are rendered
     in memory first, so an error writes nothing."""
-    wall = wallpaper_path(t) if wallpapers is None else Path(wallpapers) / f"{t.meta.get('wallpaper', '')}-3840x2160.png"
+    if wallpapers is None:
+        wall = wallpaper_path(t)
+    else:
+        stem = f"{t.meta.get('wallpaper', '')}-3840x2160"
+        wall = wallpaper_file(wallpapers, stem) or Path(wallpapers) / f"{stem}.jpg"
     files = render_all(t, wall)
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -563,7 +577,13 @@ def monitors(failures):
     if not r:
         return []
     try:
-        return [(m["name"], int(m["width"]), int(m["height"])) for m in json.loads(r.stdout)]
+        out = []
+        for m in json.loads(r.stdout):
+            w, h = int(m["width"]), int(m["height"])
+            if int(m.get("transform", 0)) % 2:  # rotated 90 or 270: a portrait screen
+                w, h = h, w
+            out.append((m["name"], w, h))
+        return out
     except (ValueError, KeyError, TypeError):
         failures.append("monitor list (unreadable)")
         return []
@@ -571,11 +591,16 @@ def monitors(failures):
 
 def find_wallpaper(t, outdir, w, h):
     name = t.meta.get("wallpaper", "")
-    ultrawide = w >= 2 * h - 1 or w / max(h, 1) >= 2.0
-    res = "5120x1440" if ultrawide else "3840x2160"
-    for c in (wallpaper_dir() / f"{name}-{res}.png", outdir / f"{name}-{res}.png",
-              wallpaper_dir() / f"{name}-3840x2160.png", outdir / f"{name}-3840x2160.png"):
-        if c.exists():
+    # w, h are as the screen shows them (monitors() swaps them for a rotated screen)
+    if h > w:
+        res = "2160x3840"
+    elif w >= 2 * h - 1 or w / max(h, 1) >= 2.0:
+        res = "5120x1440"
+    else:
+        res = "3840x2160"
+    for folder, r in ((wallpaper_dir(), res), (outdir, res), (wallpaper_dir(), "3840x2160"), (outdir, "3840x2160")):
+        c = wallpaper_file(folder, f"{name}-{r}")
+        if c:
             return c
     return None
 
@@ -587,7 +612,8 @@ def reload_all(t, final, failures):
     for name, w, h in monitors(failures):
         wp = find_wallpaper(t, final, w, h)
         if wp:
-            run_step(f"wallpaper {name}", [hyprctl, "hyprpaper", "reload", f"{name},{wp}"], failures)
+            # hyprpaper 0.8 has no "reload"; "wallpaper" is silent and exits 0 on success
+            run_step(f"wallpaper {name}", [hyprctl, "hyprpaper", "wallpaper", f"{name},{wp},cover"], failures)
     # Hyprland colours, unless game mode is on (leaving game mode reloads)
     if game_mode_file().exists():
         print("invictus-theme: game mode is on, skipping the Hyprland reload", file=sys.stderr)
@@ -616,9 +642,15 @@ def reload_all(t, final, failures):
                 run_step(f"hook {h.name}", [str(h), t.id], failures, timeout=30)
 
 
+def default_id():
+    """The built-in theme marked default = true, else the first theme listed."""
+    themes = all_themes()
+    return next((t.id for t in themes if t.meta.get("default")), themes[0].id if themes else "nox")
+
+
 def apply(tid=None):
     if tid is None:
-        tid = current_id() or next((t.id for t in all_themes() if t.meta.get("default")), "dusk")
+        tid = current_id() or default_id()
     try:
         t = find_theme(tid)
     except ThemeError as e:
@@ -695,7 +727,7 @@ def pick():
         raise ThemeError("no valid themes")
     cur = current_id()
     if not (config_dir() / "current").exists():
-        apply(cur)  # fresh install: Dusk in place so the picker has colours
+        apply(cur)  # fresh install: the default theme in place so the picker has colours
         cur = current_id()
     rows = []
     for t in themes:

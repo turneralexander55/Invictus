@@ -88,7 +88,7 @@ else bad "1b: $out"; fi
 lst() { python3 -I "$PI" --repo "$REPO" --inputs "$1"; }
 if lst invictus-sys | grep -qx scripts/lib/pacman.sh && lst invictus-tools | grep -qx scripts/invictus-update.sh \
     && lst invictus-guardrails | grep -qx scripts/guardrails/claude/fixed.json \
-    && lst invictus-tribune | grep -qx scripts/cicero/mcp.py && lst invictus-branding | grep -qx theme/dusk.toml \
+    && lst invictus-tribune | grep -qx scripts/cicero/mcp.py && lst invictus-branding | grep -qx theme/nox.toml \
     && ! lst invictus-branding | grep -qx theme/invictus-theme && lst invictus-desktop | grep -qx config/hypr/hyprland.lua \
     && lst invictus-base | grep -qx pkgs/meta/invictus-base/PKGBUILD; then
     ok "1b: the inputs read from package() are right for sys, tools, guardrails, tribune, branding (globs), desktop and a meta"

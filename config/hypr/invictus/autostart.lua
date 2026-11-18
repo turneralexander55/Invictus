@@ -44,8 +44,8 @@ hl.on("hyprland.start", function()
     hl.exec_cmd(AFTER_FIRST_LOGIN .. "swaync")
     hl.exec_cmd(AFTER_FIRST_LOGIN .. "hyprpaper")
     hl.exec_cmd("hypridle")
-    -- Generate the current theme's colour files (Dusk on a fresh install) before
-    -- the bar reads them; apps have a Dusk fallback, but rofi needs the file.
+    -- Generate the current theme's colour files (the default, Nox Aurea, on a fresh install) before
+    -- the bar reads them; apps have a Nox Aurea fallback, but rofi needs the file.
     -- `;` not `&&`: a failing theme step must not leave the desktop without a bar.
     -- Waybar 0.15 reads only ~/.config/waybar/config or config.jsonc, not our
     -- config.json, so it is named here (design note 64).

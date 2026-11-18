@@ -1,18 +1,29 @@
-# Invictus wallpapers: licence
+# Invictus wallpapers: licence and credits
 
-These files are licensed under the Creative Commons Attribution 4.0 International licence (CC BY 4.0): <https://creativecommons.org/licenses/by/4.0/>.
+One wallpaper per theme, each in three cuts: `<id>-3840x2160.jpg`, `<id>-5120x1440.jpg` (ultrawide) and `<id>-2160x3840.jpg` (portrait).
 
-| Wallpaper | Theme | Source | Export |
-|---|---|---|---|
-| Sol | Dusk (default) | `sol.svg` | `sol-3840x2160.png` |
-| Arcade | Porphyry | `arcade.svg` | `arcade-3840x2160.png` |
-| Selene | Aegean | `selene.svg` | `selene-3840x2160.png` |
-| Pharos | Alexandria | `pharos.svg` | `pharos-3840x2160.png` |
+| Wallpaper | Theme | Emblem |
+|---|---|---|
+| `nox-*.jpg` | Nox Aurea (default) | Radiate sun in a laurel wreath (drawn for Invictus) |
+| `marmor-*.jpg` | Marmor | Numeral I in a laurel wreath (drawn for Invictus) |
+| `julii-*.jpg` | Julii | "Eagle emblem" by Lorc |
+| `brutii-*.jpg` | Brutii | "Daggers" by Lorc |
+| `scipii-*.jpg` | Scipii | "Winged scepter" by Delapouite |
+| `pompeii-*.jpg` | Pompeii | "Trident" by Lorc |
 
-Credit line when you share or change them: **"Invictus wallpapers by Alex, CC BY 4.0"**, plus a note of what you changed.
+## Third-party artwork
 
-All four were drawn for Invictus from the theme colours in `theme/<id>.toml`. They use no photographs, fonts or third-party artwork.
+- The four house emblems (eagle, daggers, trident by Lorc; winged scepter by Delapouite) are icons from <https://game-icons.net>, licensed CC BY 3.0 (<https://creativecommons.org/licenses/by/3.0/>). They were recoloured in gold and placed inside a wreath; the trident was rotated upright.
+- Lettering is set in Cinzel, licensed under the SIL Open Font License 1.1 (<https://openfontlicense.org>), rendered into the image.
 
-The SVG is the source. Other sizes (ultrawide, 1440p) are rendered from it by the theme generator. Each SVG is set to `preserveAspectRatio="xMidYMax slice"`, so wider screens keep the horizon and the motif and lose sky from the top.
+The laurel wreath, the sun, the backgrounds, the Greek-key bands and the layout were drawn for Invictus.
+
+## Licence
+
+The wallpapers as a whole are licensed under the Creative Commons Attribution 4.0 International licence (CC BY 4.0): <https://creativecommons.org/licenses/by/4.0/>.
+
+Credit line when you share or change them: **"Invictus wallpapers by Alex, CC BY 4.0. House emblems by Lorc and Delapouite, game-icons.net, CC BY 3.0."**, plus a note of what you changed.
+
+The files are JPEG (quality 92, no chroma subsampling) exported from full-quality masters; the film grain keeps the dark gradients from banding.
 
 Wallpapers that do not come from this project (for example ones you add to `~/Pictures`) are not covered by this file.

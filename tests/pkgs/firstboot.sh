@@ -48,8 +48,8 @@ fake terminal 'echo "terminal $*" >> "$FAKE_DIR/log"
 if [[ "${FAKE_LOGIN_OK:-0}" == 1 ]]; then mkdir -p "$HOME/.claude"; echo "{\"t\":\"SECRET-TOKEN-MARK\"}" > "$HOME/.claude/.credentials.json"; chmod 000 "$HOME/.claude/.credentials.json"; fi
 exit 0'
 fake invictus-theme 'echo "invictus-theme $*" >> "$FAKE_DIR/log"
-[[ "$1" == list ]] && printf "* dusk Dusk\n  porphyry Porphyry\n  aegean Aegean\n  alexandria Alexandria\n"
-[[ "$1" == swatches ]] && printf "dusk /sw/dusk.png\nporphyry /sw/porphyry.png\naegean /sw/aegean.svg\n"
+[[ "$1" == list ]] && printf "* nox Nox Aurea\n  brutii Brutii\n  julii Julii\n  marmor Marmor\n  pompeii Pompeii\n  scipii Scipii\n"
+[[ "$1" == swatches ]] && printf "nox /sw/nox.png\nbrutii /sw/brutii.png\njulii /sw/julii.svg\n"
 exit 0'
 fake invictus-motion 'echo "invictus-motion $*" >> "$FAKE_DIR/log"; [[ "$1" == get ]] && echo showcase; exit 0'
 fake gsettings 'echo "gsettings $*" >> "$FAKE_DIR/log"; [[ "$1" == get ]] && echo "prefer-dark"; exit 0'
@@ -213,8 +213,8 @@ fi
 
 # ---- look ----------------------------------------------------------------------------
 new_home look tessera
-fb look porphyry calm light
-grep -qx "invictus-theme apply porphyry" "$H/log" && grep -qx "invictus-motion set calm" "$H/log" \
+fb look brutii calm light
+grep -qx "invictus-theme apply brutii" "$H/log" && grep -qx "invictus-motion set calm" "$H/log" \
     && grep -qx "gsettings set org.gnome.desktop.interface color-scheme prefer-light" "$H/log" \
     && ok "look: invictus-theme apply, invictus-motion set, the GTK colour scheme" || bad "look: $(cat "$H/log")"
 : > "$H/log"
@@ -345,7 +345,7 @@ if grep -qx 'invictus-sys --request first-start snapshot First boot done' "$H/lo
 else
     bad "finish: $(cat "$H/log" "$H/out")"
 fi
-grep -qx "invictus-theme apply dusk" "$H/log" && grep -qx "invictus-motion set calm" "$H/log" \
+grep -qx "invictus-theme apply nox" "$H/log" && grep -qx "invictus-motion set calm" "$H/log" \
     && grep -qx "gsettings set org.gnome.desktop.interface color-scheme prefer-light" "$H/log" \
     && ok "Atrium asks no look question: finish sets the theme in use, Calm and light apps (simple-mode.md 3.2)" \
     || bad "Atrium look defaults: $(cat "$H/log")"
@@ -378,7 +378,7 @@ python3 -c "
 import json, sys
 d = json.load(open(sys.argv[1]))
 sw = {t['id']: t['swatch'] for t in d['themes']}
-assert sw == {'dusk': '/sw/dusk.png', 'porphyry': '/sw/porphyry.png', 'aegean': '/sw/aegean.svg', 'alexandria': ''}, sw
+assert sw == {'nox': '/sw/nox.png', 'brutii': '/sw/brutii.png', 'julii': '/sw/julii.svg', 'marmor': '', 'pompeii': '', 'scipii': ''}, sw
 m = {x['name']: (x['make'], x['model']) for x in d['monitors']}
 assert m['DP-1'] == ('Dell Inc.', 'DELL U2720Q') and m['eDP-1'] == ('', ''), m" "$H/out" \
     && ok "state: each theme's swatch from invictus-theme swatches (none when it has none), each screen's make and model" \
