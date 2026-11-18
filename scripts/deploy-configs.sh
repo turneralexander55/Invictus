@@ -42,6 +42,9 @@ TARGET_DIR="$HOME/.config"
 # Ensure ~/.config exists
 mkdir -p "$TARGET_DIR"
 
+# Point ~/.local/share/invictus at this repo (configs reference it)
+"$SCRIPT_DIR/link-repo.sh"
+
 # Explicit list of config directories we manage
 CONFIGS=(
   hypr

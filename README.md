@@ -1,4 +1,4 @@
-# hyprdots
+# Invictus
 
 A reproducible, Arch Linux–based Hyprland desktop environment with a clean separation between
 system provisioning, configuration deployment, and user customization.
@@ -34,15 +34,20 @@ Only install on nvidea systems if you are comfortable with troubleshooting
 
 Install with:
 
-git clone https://github.com/turneralexander55/hyprdots.git ~/hyprdots
-cd ~/hyprdots
+git clone https://github.com/turneralexander55/Invictus.git
+cd Invictus
 chmod +x scripts/*.sh
 chmod +x scripts/waybar/*.sh
 ./scripts/install.sh
 
+The repo can be cloned into any folder. Deploying creates one symlink,
+`~/.local/share/invictus`, pointing at the clone; the deployed configs reach
+repo scripts and wallpapers through it. If you move the clone, run
+`./scripts/link-repo.sh` from its new location.
+
 
 #### Repository Structure
-hyprdots
+Invictus
 ├── assets
 │   ├── SDDM
 │   │   ├── blackglass

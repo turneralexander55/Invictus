@@ -6,7 +6,7 @@ set -euo pipefail
 # ------------------------------------------------------------
 if [[ $EUID -ne 0 ]]; then
   echo "==> Elevation required for SDDM theme installation"
-  exec sudo "$0" "$@"
+  exec sudo "$(realpath -- "$0")" "$@"
 fi
 
 echo "======================================"
@@ -37,7 +37,8 @@ echo "==> SDDM found"
 # ------------------------------------------------------------
 echo "==> Installing blackglass theme"
 
-THEME_SRC="$REAL_HOME/hyprdots/assets/SDDM/blackglass"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+THEME_SRC="$SCRIPT_DIR/../assets/SDDM/blackglass"
 THEME_DST="/usr/share/sddm/themes/blackglass"
 
 if [[ ! -d "$THEME_SRC" ]]; then
