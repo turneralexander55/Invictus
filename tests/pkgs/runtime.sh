@@ -282,9 +282,14 @@ cat > "$TMP/fake/doctor" <<'EOF'
 echo "doctor $*" >> "$FAKE_LOG"
 exit "${FAKE_DOCTOR_RC:-0}"
 EOF
-chmod +x "$TMP/fake/pacman" "$TMP/fake/doctor"
+cat > "$TMP/fake/hyprctl" <<'EOF'
+#!/bin/sh
+echo "hyprctl $*" >> "$FAKE_LOG"
+EOF
+chmod +x "$TMP/fake/pacman" "$TMP/fake/doctor" "$TMP/fake/hyprctl"
 update() {
     FAKE_LOG="$TMP/upd.log" HOME="$TMP/h-upd" INVICTUS_PACMAN="$TMP/fake/pacman" INVICTUS_SUDO="" \
+        HYPRLAND_INSTANCE_SIGNATURE="${UPD_HYPR:-}" INVICTUS_HYPRCTL="$TMP/fake/hyprctl" \
         INVICTUS_DOCTOR="$TMP/fake/doctor" INVICTUS_PARU=no-such-paru INVICTUS_LIB="$REPO/scripts" \
         INVICTUS_SYS_ROOT="${UPD_ROOT:-$TMP/upd-root}" bash "$UPD" "$@" >"$TMP/upd.out" 2>&1
 }
@@ -295,6 +300,20 @@ if [[ $rc == 0 && "$(cat "$TMP/upd.log")" == "$(printf -- '-Syu --noconfirm\n%s'
 else
     bad "update calls: rc $rc: $(cat "$TMP/upd.log")"
 fi
+# In a Hyprland session a good update reloads Hyprland before the doctor
+# (its fallback config must not stick); a failed pacman or --system does not.
+if [[ $EUID -ne 0 ]]; then
+    rm -f "$TMP/upd.log"; rc=0; UPD_HYPR=sig update --noconfirm || rc=$?
+    if [[ $rc == 0 && "$(cat "$TMP/upd.log")" == "$(printf -- '-Syu --noconfirm\nhyprctl reload\ndoctor --post-update')" ]]; then
+        ok "in a Hyprland session: -Syu, hyprctl reload, then the doctor"
+    else bad "hyprctl reload: rc $rc: $(paste -sd'|' "$TMP/upd.log" 2>/dev/null)"; fi
+fi
+rm -f "$TMP/upd.log"; rc=0; UPD_HYPR=sig FAKE_PACMAN_RC=1 update || rc=$?
+if grep -q hyprctl "$TMP/upd.log"; then bad "hyprctl reload ran after pacman failed"
+else ok "pacman failing: no hyprctl reload"; fi
+rm -f "$TMP/upd.log"; rc=0; UPD_HYPR=sig update --noconfirm --system || rc=$?
+if grep -q hyprctl "$TMP/upd.log"; then bad "hyprctl reload ran with --system"
+else ok "--system: no hyprctl reload"; fi
 rm -f "$TMP/upd.log"; rc=0; FAKE_PACMAN_RC=1 update || rc=$?
 if [[ $rc == 1 && "$(cat "$TMP/upd.log")" == "-Syu" ]]; then ok "pacman failing stops it (exit 1, no doctor)"
 else bad "pacman failure: rc $rc, calls: $(cat "$TMP/upd.log")"; fi

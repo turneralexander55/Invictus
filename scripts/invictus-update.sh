@@ -23,7 +23,12 @@
 #
 # Exit: pacman's code if pacman fails; 3 if the doctor finds a
 # problem after a good update; 0 otherwise.
+# Hyprland: when run inside a Hyprland session, a good update ends with
+# `hyprctl reload`, so a running Hyprland whose config files the update
+# replaced leaves its fallback screen and reads the new config at once.
+#
 # Env (tests): INVICTUS_PACMAN, INVICTUS_SUDO, INVICTUS_DOCTOR, INVICTUS_PARU,
+#   INVICTUS_HYPRCTL,
 #   INVICTUS_LIB (where lib/pacman.sh is), INVICTUS_SYS_ROOT (prefix for the
 #   ssh generator mask check)
 # ------------------------------------------------------------
@@ -32,6 +37,7 @@ set -euo pipefail
 PACMAN="${INVICTUS_PACMAN:-pacman}"
 DOCTOR="${INVICTUS_DOCTOR:-invictus-doctor}"
 PARU="${INVICTUS_PARU:-paru}"
+HYPRCTL="${INVICTUS_HYPRCTL:-hyprctl}"
 # ssh_mask_overwrite (Janus P-L2): a dev install's unowned generator mask
 # shellcheck source=scripts/lib/pacman.sh
 . "${INVICTUS_LIB:-/usr/lib/invictus}/lib/pacman.sh"
@@ -98,6 +104,13 @@ fi
 if ! $SYSTEM; then
     rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/waybar-updates.cache"
     pkill -RTMIN+8 waybar 2>/dev/null || true
+fi
+
+# A running Hyprland whose config the update replaced can fall back to its
+# emergency config until it reloads. Only in this person's own session.
+if ! $SYSTEM && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v "$HYPRCTL" >/dev/null; then
+    echo "==> $HYPRCTL reload"
+    "$HYPRCTL" reload >/dev/null 2>&1 || echo "==> hyprctl reload failed; log out and back in if the desktop looks wrong"
 fi
 
 echo
