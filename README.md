@@ -66,7 +66,7 @@ Server = https://github.com/turneralexander55/invictus/releases/download/invictu
 ## Tests
 
 ```
-tests/hyprland-lua/run.sh   Hyprland config against the 0.56.2 Lua API (needs lua 5.4+, libxkbcommon headers)
+tests/hyprland-lua/run.sh   Hyprland config against the 0.57.2 Lua API (needs lua 5.4+, libxkbcommon headers)
 tests/pkgs/run.sh           PKGBUILDs and the keyring guards (needs gpg)
 tests/theme/run.sh          the theme tool (needs python 3.11+)
 luacheck .

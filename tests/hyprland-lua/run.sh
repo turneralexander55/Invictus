@@ -13,7 +13,7 @@
 #
 # API source: /usr/share/hypr/stubs/hl.meta.lua when Hyprland is
 # installed (so it tracks the installed version), else the vendored
-# 0.56.2 copy in stubs/. Override with HL_STUBS=/path.
+# 0.57.2 copy in stubs/. Override with HL_STUBS=/path.
 # Key names are checked against XKB_KEYSYMS_H, default
 # /usr/include/xkbcommon/xkbcommon-keysyms.h (package libxkbcommon).
 #
