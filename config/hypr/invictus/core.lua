@@ -8,7 +8,7 @@
 -- edit it on a machine: put changes in ~/.config/hypr/user.lua, which
 -- hyprland.lua loads after this file (later settings win).
 --
--- Written against the Hyprland 0.56.2 Lua API.
+-- Written against the Hyprland 0.57.2 Lua API.
 -- https://wiki.hypr.land/Configuring/Start/
 --
 -- Each require() runs in its own protected scope, so an error in one module
