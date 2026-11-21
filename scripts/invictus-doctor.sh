@@ -115,6 +115,13 @@ check_hypr() {
         rm -rf "$tmp"
         if [[ $rc -eq 0 ]]; then
             ok "hypr: $("$HYPRLAND" --version 2>/dev/null | head -1 | cut -c1-40) accepts $conf"
+        elif [[ $rc -eq 139 ]] && ! grep -q 'Config parsing result' <<< "$out" \
+            && grep -rqs --include='*.lua' 'hl\.timer' "$(dirname -- "$conf")"; then
+            # Hyprland 0.57.2: --verify-config segfaults on its way out
+            # (CConfigManager::cleanTimers) whenever the config made an
+            # hl.timer, before it prints its result. Not a config error; the
+            # stub check below still checks every call.
+            note "hypr: Hyprland --verify-config crashed before giving a result (a Hyprland 0.57 bug with hl.timer); the stub check below decides"
         else
             fail "hypr: Hyprland --verify-config rejects $conf:"
             sed -n '/Config parsing result/,$p' <<< "$out" | grep -v '^=*$\|Config parsing result' | sed 's/^/        /' | head -20

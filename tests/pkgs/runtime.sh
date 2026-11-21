@@ -219,6 +219,20 @@ echo 'hl.config({ general = { no_such_option = 1 } })' >> "$H/.config/hypr/user.
 if doctor "$H" --hypr > "$TMP/doc.log" 2>&1; then bad "doctor --hypr passed a user.lua with a bad option"
 elif grep -q "unknown config key 'general.no_such_option'" "$TMP/doc.log"; then ok "doctor --hypr: a bad option in user.lua fails and is named"
 else bad "doctor --hypr: $(cat "$TMP/doc.log")"; fi
+# Hyprland 0.57.2's --verify-config segfaults (exit 139, no result) on any
+# config with an hl.timer: the doctor notes it and leaves it to the stub
+# check; the same crash without hl.timer still fails.
+HT="$TMP/h-timer"; rm -rf "$HT"; cp -a "$H" "$HT"; sed -i '$d' "$HT/.config/hypr/user.lua"
+printf '#!/bin/sh\necho "segfault" >&2\nexit 139\n' > "$TMP/crash-hyprland"; chmod +x "$TMP/crash-hyprland"
+rc=0; DOC_HYPRLAND="$TMP/crash-hyprland" doctor "$HT" --hypr > "$TMP/doc.log" 2>&1 || rc=$?
+if [[ $rc == 1 ]] && grep -q '^FAIL  hypr: Hyprland --verify-config rejects' "$TMP/doc.log"; then
+    ok "doctor --hypr: Hyprland crashing without hl.timer in the config still fails"
+else bad "doctor --hypr crash without timer: rc $rc: $(head -3 "$TMP/doc.log")"; fi
+echo 'hl.timer(function() end, { timeout = 1000, type = "repeat" })' >> "$HT/.config/hypr/user.lua"
+rc=0; DOC_HYPRLAND="$TMP/crash-hyprland" doctor "$HT" --hypr > "$TMP/doc.log" 2>&1 || rc=$?
+if [[ $rc == 0 ]] && grep -q '^note  hypr: Hyprland --verify-config crashed before giving a result' "$TMP/doc.log" && ! grep -q '^FAIL' "$TMP/doc.log"; then
+    ok "doctor --hypr: Hyprland 0.57's --verify-config crash on hl.timer is a note, not a failure"
+else bad "doctor --hypr timer crash: rc $rc: $(head -5 "$TMP/doc.log")"; fi
 # H1 (Janus) and Felix: root never reads a person's ~/.config. --system (and
 # any run as root) skips the per-user checks; --user runs only them. The
 # user.lua above is broken, and a fake Hyprland records any call.
