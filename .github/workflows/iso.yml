@@ -171,7 +171,7 @@ jobs:
 
       # The disk the e2e step installed, booted from its own ESP through
       # limine: kernel, units, default target, Fresh install snapshot and its
-      # limine entry, no ssh, Custodia; then one boot of the snapshot entry.
+      # limine entry, no ssh; then one boot of the snapshot entry.
       - name: Boot the installed disk in QEMU (tests/iso/disk-boot.sh)
         env:
           RUNTIME: docker

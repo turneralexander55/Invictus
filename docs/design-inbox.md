@@ -1,5 +1,7 @@
 # Invictus: the inbox (requests and reports that reach Support on their own)
 
+> **Removed 2026-11-26 (Alex):** the guard rails (Custodia, Libertas, Full access, the `invictus-guardrails` package, the managed Claude Code settings and the A6 edit guard) are gone. Text here about them is history, not the build. `invictus-sys` replaces the package.
+
 Author: Minerva (consultant). Date: 2026-09-30. Status: design for Alex's owner decisions (section 12), then build, then Janus's pen test (section 11). Addendum to `design-simple-mode.md` 4.4 (helper requests) and 2.4 (rollback reports), and to `design.md` 4.5 (report-back, D9). The experience side stays in `simple-mode.md` 5.1 and 5.3, `no-ai.md` 3 and `settings.md` 3.10; this document decides the transport, the enrolment, what may leave a machine, and the rules.
 
 The ask (Alex, 2026-09-30, DS3 approved): Custodia machines, and No AI machines where asking for help is the main help path, send helper requests and rollback reports automatically. Until this ships, "Support has been told" is only true inside a help session (`simple-mode.md` 7.1, M8).

@@ -13,13 +13,10 @@
 # btrfs, blkid and cryptsetup first on PATH.
 # ------------------------------------------------------------
 
-# Where the per-user desktop flavor and the machine's guard rails are kept.
-# Names from Alex (2026-09-30): flavor atrium|tessera, guard rails
-# custodia|libertas. Minerva is settling the exact keys; change them here only.
+# Where the per-user desktop flavor is kept. Names from Alex (2026-09-30):
+# atrium|tessera. Change them here only.
 INVICTUS_FLAVOR_REL=".config/invictus/flavor"      # in the user's home
-INVICTUS_GUARDRAILS_FILE="/etc/invictus/guardrails" # in the target
 INVICTUS_FLAVORS="atrium tessera"
-INVICTUS_GUARDRAILS="custodia libertas"
 
 # Data shipped with the installer package (live-only list, limine header,
 # release file). Tests point this at the checkout.

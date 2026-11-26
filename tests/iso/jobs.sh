@@ -121,10 +121,9 @@ mkdir -p "$ROOTDIR/home/maria"
 # shellcheck disable=SC2016  # a literal $(reboot) the job must drop
 printf 'version=2026.09.30\nchannel=testing\nbuild=dev\nevil=$(reboot)\n' >"$T/iso-release"
 export INVICTUS_ISO_RELEASE="$T/iso-release"
-run_job settings.sh "$ROOTDIR" maria atrium custodia --hostname-from-user; rc=$?
+run_job settings.sh "$ROOTDIR" maria atrium --hostname-from-user; rc=$?
 check "settings: plain path exits 0" test "$rc" -eq 0
-check "settings: guard rails file says custodia" test "$(cat "$ROOTDIR/etc/invictus/guardrails")" = custodia
-check "settings: guard rails file is 644" test "$(stat -c %a "$ROOTDIR/etc/invictus/guardrails")" = 644
+check "settings: writes no guard-rails file" test ! -e "$ROOTDIR/etc/invictus/guardrails"
 check "settings: AI file says off (NA1: AI is chosen at first start)" test "$(cat "$ROOTDIR/etc/invictus/ai")" = off
 check "settings: AI file is 644" test "$(stat -c %a "$ROOTDIR/etc/invictus/ai")" = 644
 check "settings: flavor file says atrium" test "$(cat "$ROOTDIR/home/maria/.config/invictus/flavor")" = atrium
@@ -136,7 +135,6 @@ check "settings: hostname made from the user" test "$(cat "$ROOTDIR/etc/hostname
 check "settings: release file written with the install time" grep -q '^installed=' "$ROOTDIR/etc/invictus/release"
 check "settings: release file keeps plain values" grep -q '^channel=testing$' "$ROOTDIR/etc/invictus/release"
 check "settings: release file drops a line with shell in it" bash -c "! grep -q evil '$ROOTDIR/etc/invictus/release'"
-check "settings: says guard rails not applied while invictus-sys is missing" out_has "invictus-sys is not installed yet"
 check "settings: mdns_minimal before resolve on the hosts line" grep -qx 'hosts: mymachines mdns_minimal \[NOTFOUND=return\] resolve \[!UNAVAIL=return\] files myhostname dns' "$ROOTDIR/etc/nsswitch.conf"
 check "settings: other nsswitch lines untouched" grep -qx 'passwd: files systemd' "$ROOTDIR/etc/nsswitch.conf"
 # The generator mask is invictus-sys's file (Janus I-2): the job must not
@@ -147,22 +145,22 @@ check "settings: does not write the systemd-ssh-generator mask (invictus-sys own
 check "settings: warns when the generator is not masked (no invictus-sys in the target)" out_has "systemd-ssh-generator is not masked"
 
 touch "$FAKE_STATE/has-invictus-sys"
-run_job settings.sh "$ROOTDIR" maria tessera libertas
-check "settings: Advanced values written (tessera, libertas)" bash -c "[[ \$(cat '$ROOTDIR/home/maria/.config/invictus/flavor') == tessera && \$(cat '$ROOTDIR/etc/invictus/guardrails') == libertas ]]"
-check "settings: runs invictus-sys guardrails apply when present" logged "chroot invictus-sys guardrails apply"
+run_job settings.sh "$ROOTDIR" maria tessera
+check "settings: Advanced value written (tessera)" bash -c "[[ \$(cat '$ROOTDIR/home/maria/.config/invictus/flavor') == tessera ]]"
+check "settings: runs no guardrails command" bash -c "! grep -qF guardrails '$FAKE_LOG'"
 check "settings: still writes no generator mask" bash -c "[[ ! -e '$gm' && ! -L '$gm' ]]"
 mkdir -p "$(dirname "$gm")"; ln -s /dev/null "$gm"   # as invictus-sys installs it
-run_job settings.sh "$ROOTDIR" maria tessera libertas
+run_job settings.sh "$ROOTDIR" maria tessera
 check "settings: with invictus-sys's mask in place, says masked and leaves the link as it is" \
     bash -c "grep -q 'systemd-ssh-generator masked (invictus-sys)' '$T/out' && [[ -L '$gm' && \"\$(readlink '$gm')\" == /dev/null ]]"
 check "settings: a second run does not add mdns_minimal twice" test "$(grep -o mdns_minimal "$ROOTDIR/etc/nsswitch.conf" | wc -l)" -eq 1
 check "settings: hostname untouched without --hostname-from-user" test "$(cat "$ROOTDIR/etc/hostname")" = maria-invictus
 
-for badargs in "maria classic custodia" "maria atrium simple" "maria atrium" "nobody atrium custodia" "Maria atrium custodia"; do
-    echo keep >"$ROOTDIR/etc/invictus/guardrails"
+for badargs in "maria classic" "maria" "nobody atrium" "Maria atrium"; do
+    echo keep >"$ROOTDIR/etc/invictus/ai"
     # shellcheck disable=SC2086
     run_job settings.sh "$ROOTDIR" $badargs; rc=$?
-    check "settings: rejects '$badargs'" test "$rc" -ne 0 -a "$(cat "$ROOTDIR/etc/invictus/guardrails")" = keep
+    check "settings: rejects '$badargs'" test "$rc" -ne 0 -a "$(cat "$ROOTDIR/etc/invictus/ai")" = keep
 done
 
 # ---- bootloader.sh ---------------------------------------------------------------------

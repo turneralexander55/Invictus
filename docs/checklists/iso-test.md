@@ -12,7 +12,7 @@ real btrfs disk image in a container, where the ISO's whole system is
 installed the way the installer does it. The ISO and that installed disk
 were booted in a virtual machine without a graphics card: the disk through
 limine to the login screen, with the "Fresh install" snapshot in the menu,
-no ssh and Custodia on, then once from that snapshot (see "What was not
+no ssh, then once from that snapshot (see "What was not
 tested" at the end). This is the
 first time it meets real hardware, so expect rough edges and note them.
 
@@ -104,8 +104,6 @@ The installer's pages, left column top to bottom:
 - [ ] **Keyboard**: layout, preselected from the language.
 - [ ] **Desktop**: two pictures, `Atrium` (preselected) and `Tessera`.
   Pick `Tessera`.
-- [ ] **Guard rails**: `Custodia` (preselected) and `Libertas`. Pick
-  `Libertas` for your own machine, or `Custodia` to see a friend's setup.
 - [ ] **Extras**: a list with tick boxes: `Office` (ticked), `Games`,
   `Programming`, `Chinese, Japanese and Korean`. The text at the top says
   they come from the internet and that the install still finishes without
@@ -152,7 +150,6 @@ forgets it on restart): in a terminal,
   Atrium shell is not built yet, so it looks like Tessera for now).
 - [ ] In a terminal, these should all hold:
   ```
-  cat /etc/invictus/guardrails          # libertas (or custodia)
   cat ~/.config/invictus/flavor         # tessera (or atrium)
   cat /etc/os-release | head -2         # NAME="Invictus"
   sudo passwd -S root                   # "root L ..." (locked)

@@ -20,11 +20,11 @@
 SYS_SHARE="${INVICTUS_SYS_ROOT:-}/usr/share/invictus/sys"
 
 # Every root verb, in the order `invictus-sys help` lists them.
-SYS_ROOT_VERBS="update install remove snapshot rollback service set-config assistant-full-access ai-on ai-off report-collect guardrails-libertas guardrails-custodia"
+SYS_ROOT_VERBS="update install remove snapshot rollback service set-config ai-on ai-off report-collect"
 
-# The keys set-config accepts. Anything else, and in particular the
-# guard-rails, ai, assistant and helper files, has its own verb or none.
-SYS_CONFIG_KEYS="nets.pre-admin-snapshot nets.auto-update nets.boot-guard nets.home-snapshots flavor.lock"
+# The keys set-config accepts. Anything else, and in particular the ai
+# and helper files, has its own verb or none.
+SYS_CONFIG_KEYS="flavor.lock"
 
 sys_err() { echo "invictus-sys: $*" >&2; }
 
@@ -34,23 +34,9 @@ list_has() {
     awk -v w="$2" '!/^[[:space:]]*#/ && $1 == w { found = 1 } END { exit !found }' "$1"
 }
 
-# protected_packages: the names invictus-sys never removes (and the
-# Custodia HoldPkg list), one per line.
+# protected_packages: the names invictus-sys never removes, one per line.
 protected_packages() {
     awk '!/^[[:space:]]*#/ && NF { print $1 }' "$SYS_SHARE/protected-packages" 2>/dev/null
-}
-
-# duration_seconds 1h|90m|2d: seconds, for timed Libertas (1 minute to 7 days).
-duration_seconds() {
-    [[ "$1" =~ ^([1-9][0-9]{0,4})([mhd])$ ]] || return 1
-    local n="${BASH_REMATCH[1]}" s
-    case "${BASH_REMATCH[2]}" in
-        m) s=$((n * 60)) ;;
-        h) s=$((n * 3600)) ;;
-        d) s=$((n * 86400)) ;;
-    esac
-    ((s >= 60 && s <= 7 * 86400)) || return 1
-    echo "$s"
 }
 
 # sys_validate ROOTVERB ARGS...: 0 if the call is well formed, else a
@@ -58,7 +44,7 @@ duration_seconds() {
 sys_validate() {
     local verb="${1:-}" a; shift || true
     case "$verb" in
-        update|report-collect|guardrails-custodia|ai-on|ai-off)
+        update|report-collect|ai-on|ai-off)
             (($# == 0)) || { sys_err "$verb takes no arguments"; return 2; } ;;
         install|remove)
             (($# >= 1 && $# <= 64)) || { sys_err "$verb needs 1 to 64 package names"; return 2; }
@@ -83,14 +69,6 @@ sys_validate() {
             (($# == 2)) || { sys_err "set-config needs a key and on|off"; return 2; }
             [[ " $SYS_CONFIG_KEYS " == *" $1 "* ]] || { sys_err "set-config: unknown key '$1' (keys: $SYS_CONFIG_KEYS)"; return 2; }
             [[ "$2" =~ ^(on|off)$ ]] || { sys_err "set-config: value must be on or off"; return 2; } ;;
-        assistant-full-access)
-            (($# == 1)) && [[ "$1" =~ ^(on|off)$ ]] || { sys_err "assistant.full-access must be on or off"; return 2; } ;;
-        guardrails-libertas)
-            if (($# == 2)) && [[ "$1" == --for ]]; then
-                duration_seconds "$2" >/dev/null || { sys_err "--for takes 1m to 7d, like 1h or 30m"; return 2; }
-            elif (($# != 0)); then
-                sys_err "guardrails set libertas takes only --for DURATION"; return 2
-            fi ;;
         *) sys_err "unknown verb '$verb'"; return 2 ;;
     esac
     return 0

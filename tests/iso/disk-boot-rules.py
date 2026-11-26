@@ -125,13 +125,11 @@ check("a file without default_entry gets one", p.stdout.splitlines()[0] == f"def
 
 # ---- verdicts against a fake shell ---------------------------------------------------------
 KERNEL = "6.17.1-2-cachyos"
-ENV = f"kernel={KERNEL}\nkernel_pkgbase=linux-cachyos\nroot_uuid={UUID}\nrails=custodia\nuser=maria\n"
+ENV = f"kernel={KERNEL}\nkernel_pkgbase=linux-cachyos\nroot_uuid={UUID}\nuser=maria\n"
 SNAPPER = (" # │ Type   │ Pre # │ Date                     │ User │ Cleanup │ Description   │ Userdata\n"
            "───┼────────┼───────┼──────────────────────────┼──────┼─────────┼───────────────┼──────────\n"
            " 0 │ single │       │                          │ root │         │ current       │\n"
            " 1 │ single │       │ Thu Oct  8 10:00:00 2026 │ root │ number  │ Fresh install │ important=yes\n")
-STATUS = ("rails=custodia\neffective=custodia\nuntil=\nsince=\nby=\nfull-access=off\nai=off\n"
-          "net.home=on\n")
 # pacman -Sy --debug lines from a real run (linux-cachyos 7.2.7, pacman 7.1.0.r9, 2026-10-09).
 SYNC_SANDBOX = "timeout 180 pacman -Sy --debug"
 SYNC_PLAIN = "timeout 180 pacman -Sy --disable-sandbox --debug"
@@ -167,8 +165,6 @@ BOOT1 = {
     "systemctl list-sockets": (0, "/run/dbus/system_bus_socket dbus.socket dbus.service\n"),
     "systemctl is-active sshd.service": (3, "inactive\n"),
     "ss -Hlp": (0, 'u_str LISTEN 0 4096 /run/dbus/system_bus_socket 1 * 0 users:(("dbus-broker",pid=300,fd=3))\n'),
-    "invictus-sys guardrails status": (0, STATUS),
-    "invictus-sys guardrails check": (0, "consistent: custodia\n"),
     "pacman-conf": (0, "DownloadUser = alpm\n"),
     SYNC_SANDBOX: (0, SYNC_OK),
     "systemd-analyze blame": (0, "1.0s NetworkManager.service\n"),
@@ -236,7 +232,7 @@ def scenario(name, b1=None, b2=None, want_rc=0, want_text=(), not_text=(), args=
 
 seen = scenario("a clean install boots, then boots its Fresh install snapshot", want_rc=0,
                 want_text=["limine booted the //linux-cachyos entry", "snapshot 1: Fresh install",
-                           "limine.conf boots snapshot 1", "guard rails: custodia, full-access off",
+                           "limine.conf boots snapshot 1",
                            "default_entry: 7 (snapshot 1)", "snapshot boot: multi-user.target reached",
                            "/ is btrfs rw,noatime", "snapshot boot: boot finished: running",
                            "snapshot boot: systemd-remount-fs.service ActiveState=inactive Result=exec-condition",
@@ -303,19 +299,6 @@ scenario("a running sshd fails", {"systemctl is-active sshd.service": (0, "activ
 scenario("sshd listening on a port fails",
          {"ss -Hlp": (0, 'tcp LISTEN 0 128 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=411,fd=3))\n')},
          want_rc=1, want_text=["FAIL  sshd is listening:"])
-scenario("Libertas on a Custodia install fails",
-         {"invictus-sys guardrails status": (0, STATUS.replace("=custodia", "=libertas"))}, want_rc=1,
-         want_text=["FAIL  guard rails are not custodia"])
-scenario("Custodia with full access on fails",
-         {"invictus-sys guardrails status": (0, STATUS.replace("full-access=off", "full-access=on"))},
-         want_rc=1, want_text=["FAIL  Custodia with the assistant's full access on"])
-scenario("derived files out of step fail (guardrails check)",
-         {"invictus-sys guardrails check": (1, "would change /etc/sudoers.d/40-invictus-guardrails\n")},
-         want_rc=1, want_text=["FAIL  invictus-sys guardrails check", "40-invictus-guardrails"])
-scenario("no guardrails command at all fails",
-         {"invictus-sys guardrails status": (127, "sh: invictus-sys: command not found\n"),
-          "invictus-sys guardrails check": (127, "sh: invictus-sys: command not found\n")},
-         want_rc=1, want_text=["FAIL  guard rails are not custodia"])
 scenario("a snapshot boot that lands on the normal entry fails",
          b2={"cat /proc/cmdline": (0, CMD + "\n")}, want_rc=1,
          want_text=["FAIL  default_entry 7 did not boot snapshot 1"])
@@ -401,7 +384,7 @@ scenario("a DisableSandbox option in the install fails",
 scenario("no root shell at all fails",
          {"stty": None, "systemctl": None, "cat": None, "uname": None}, want_rc=1, timeout=6,
          want_text=["FAIL  no root shell on the second serial port within 6 s"])
-scenario("a disk.env without the kernel is refused", env="rails=custodia\n", want_rc=1,
+scenario("a disk.env without the kernel is refused", env="user=maria\n", want_rc=1,
          want_text=["has no kernel="])
 
 print(f"\ndisk-boot rules: {passed} passed, {failed} failed")

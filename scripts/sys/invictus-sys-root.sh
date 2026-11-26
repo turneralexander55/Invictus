@@ -14,19 +14,16 @@
 #   invictus-sys snapshot DESCRIPTION
 #   invictus-sys rollback ID
 #   invictus-sys service enable|disable|restart UNIT   (services.allow)
-#   invictus-sys set-config KEY on|off   nets.<net>, flavor.lock
-#   invictus-sys assistant-full-access on|off
+#   invictus-sys set-config KEY on|off   flavor.lock
 #   invictus-sys ai-on                   AI on: /etc/invictus/ai, the AI set
 #   invictus-sys ai-off                  No AI: everyone signed out, the AI set gone
 #   invictus-sys report-collect
-#   invictus-sys guardrails-libertas [--for DURATION]
-#   invictus-sys guardrails-custodia
 #
 # Every call ends in one Acta entry (journal tag invictus-sys: verb, args,
 # snapshot id, requesting session, request id, result) and one last line on
 # stdout: "invictus-sys: RESULT snapshot=ID|none".
-# Exit: 0 ok; 1 the change failed; 2 bad arguments; 3 refused (guard
-# rails, protected package, no safety copy possible); 4 busy.
+# Exit: 0 ok; 1 the change failed; 2 bad arguments; 3 refused (protected
+# package, no AI, no safety copy possible); 4 busy.
 # ------------------------------------------------------------
 set -euo pipefail
 umask 022
@@ -48,8 +45,6 @@ LIB="${INVICTUS_LIB:-/usr/lib/invictus}"
 . "$LIB/lib/pacman.sh"
 # shellcheck source=scripts/lib/sys-verbs.sh
 . "$LIB/lib/sys-verbs.sh"
-# shellcheck source=scripts/lib/guardrails-state.sh
-. "$LIB/lib/guardrails-state.sh"
 # shellcheck source=scripts/lib/acta.sh
 . "$LIB/lib/acta.sh"
 # shellcheck source=scripts/lib/ai-set.sh
@@ -62,7 +57,6 @@ read -ra SNAPPER <<< "${INVICTUS_SNAPPER:-snapper}"
 SYSTEMCTL="${INVICTUS_SYSTEMCTL:-systemctl}"
 JOURNALCTL="${INVICTUS_JOURNALCTL:-journalctl}"
 UPDATE="${INVICTUS_UPDATE:-/usr/bin/invictus-update}"
-GUARDRAILS="${INVICTUS_GUARDRAILS:-/usr/lib/invictus/guardrails}"
 RESTORE="${INVICTUS_RESTORE:-limine-snapper-restore}"
 AI_SIGNOUT="${INVICTUS_AI_SIGNOUT:-/usr/lib/invictus/ai-signout}"
 CLAUDE_CMD="${INVICTUS_CLAUDE:-claude}"
@@ -109,13 +103,6 @@ done_rc() { if ((rc == 0)); then finish ok 0; else finish failed 1; fi; }
 
 sys_validate "$VERB" "$@" || finish "bad-arguments" 2
 
-# A timed Libertas whose end has passed ends before any verb runs (12.1
-# step 3), so a lost timer can never extend it.
-if [[ "$(gr_rails)" == libertas && "$(gr_effective_rails)" == custodia && -x "$GUARDRAILS" ]]; then
-    "$GUARDRAILS" expire || say "could not end the timed Libertas; continuing under Custodia rules"
-fi
-RAILS="$(gr_effective_rails)"
-
 # ---- snapshots (MUST A5) -------------------------------------------------------------------
 snap_create() {  # snap_create TYPE DESCRIPTION [PRE] [important]: prints the number
     local -a a=(-c root create --type "$1" --print-number --cleanup-algorithm number --description "$2")
@@ -158,24 +145,13 @@ with_pacman() {
     return "$rc"
 }
 
-# ---- the files set-config and full access write (root 0644, rename) -------------------
+# ---- the files set-config writes (root 0644, rename) -------------------
 # shellcheck disable=SC2329 # called through with_pair
-write_nets() {  # write_nets NET VALUE: one "NET = VALUE" line, other nets kept
-    { if [[ -r "$ETC/nets" ]]; then grep -vE "^[[:space:]]*${1}[[:space:]]*=" "$ETC/nets" || true; fi
-      echo "$1 = $2"; } > "$ETC/nets.new"
-    chmod 644 "$ETC/nets.new"; mv -f "$ETC/nets.new" "$ETC/nets"
-}
-# shellcheck disable=SC2329
 write_flavor_lock() {  # on | off (design-simple-mode 1.5, M9)
     if [[ "$1" == on ]]; then
         printf 'locked by %s at %s\n' "$CALLER" "$(date --iso-8601=seconds)" > "$ETC/flavor.lock.new"
         chmod 644 "$ETC/flavor.lock.new"; mv -f "$ETC/flavor.lock.new" "$ETC/flavor.lock"
     else rm -f "$ETC/flavor.lock"; fi
-}
-# shellcheck disable=SC2329
-write_full_access() {  # on | off, then the profile link and the panel (12.3)
-    echo "full-access = $1" > "$ETC/assistant.new"; chmod 644 "$ETC/assistant.new"; mv -f "$ETC/assistant.new" "$ETC/assistant"
-    "$GUARDRAILS" apply >/dev/null && "$GUARDRAILS" signal
 }
 
 # ---- AI on and off (design-no-ai.md N1, N3, N4.3, N7) ---------------------------------------
@@ -272,12 +248,6 @@ ai_turn_off() {
     # The setting first: whatever fails below, every reader sees No AI.
     write_ai off
     rm -f "$AI_PENDING"; "$SYSTEMCTL" disable --now invictus-ai-pending.service >/dev/null 2>&1 || true
-    # N4.3: full access goes with it, the profile follows, Cicero stops (N3 step 1).
-    echo "full-access = off" > "$ETC/assistant.new"; chmod 644 "$ETC/assistant.new"; mv -f "$ETC/assistant.new" "$ETC/assistant"
-    if [[ -x "$GUARDRAILS" ]]; then
-        "$GUARDRAILS" apply >/dev/null || say "guardrails apply failed; run invictus-sys guardrails check"
-        "$GUARDRAILS" signal stop || true
-    fi
     write_browser_policy
     sign_out_everyone
     # N3 step 4: the AI set, whichever of it is installed.
@@ -297,8 +267,7 @@ case "$VERB" in
     update)
         # The one update path (design 1.4): pacman -Syu, then the doctor's
         # system checks. Without invictus-tools (a headless machine), the
-        # same -Syu alone. Tier 1 under Custodia (no password), so root
-        # never reads anything in the caller's home folder (H1): none is
+        # same -Syu alone. Root never reads anything in the caller's home folder (H1): none is
         # passed, and --system skips the per-user checks, which the user
         # half runs afterwards as the caller.
         if [[ -x "$UPDATE" ]]; then
@@ -366,25 +335,11 @@ case "$VERB" in
     set-config)
         key="$1" val="$2"
         case "$key" in
-            nets.*)
-                # Custodia keeps every net on; the switches are Libertas only (1.6).
-                [[ "$RAILS" == libertas ]] || refuse "Custodia keeps the safety copies on"
-                net="${key#nets.}"
-                mkdir -p "$ETC"
-                with_pair write_nets "$net" "$val" || rc=$? ;;
             flavor.lock)
                 mkdir -p "$ETC"
                 with_pair write_flavor_lock "$val" || rc=$? ;;
             *) refuse "set-config cannot change $key" ;;
         esac
-        done_rc ;;
-
-    assistant-full-access)
-        val="$1"
-        [[ "$RAILS" == libertas ]] || refuse "Cicero's full access is off while the guard rails are Custodia"
-        [[ "$val" == off || "$(gr_ai)" == on ]] || refuse "there is no AI on this computer (No AI)"
-        mkdir -p "$ETC"
-        with_pair write_full_access "$val" || rc=$?
         done_rc ;;
 
     ai-on)
@@ -411,17 +366,5 @@ case "$VERB" in
         say "collected: $out"
         finish ok 0 ;;
 
-    guardrails-libertas|guardrails-custodia)
-        [[ -x "$GUARDRAILS" ]] || refuse "invictus-guardrails is not installed"
-        # The guardrails tool writes the Acta line for the switch itself (it
-        # also runs from the timer and at boot); ours records the call.
-        set +e
-        if [[ "$VERB" == guardrails-libertas ]]; then out="$("$GUARDRAILS" set libertas "$@" --by "$CALLER" 2>&1)"
-        else out="$("$GUARDRAILS" set custodia --how click --by "$CALLER" 2>&1)"; fi
-        rc=$?
-        set -e
-        printf '%s\n' "$out" | grep -v '^snapshot=' || true
-        SNAP="$(sed -n 's/^snapshot=//p' <<< "$out")"
-        case "$rc" in 0) finish ok 0 ;; 4) finish busy 4 ;; *) finish failed 1 ;; esac ;;
 esac
 finish failed 1

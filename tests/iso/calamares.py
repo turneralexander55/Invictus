@@ -395,17 +395,15 @@ def main():
 
         st = load(modules["shellprocess@invictus-settings"])["script"][0]
         if v == "plain":
-            check("plain: writes Atrium + Custodia (SM24)", st.endswith("${USER} atrium custodia --hostname-from-user"), st)
+            check("plain: writes Atrium (SM24)", st.endswith("${USER} atrium --hostname-from-user"), st)
         else:
-            check("advanced: writes the chosen flavor and guard rails",
-                  "${gs[packagechooser_flavor]} ${gs[packagechooser_guardrails]}" in st, st)
+            check("advanced: writes the chosen flavor",
+                  st.endswith("${gs[packagechooser_flavor]}") and "guardrails" not in st, st)
             fl = load(modules["packagechooser@flavor"])
-            gr = load(modules["packagechooser@guardrails"])
             check("advanced: flavor choices atrium/tessera, default atrium",
                   [i["id"] for i in fl["items"]] == ["atrium", "tessera"] and fl["default"] == "atrium" and fl["mode"] == "required")
-            check("advanced: guard rails custodia/libertas, default custodia",
-                  [i["id"] for i in gr["items"]] == ["custodia", "libertas"] and gr["default"] == "custodia" and gr["mode"] == "required")
-            for i in fl["items"] + gr["items"]:
+            check("advanced: no guard-rails page", "packagechooser@guardrails" not in modules)
+            for i in fl["items"]:
                 art = os.path.join(REPO, "installer/branding/invictus/art", i["screenshot"].replace(".png", ".svg"))
                 check(f"advanced: picture for {i['id']} exists", os.path.isfile(art))
 

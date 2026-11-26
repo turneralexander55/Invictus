@@ -1,5 +1,7 @@
 # Invictus: architecture design
 
+> **Removed 2026-11-26 (Alex):** the guard rails (Custodia, Libertas, Full access, the `invictus-guardrails` package, the managed Claude Code settings and the A6 edit guard) are gone. Text here about them is history, not the build. `invictus-sys` replaces the package.
+
 Author: Minerva (consultant). Date: 2026-09-30. Status: draft for Alex's owner decisions (section 10), then build.
 
 Invictus is Alex's personal Linux distro, based on Arch, built around Hyprland, for AMD machines, for gaming, development and a Windows-for-work VM, with an AI assistant, a home dashboard and a team harness built in. Friends and family only. The old `hyprdots` repo is the seed; this document says what the new thing is, what we keep, what we drop, how it is built and installed, and the security rules for the parts that can hurt.

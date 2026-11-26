@@ -27,12 +27,10 @@
 # 12, 13. invictus-motion; installer extras (pending-extras).
 # 14. invictus-sys: verbs, the polkit policy, Acta, snapshots (MUSTs A2 to
 #    A5, A10, A11) with pkexec, snapper and pacman faked at the seam.
-# 15. The polkit rules, run in node with polkitd's order and defaults.
-# 16. The guard rails: apply, the live switch both ways, timed Libertas,
-#    nets, full access, pre-admin-snapshot, the pacman hook (SM9 to SM26).
-# 17. The Cicero panel and the provider layer: the panel's socket and
-#    restarts, who may run (SM10, SM26), the chat client (A13), the MCP
-#    server, the A6 guard, the managed profiles (A7, A8), A9 and A12.
+# 15. polkitd's answers for every verb, run in node with its order and defaults.
+# 16. set-config's keys, ai on|off and ai-pending (design-no-ai.md).
+# 17. The Cicero panel and the provider layer: who may run, the chat
+#    client (A13), the MCP server, A9 and A12.
 # 18. First start (invictus-first-boot): run once per person, monitors.lua,
 #    look, the assistant step's calls and its key handling, the snapshot.
 # 19. First start with the real provider layer: the wizard's assistant step
@@ -87,11 +85,10 @@ if [[ $rc == 0 ]]; then ok "1b: every own/meta package's inputs match pkgs/input
 else bad "1b: $out"; fi
 lst() { python3 -I "$PI" --repo "$REPO" --inputs "$1"; }
 if lst invictus-sys | grep -qx scripts/lib/pacman.sh && lst invictus-tools | grep -qx scripts/invictus-update.sh \
-    && lst invictus-guardrails | grep -qx scripts/guardrails/claude/fixed.json \
     && lst invictus-tribune | grep -qx scripts/cicero/mcp.py && lst invictus-branding | grep -qx theme/nox.toml \
     && ! lst invictus-branding | grep -qx theme/invictus-theme && lst invictus-desktop | grep -qx config/hypr/hyprland.lua \
     && lst invictus-base | grep -qx pkgs/meta/invictus-base/PKGBUILD; then
-    ok "1b: the inputs read from package() are right for sys, tools, guardrails, tribune, branding (globs), desktop and a meta"
+    ok "1b: the inputs read from package() are right for sys, tools, tribune, branding (globs), desktop and a meta"
 else bad "1b: an input list is wrong: sys $(lst invictus-sys | grep -c .) files, branding $(lst invictus-branding | paste -sd' ' | cut -c1-200)"; fi
 # A toy repo: one package with a plain path, a glob, a variable path and a
 # $root-based local; a second package that must not be touched.

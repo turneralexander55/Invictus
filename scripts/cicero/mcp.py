@@ -8,8 +8,8 @@
 # Each tool is a thin client of a command the person could type: invictus-sys
 # (its own checks, its polkit prompt, its Acta line), invictus-doctor and
 # Acta. No tool takes a command string, a path or a URL; argv lists only, no
-# shell. There is no tool for the guard rails, Full access or AI on/off:
-# those are the person's choices in Settings (SM26).
+# shell. There is no tool for AI on/off: that is the person's choice in
+# Settings (SM26).
 #
 # Protocol: MCP over stdio, newline-delimited JSON-RPC 2.0.
 # Env (tests, honoured only from a checkout): INVICTUS_SYS, INVICTUS_DOCTOR,
@@ -84,7 +84,7 @@ def one(v, what):
 
 
 MEANING = {0: "done", 1: "the change failed", 2: "invictus-sys did not accept the arguments",
-           3: "refused (guard rails, a protected package, or No AI)", 4: "another change is running",
+           3: "refused (a protected package, or No AI)", 4: "another change is running",
            126: "the person said no at the password prompt; stop and say so",
            127: "this account is not allowed to do that; stop and say so"}
 

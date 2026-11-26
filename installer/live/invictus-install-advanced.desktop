@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Install Invictus (Advanced)
-Comment=Choose the desktop, the guard rails and the partitions yourself
+Comment=Choose the desktop and the partitions yourself
 Exec=/usr/lib/invictus/live/invictus-install --advanced
 Icon=invictus
 Terminal=false

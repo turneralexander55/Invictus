@@ -1,11 +1,9 @@
 # Group 17 of tests/pkgs/run.sh (through cicero.sh): the Cicero panel
-# (tribune), the provider layer, the chat client, the MCP server and the A6
-# config guard. Prints "ok    ..." or "FAIL  ..." lines; exit 1 on any FAIL.
+# (tribune), the provider layer, the chat client and the MCP server. Prints "ok    ..." or "FAIL  ..." lines; exit 1 on any FAIL.
 #
 # usage: python3 -I cicero_tests.py REPO TMPDIR
 #
-# Faked at the seam: `guardrails status` (a script reading a state file),
-# secret-tool, invictus-sys, invictus-doctor and journalctl (recorders), the
+# Faked at the seam: /etc/invictus/ai (a state file), secret-tool, invictus-sys, invictus-doctor and journalctl (recorders), the
 # agent (a script that leaves a grandchild in its own session) and an
 # OpenAI-compatible endpoint (http.server on 127.0.0.1).
 import http.server
@@ -13,7 +11,6 @@ import json
 import os
 import re
 import shutil
-import socket
 import stat
 import subprocess
 import sys
@@ -24,7 +21,6 @@ import time
 REPO, TMP = sys.argv[1], sys.argv[2]
 MON = os.path.join(REPO, "scripts/cicero/cicero.py")
 MCP = os.path.join(REPO, "scripts/cicero/mcp.py")
-GUARD = os.path.join(REPO, "scripts/guardrails/claude/config-guard.py")
 PY = sys.executable
 FAILED = 0
 
@@ -60,7 +56,6 @@ def script(name, body):
     return p
 
 
-script("guardrails", '[[ "$1" == status ]] || exit 2\n[[ -f "$FAKE_STATE" ]] || exit 1\ncat "$FAKE_STATE"\n')
 script("invictus-sys", 'printf "%s\\n" "$(printf "%q " "$@")" >> "$FAKE_LOG.sys"\necho "invictus-sys: ok snapshot=7"\nexit "${FAKE_SYS_RC:-0}"\n')
 script("secret-tool", 'printf "%s\\n" "$*" >> "$FAKE_LOG.secret"\n'
        'if [[ "$1" == store ]]; then cat > "$FAKE_LOG.secret-stdin"; fi\n'
@@ -92,17 +87,17 @@ RUN = tempfile.mkdtemp(prefix="mon.", dir="/tmp")
 os.makedirs(CONF)
 
 
-def state(rails="libertas", full="off", ai="on"):
+def state(ai="on"):
     with open(STATE, "w") as f:
-        f.write(f"rails={rails}\neffective={rails}\nfull-access={full}\nai={ai}\n")
+        f.write(f"{ai}\n")
 
 
 def envmap(**extra):
     e = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": HOME, "XDG_CONFIG_HOME": CONF,
-         "XDG_RUNTIME_DIR": RUN, "INVICTUS_GUARDRAILS": os.path.join(FAKE, "guardrails"),
+         "XDG_RUNTIME_DIR": RUN, "INVICTUS_AI_FILE": STATE,
          "INVICTUS_PROVIDERS_DIR": SYSPROV, "INVICTUS_SYS": os.path.join(FAKE, "invictus-sys"),
          "INVICTUS_SECRET_TOOL": os.path.join(FAKE, "secret-tool"), "INVICTUS_JOURNALCTL": os.path.join(FAKE, "journalctl"),
-         "INVICTUS_DOCTOR": os.path.join(FAKE, "doctor"), "FAKE_STATE": STATE, "FAKE_LOG": LOG,
+         "INVICTUS_DOCTOR": os.path.join(FAKE, "doctor"), "FAKE_LOG": LOG,
          "TRIBUNE_GRACE": "2", "LC_ALL": "C.UTF-8"}
     e.update({k: v for k, v in extra.items() if v is not None})
     return e
@@ -174,45 +169,26 @@ check(rows.get("claude-code", {}).get("source") == "system" and rows.get("mine",
       "A8: a home provider named claude-code is ignored; a home cli provider counts as a command-line agent",
       f"shadowing: {rows}")
 
-# SM10, SM26, A13: who may run, from root-owned state only.
-matrix = []
-for rails, full, ai in (("custodia", "off", "on"), ("custodia", "on", "on"), ("libertas", "off", "on"),
-                        ("libertas", "on", "on"), ("libertas", "on", "off")):
-    state(rails, full, ai)
+# Who may run, from root-owned state only: with AI on every provider, with
+# No AI (or no /etc/invictus/ai) only none.
+matrix = {}
+for ai in ("on", "off"):
+    state(ai)
     r = provider("list", "--json")
-    offered = sorted(x["name"] for x in json.loads(r.stdout or "[]") if x["offered"])
-    matrix.append((rails, full, ai, offered))
-want = [("custodia", "off", "on", ["claude-code", "none", "openai-compatible"]),
-        ("custodia", "on", "on", ["claude-code", "none", "openai-compatible"]),
-        ("libertas", "off", "on", ["claude-code", "none", "openai-compatible"]),
-        ("libertas", "on", "on", ["claude-code", "generic-cli", "mine", "none", "openai-compatible"]),
-        ("libertas", "on", "off", ["none"])]
-check(matrix == want, "SM10/SM26: generic-cli and home cli agents are offered only under Libertas with Full access; "
-      "No AI offers none", f"offered matrix {matrix}")
+    matrix[ai] = sorted(x["name"] for x in json.loads(r.stdout or "[]") if x["offered"])
 os.unlink(STATE)
 r = provider("list", "--json")
-offered = sorted(x["name"] for x in json.loads(r.stdout or "[]") if x["offered"])
-check(offered == ["none"], "unreadable guard-rails state: only none (fails closed)", f"no state: {offered}")
+matrix["missing"] = sorted(x["name"] for x in json.loads(r.stdout or "[]") if x["offered"])
+check(matrix == {"on": ["claude-code", "generic-cli", "mine", "none", "openai-compatible"], "off": ["none"], "missing": ["none"]},
+      "every provider is offered with AI on; No AI, or no /etc/invictus/ai, offers only none", f"offered {matrix}")
 
-state("custodia", "on")
-before = read(os.path.join(CONF, "invictus/cicero.toml"), None)
-r = provider("set", "generic-cli", "--command", "--", SHELL_AGENT)
-check(r.returncode == 3 and "command-line agent is off" in r.stderr
-      and read(os.path.join(CONF, "invictus/cicero.toml"), None) == before,
-      "SM10: under Custodia `set generic-cli` is refused (exit 3) and the settings file is unchanged",
-      f"set generic-cli under custodia: rc {r.returncode} {r.stderr}")
-
-state("libertas", "on")
+state()
 r = provider("set", "generic-cli", "--command", "--", SHELL_AGENT, "-x")
 mode = stat.S_IMODE(os.stat(os.path.join(CONF, "invictus/cicero.toml")).st_mode) if r.returncode == 0 else 0
 got = json.loads(provider("get", "--json").stdout or "{}")
 check(r.returncode == 0 and mode == 0o600 and got.get("name") == "generic-cli" and got.get("permitted"),
-      "Libertas + Full access: generic-cli set with its command; cicero.toml is 0600",
+      "generic-cli set with its command; cicero.toml is 0600",
       f"set generic-cli: rc {r.returncode} {r.stderr} mode {oct(mode)} get {got}")
-state("libertas", "off")
-r = provider("check")
-check(r.returncode == 3 and "command-line agent is off" in r.stdout,
-      "SM26: a configured generic-cli fails `check` once Full access is off", f"check: {r.returncode} {r.stdout}")
 
 # Endpoints: plain http only at home, no credentials in the URL.
 results = {}
@@ -245,7 +221,7 @@ os.makedirs(os.path.join(CONF, "invictus/providers/evil"))
 with open(os.path.join(CONF, "invictus/providers/evil/provider.toml"), "w") as f:
     f.write('name = "evil"\nkind = "api"\nendpoint = "http://127.0.0.1:9/v1"\nmodel = "m\\u001b]52;c;eA==\\u0007"\n'
             'label = "Home \\u001b[2J\\u001b]0;pwned\\u0007 AI \\u202eIA"\n')
-state("libertas", "off")
+state()
 outs = [provider("set", "evil"), provider("list"), provider("get")]
 raw = "".join(r.stdout + r.stderr for r in outs)
 check(all(r.returncode == 0 for r in outs) and "Home" in raw and "\x1b" not in raw and "\x07" not in raw
@@ -293,26 +269,7 @@ class Panel:
                 pass
 
 
-def send(msg):
-    s = socket.socket(socket.AF_UNIX)
-    try:
-        s.connect(SOCK)
-        s.sendall(msg)
-    except OSError:
-        pass  # the panel hangs up after 64 bytes
-    s.close()
-
-
-def gone(pid_list, timeout):
-    end = time.time() + timeout
-    while time.time() < end:
-        if not any(alive(p) for p in pid_list):
-            return True
-        time.sleep(0.05)
-    return False
-
-
-state("libertas", "off")
+state()
 settings('provider = "claude-code"\n')
 reset_logs()
 P = Panel()
@@ -321,7 +278,7 @@ time.sleep(0.3)
 st = os.stat(SOCK) if os.path.exists(SOCK) else None
 check(started and st and stat.S_ISSOCK(st.st_mode) and stat.S_IMODE(st.st_mode) == 0o600
       and stat.S_IMODE(os.stat(os.path.dirname(SOCK)).st_mode) == 0o700,
-      "panel: starts claude-code and listens on $XDG_RUNTIME_DIR/invictus/tribune.sock (0600, folder 0700)",
+      "panel: starts claude-code and holds $XDG_RUNTIME_DIR/invictus/tribune.sock (0600, folder 0700) so only one panel runs",
       f"panel start: {P.text()!r} sock {st}")
 env_line = read(f"{LOG}.agent-env")
 check("provider=claude-code" in env_line and "thread=t-" in env_line,
@@ -333,94 +290,19 @@ check(second.returncode == 3 and "already open" in second.stdout and os.path.exi
       "panel: a second panel refuses (exit 3) and leaves the first one's socket alone",
       f"second panel: {second.returncode} {second.stdout!r}")
 
-a1 = pids("agent")
-send(b"rm -rf ~\n")
-send(b"x" * 5000)
-send(b"restart-profilex\n")
-time.sleep(0.6)
-check(a1 and all(alive(p) for p in a1) and P.p.poll() is None and P.text().count("[tribune] started") == 1,
-      "panel: anything but exactly 'stop' or 'restart-profile' is ignored", f"junk messages: {P.text()!r}")
-
-t0 = time.time()
-send(b"restart-profile\n")
-restarted = P.wait_for("[tribune] started claude-code", count=2, timeout=8)
-a2 = [p for p in pids("agent") if p not in a1]
-old_gone = gone(a1 + pids("grandchild")[:1], 6)
-check(restarted and a2 and old_gone and time.time() - t0 < 5 and "starting again with the new rules" in P.text(),
-      f"G7/SM26: restart-profile ends the agent and what it left behind and starts it again (new pid) in {time.time() - t0:.1f} s",
-      f"restart: restarted={restarted} new={a2} old_gone={old_gone} {P.text()!r}")
-
-t0 = time.time()
-send(b"stop\n")
-try:
-    rc = P.p.wait(8)
-except subprocess.TimeoutExpired:
-    rc = None
-all_pids = pids("agent") + pids("grandchild")
-check(rc == 0 and gone(all_pids, 3) and not os.path.exists(SOCK) and time.time() - t0 < 5
-      and "AI was turned off" in P.text(),
-      f"NA2: stop ends the agent, its leftovers and the panel within 5 s ({time.time() - t0:.1f} s); the socket is removed",
-      f"stop: rc {rc} alive {[p for p in all_pids if alive(p)]} sock {os.path.exists(SOCK)} {P.text()!r}")
 P.finish()
 
-# An agent that ignores SIGTERM is killed after the grace time.
+# The panel refuses every provider with No AI.
 reset_logs()
-P = Panel(AGENT_IGNORE_TERM="1", TRIBUNE_GRACE="1")
-P.wait_for("[tribune] started")
-time.sleep(0.3)
-a1 = pids("agent")
-send(b"stop\n")
-try:
-    rc = P.p.wait(8)
-except subprocess.TimeoutExpired:
-    rc = None
-check(rc == 0 and gone(a1, 2), "G7: an agent that ignores SIGTERM gets SIGKILL after the grace time",
-      f"TERM-ignoring agent: rc {rc} alive {[p for p in a1 if alive(p)]}")
-P.finish()
-
-# SM26: a switch that turns Full access off ends generic-cli and does not start it again.
-reset_logs()
-state("libertas", "on")
-settings(f'provider = "generic-cli"\n\n["generic-cli"]\nchat = ["{AGENT}"]\n')
-P = Panel()
-started = P.wait_for("[tribune] started generic-cli")
-a1 = pids("agent")
-state("custodia", "off")
-t0 = time.time()
-send(b"restart-profile\n")
-refused = P.wait_for("command-line agent is off", timeout=8)
-time.sleep(0.5)
-check(started and refused and gone(a1, 5) and time.time() - t0 < 5 and P.text().count("[tribune] started") == 1
-      and P.p.poll() is None,
-      "SM26: after the switch to Custodia generic-cli is gone within 5 s and the panel refuses to start it again",
-      f"generic-cli after custodia: started={started} refused={refused} {P.text()!r}")
-try:
-    P.p.stdin.write("\n")
-    P.p.stdin.flush()
-except OSError:
-    pass
-time.sleep(0.8)
-check(P.text().count("[tribune] started") == 1 and not read(f"{LOG}.shell"),
-      "SM26: pressing Enter in the panel still does not start it", f"enter: {P.text()!r}")
-P.finish()
-
-# The panel refuses a home cli provider without Full access, and every provider with No AI.
-reset_logs()
-state("libertas", "off")
-settings('provider = "mine"\n')
-P = Panel()
-r1 = P.wait_for("command-line agent is off")
-P.finish()
-state("libertas", "on", "off")
+state("off")
 settings('provider = "claude-code"\n')
 P = Panel()
 r2 = P.wait_for("AI is off")
 P.finish()
-check(r1 and r2 and not read(f"{LOG}.shell") and not read(f"{LOG}.agent"),
-      "A13/NA: a home cli agent needs Full access; with No AI nothing starts", f"refusals: {r1} {r2}")
+check(r2 and not read(f"{LOG}.agent"), "NA: with No AI nothing starts", f"refusal: {r2} {P.text()!r}")
 
 # Acta in the panel's header.
-state("libertas", "off")
+state()
 settings('provider = "none"\n')
 P = Panel()
 P.wait_for("No assistant is set up")
@@ -476,7 +358,7 @@ r = chat("hello\n/quit\n")
 buttons = [ln.strip() for ln in r.stdout.splitlines() if ln.strip().startswith("[")]
 check(r.returncode == 0 and buttons == ["[1] invictus-sys install firefox   (type 1 and Enter to run it)"]
       and not read(f"{LOG}.sys"),
-      "A13: a proposal shows as a numbered button and nothing runs; guard rails, full access, ai, options and "
+      "A13: a proposal shows as a numbered button and nothing runs; old guard-rails calls, ai, options and "
       "shell tricks are never offered", f"chat buttons {buttons} sys log {read(f'{LOG}.sys')!r} out {r.stdout!r}")
 check("\x1b" not in r.stdout and "\x07" not in r.stdout and "\u202e" not in r.stdout,
       "the reply reaches the terminal with no escape sequences or direction overrides (no clipboard or screen tricks, "
@@ -526,7 +408,7 @@ names = sorted(t["name"] for t in out.get(1, {}).get("result", {}).get("tools", 
 check(out.get(0, {}).get("result", {}).get("serverInfo", {}).get("name") == "invictus"
       and names == ["acta", "doctor", "package_install", "package_remove", "report_collect", "rollback", "service_set",
                     "snapshot", "update_now"],
-      "MCP: initialize, then exactly nine tools; none for the guard rails, Full access or AI on/off (SM26)", f"tools {names}")
+      "MCP: initialize, then exactly nine tools; none for AI on/off (SM26)", f"tools {names}")
 
 
 # Janus P-L1: a server entry with our exact (allowlisted) command can still
@@ -628,204 +510,6 @@ check(not read(f"{LOG}.sys") and "Support is helping" in text_of(out[1]),
 out = mcp([("tools/call", {"name": "acta", "arguments": {"limit": 3}})])
 check("install" in text_of(out[1]) and '"INVICTUS_SNAPSHOT": "12"' in text_of(out[1]),
       "MCP: the acta tool returns the Acta entries", f"acta tool {text_of(out[1])!r}")
-
-# ---- A6 config guard -------------------------------------------------------------------------
-print("== Cicero: A6 config guard", flush=True)
-GH = os.path.join(W, "ghome")
-os.makedirs(os.path.join(GH, ".config/hypr"))
-os.makedirs(os.path.join(GH, ".config/waybar"))
-os.makedirs(os.path.join(GH, "projects"))
-with open(os.path.join(GH, ".config/hypr/user.lua"), "w") as f:
-    f.write("-- good\n")
-with open(os.path.join(GH, ".bashrc"), "w") as f:
-    f.write("# bashrc\n")
-os.symlink(os.path.join(GH, ".bashrc"), os.path.join(GH, ".config/waybar/evil.css"))
-# Janus J-L3: a hard link from an allowed name to a file a program runs, a
-# FIFO with an allowed name, and a plain existing style sheet (allowed).
-os.link(os.path.join(GH, ".config/hypr/user.lua"), os.path.join(GH, ".config/waybar/hard.css"))
-os.mkfifo(os.path.join(GH, ".config/waybar/pipe.css"))
-with open(os.path.join(GH, ".config/waybar/plain.css"), "w") as f:
-    f.write("* { }\n")
-
-
-def guard(mode, path, profile=None, raw=None, **extra):
-    args = [PY, "-I", GUARD, mode] + ([profile] if profile else [])
-    data = raw if raw is not None else json.dumps({"tool_name": "Edit", "tool_input": {"file_path": path}})
-    return subprocess.run(args, input=data, capture_output=True, text=True,
-                          env=envmap(HOME_OVERRIDE=GH, **extra), timeout=30)
-
-
-cases = {
-    # Minerva's final review, ruling 1: under fixed, files a program executes are refused
-    (".config/hypr/user.lua", "fixed"): 2, (".config/hypr/monitors.lua", "fixed"): 2,
-    (".config/waybar/config.json", "fixed"): 2, (".config/waybar/config", "fixed"): 2,
-    (".config/hypr/user.lua", "full"): 0, (".config/hypr/monitors.lua", "full"): 0,
-    (".config/waybar/config.json", "full"): 0,
-    # ... and only the listed data files pass (ruling 4: default-deny under ~/.config/invictus)
-    (".config/waybar/style.css", "fixed"): 0, (".config/invictus/motion", "fixed"): 0,
-    (".config/invictus/themes/dusk-two.toml", "fixed"): 0,
-    (".config/invictus/newfile", "fixed"): 2, (".config/invictus/newfile", "full"): 0,
-    (".config/invictus/motion.d/kitty.conf", "fixed"): 2, (".config/invictus/themes/x.sh", "fixed"): 2,
-    (".config/invictus/themes/sub/x.toml", "fixed"): 2, (".config/waybar/scripts/x.css", "fixed"): 2,
-    (".config/invictus/flavor", "fixed"): 2, (".config/invictus/first-boot.json", "fixed"): 2,
-    (".bashrc", "fixed"): 2, (".bashrc", "full"): 2, (".config/hypr/hyprland.lua", "fixed"): 2,
-    (".config/invictus/cicero.toml", "full"): 2, (".config/invictus/providers/x/provider.toml", "full"): 2,
-    (".config/waybar/evil.css", "fixed"): 2, (".config/waybar/../../.bashrc", "fixed"): 2,
-    (".claude/settings.json", "full"): 2, ("projects/app.py", "fixed"): 2, ("projects/app.py", "full"): 0,
-    (".config/invictus/theme-hooks.d/10-evil", "fixed"): 2, (".config/invictus/theme-hooks.d/10-evil", "full"): 2,
-    (".config/waybar/hard.css", "fixed"): 2, (".config/waybar/pipe.css", "fixed"): 2,
-    (".config/waybar/plain.css", "fixed"): 0,
-}
-got = {k: guard("pre", os.path.join(GH, k[0]), k[1]).returncode for k in cases}
-got[("/etc/hosts", "full")] = guard("pre", "/etc/hosts", "full").returncode
-got[("relative", "full")] = guard("pre", "user.lua", "full").returncode
-want = dict(cases)
-want[("/etc/hosts", "full")] = 2
-want[("relative", "full")] = 2
-check(got == want, "A6: fixed allows data files only (themes/*.toml, motion, waybar/*.css), never user.lua, "
-      "monitors.lua or waybar's config, nor any unlisted file under ~/.config/invictus; full keeps the old list plus "
-      "non-dot home paths; symlinks and .. are followed; who-answers files, theme hooks (I5), ~/.bashrc and ~/.claude "
-      "are never edited",
-      f"guard decisions differ: {[(k, got[k], want[k]) for k in want if got[k] != want[k]]}")
-check(got[(".config/waybar/hard.css", "fixed")] == 2 and got[(".config/waybar/pipe.css", "fixed")] == 2
-      and got[(".config/waybar/plain.css", "fixed")] == 0,
-      "J-L3: under fixed, a hard link (waybar/hard.css to hypr/user.lua) and a FIFO are refused; a plain style sheet passes",
-      f"J-L3 hard link {got[('.config/waybar/hard.css', 'fixed')]}, fifo {got[('.config/waybar/pipe.css', 'fixed')]}, "
-      f"plain {got[('.config/waybar/plain.css', 'fixed')]}")
-os.unlink(os.path.join(GH, ".config/waybar/hard.css"))
-# Janus J-L1: a uid with no passwd entry (a userdb hiccup, a DynamicUser).
-# Python exits 1 on an uncaught exception and exit 1 lets the edit through,
-# so the guard must exit 2. Two ways: always, getpwuid made to fail in the
-# guard's own process (runpy); and, where this run can, a real uid with no
-# entry (a user namespace, or setpriv as root).
-NOPW_IN = json.dumps({"tool_input": {"file_path": os.path.join(GH, ".bashrc")}})
-nopw_env = envmap()
-sim = ("import pwd, runpy, sys\n"
-       "def nope(uid): raise KeyError(f'getpwuid(): uid not found: {uid}')\n"
-       "pwd.getpwuid = nope\n"
-       "sys.argv = [sys.argv[1], 'pre', 'fixed']\n"
-       "runpy.run_path(sys.argv[0], run_name='__main__')\n")
-r = subprocess.run([PY, "-I", "-c", sim, GUARD], input=NOPW_IN, capture_output=True, text=True, env=nopw_env, timeout=30)
-check(r.returncode == 2 and "claude-config-guard" in r.stderr, "J-L1: a guard whose passwd lookup fails blocks the edit (exit 2, not 1)",
-      f"J-L1 no passwd entry (simulated): {r.returncode} {r.stderr[-200:]!r}")
-real = None
-for how in (["unshare", "-U", "--map-user=54321", "--map-group=54321"],
-            ["setpriv", "--reuid=54321", "--regid=54321", "--clear-groups"]):
-    if how[0] == "setpriv" and os.getuid() != 0:
-        continue
-    try:
-        probe = subprocess.run(how + [PY, "-I", "-c", "import os; print(os.getuid())"],
-                               capture_output=True, text=True, timeout=30)
-    except OSError:
-        continue
-    if probe.returncode == 0 and probe.stdout.strip() == "54321":
-        real = subprocess.run(how + [PY, "-I", GUARD, "pre", "fixed"], input=NOPW_IN, capture_output=True,
-                              text=True, env=nopw_env, timeout=30)
-        real_how = how[0]
-        break
-if real is None:
-    print("note  J-L1: no way to become a uid with no passwd entry here (no user namespace, not root); "
-          "the simulated check above stands", flush=True)
-else:
-    check(real.returncode == 2 and "claude-config-guard" in real.stderr, f"J-L1: run as uid 54321 (no passwd entry, via {real_how}) the guard blocks the edit (exit 2)",
-          f"J-L1 no passwd entry ({real_how}): {real.returncode} {real.stderr[-200:]!r}")
-# The guard alone, where invictus_env.py cannot be found: still exit 2.
-LONE = os.path.join(W, "lone")
-os.makedirs(LONE, exist_ok=True)
-shutil.copy(GUARD, os.path.join(LONE, "config-guard.py"))
-r = subprocess.run([PY, "-I", os.path.join(LONE, "config-guard.py"), "pre", "fixed"],
-                   input=json.dumps({"tool_input": {"file_path": os.path.join(GH, ".bashrc")}}),
-                   capture_output=True, text=True, env=envmap(HOME_OVERRIDE=GH), timeout=30)
-check(r.returncode == 2, "A6: a guard that cannot load its helper still blocks the edit (exit 2, not 1)",
-      f"lone guard: {r.returncode} {r.stderr[-200:]!r}")
-r = guard("pre", "", "fixed", raw="not json")
-check(r.returncode == 2, "A6: a guard that cannot read its input blocks the edit (fails closed)", f"garbage: {r.returncode}")
-
-# Janus N-L1: exits the lint cannot see. The guard runs invictus_env.py
-# through exec_module, so a SystemExit there must still end in 2 (the guard
-# catches BaseException), and the /bin/sh wrapper the profiles call turns
-# any ending but 0 into 2, a signal death too. A tree laid out like the
-# checkout: wrapper, claude/config-guard.py, lib/invictus_env.py.
-NL1 = os.path.join(W, "nl1")
-os.makedirs(os.path.join(NL1, "claude"), exist_ok=True)
-os.makedirs(os.path.join(NL1, "lib"), exist_ok=True)
-WRAP = os.path.join(NL1, "claude-config-guard")
-WRAP_SRC = os.path.join(REPO, "scripts/guardrails/claude-config-guard.sh")
-if os.path.isfile(WRAP_SRC):
-    shutil.copy(WRAP_SRC, WRAP)
-else:  # no wrapper (the code before N-L1): every wrapped check below fails, none crashes
-    with open(WRAP, "w") as f:
-        f.write("#!/bin/sh\nexit 99\n")
-os.chmod(WRAP, 0o755)
-shutil.copy(GUARD, os.path.join(NL1, "claude/config-guard.py"))
-HELPER = open(os.path.join(REPO, "scripts/lib/invictus_env.py")).read()
-DENY_IN = json.dumps({"tool_input": {"file_path": os.path.join(GH, ".bashrc")}})
-OK_IN = json.dumps({"tool_input": {"file_path": os.path.join(GH, ".config/waybar/plain.css")}})
-
-
-def nl1_run(inject, wrapped, data=DENY_IN):
-    with open(os.path.join(NL1, "lib/invictus_env.py"), "w") as f:
-        f.write(HELPER + ("\n" + inject + "\n" if inject else ""))
-    args = [WRAP, "pre", "fixed"] if wrapped else [PY, "-I", os.path.join(NL1, "claude/config-guard.py"), "pre", "fixed"]
-    return subprocess.run(args, input=data, capture_output=True, text=True, env=envmap(HOME_OVERRIDE=GH), timeout=30)
-
-
-r = nl1_run("", True)
-r2 = nl1_run("", True, OK_IN)
-check(r.returncode == 2 and r2.returncode == 0 and "hookSpecificOutput" in r2.stdout,
-      "N-L1: the wrapper passes the guard's answer through (denied 2, allowed 0 with the guard's JSON on stdout)",
-      f"wrapper plain: denied {r.returncode}, allowed {r2.returncode} {r2.stdout[-200:]!r} {r2.stderr[-200:]!r}")
-r = nl1_run("raise SystemExit(1)", False)
-check(r.returncode == 2 and "cannot load invictus_env (SystemExit)" in r.stderr,
-      "N-L1: a SystemExit(1) raised inside invictus_env.py ends the guard with 2 (BaseException caught), not 1",
-      f"SystemExit(1) in the helper, guard alone: {r.returncode} {r.stderr[-200:]!r}")
-r = nl1_run("raise SystemExit(1)", True)
-check(r.returncode == 2, "N-L1: through the wrapper, a SystemExit(1) in invictus_env.py ends in 2",
-      f"SystemExit(1) in the helper, wrapped: {r.returncode} {r.stderr[-200:]!r}")
-r_alone = nl1_run("import os as _o; _o.kill(_o.getpid(), 9)", False)
-r = nl1_run("import os as _o; _o.kill(_o.getpid(), 9)", True)
-check(r_alone.returncode == -9 and r.returncode == 2,
-      "N-L1: a kill -9 of the Python child ends the hook with 2 (the guard alone dies with signal 9)",
-      f"kill -9: guard alone {r_alone.returncode}, wrapped {r.returncode} {r.stderr[-200:]!r}")
-r = nl1_run("import os as _o; _o._exit(1)", True)
-check(r.returncode == 2, "N-L1: an os._exit(1) the guard never catches still ends in 2 through the wrapper",
-      f"os._exit(1) in the helper, wrapped: {r.returncode}")
-nl1_run("", True)
-os.rename(os.path.join(NL1, "claude/config-guard.py"), os.path.join(NL1, "claude/gone.py"))
-r = nl1_run("", True)
-check(r.returncode == 2, "N-L1: the wrapper with no guard beside it blocks the edit (2)", f"no guard: {r.returncode}")
-os.rename(os.path.join(NL1, "claude/gone.py"), os.path.join(NL1, "claude/config-guard.py"))
-wsrc = open(WRAP).read()
-codes = [l.split()[-1] for l in wsrc.splitlines() if re.search(r"\bexit\b", l) and not l.lstrip().startswith("#")]
-check(wsrc.startswith("#!/bin/sh\n") and codes == ["0", "2"] and "/usr/bin/python3 -I " in wsrc
-      and "set -e" not in wsrc,
-      "N-L1: the wrapper is /bin/sh, runs /usr/bin/python3 -I, and its only exits are 0 (after a 0) and 2",
-      f"wrapper shape: exits {codes}")
-
-r = guard("pre", os.path.join(GH, ".config/hypr/user.lua"), "full")
-bk = os.path.join(GH, ".local/state/invictus/backups")
-copies = [os.path.join(dp, f) for dp, _, fs in os.walk(bk) for f in fs if f == "user.lua"]
-with open(os.path.join(GH, ".config/hypr/user.lua"), "w") as f:
-    f.write("this is not lua (\n")
-r2 = guard("post", os.path.join(GH, ".config/hypr/user.lua"), FAKE_DOCTOR_RC="1")
-check(r.returncode == 0 and copies and read(copies[0]) == "-- good\n"
-      and read(os.path.join(GH, ".config/hypr/user.lua")) == "-- good\n" and r2.returncode == 2
-      and "broke the Hyprland config check" in r2.stderr and "--hypr" in read(f"{LOG}.doctor"),
-      "A6: a backup before the edit; a change that fails invictus-doctor --hypr is put back and Cicero is told",
-      f"restore: pre {r.returncode} copies {copies} file {read(os.path.join(GH, '.config/hypr/user.lua'))!r} post {r2.returncode} {r2.stderr!r}")
-newf = os.path.join(GH, ".config/hypr/monitors.lua")
-guard("pre", newf, "full")
-with open(newf, "w") as f:
-    f.write("broken(\n")
-r = guard("post", newf, FAKE_DOCTOR_RC="1")
-check(r.returncode == 2 and not os.path.exists(newf), "A6: a new file that fails the check is removed",
-      f"new file: {r.returncode} exists={os.path.exists(newf)}")
-guard("pre", os.path.join(GH, ".config/hypr/user.lua"), "full")
-with open(os.path.join(GH, ".config/hypr/user.lua"), "w") as f:
-    f.write("-- better\n")
-r = guard("post", os.path.join(GH, ".config/hypr/user.lua"), FAKE_DOCTOR_RC="0")
-check(r.returncode == 0 and read(os.path.join(GH, ".config/hypr/user.lua")) == "-- better\n",
-      "A6: a change that passes the check stays", f"good change: {r.returncode}")
 
 shutil.rmtree(RUN, ignore_errors=True)
 sys.exit(FAILED)

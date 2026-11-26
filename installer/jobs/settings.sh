@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 # ------------------------------------------------------------
-# invictus-settings ROOT USER FLAVOR GUARDRAILS [--hostname-from-user]
+# invictus-settings ROOT USER FLAVOR [--hostname-from-user]
 #
-# Writes the two install-time defaults Alex asked for (2026-09-30), both
-# switchable later on the running system (design-simple-mode 1.3, 1.6, SM24):
+# Writes the install-time desktop flavor (Alex, 2026-09-30), switchable
+# later on the running system (design-simple-mode 1.3, SM24):
 #   flavor      atrium | tessera     per user: ~USER/.config/invictus/flavor
-#   guard rails custodia | libertas  machine:  /etc/invictus/guardrails
 # and /etc/invictus/ai = off: AI is chosen at first start, and only
 # `invictus-sys ai on` (a password) turns it on (design-no-ai.md N1).
-# The plain install path passes "atrium custodia"; the Advanced path passes
-# what the person picked (Calamares packagechooser@flavor and
-# packagechooser@guardrails).
+# The plain install path passes "atrium"; the Advanced path passes what
+# the person picked (Calamares packagechooser@flavor).
 #
 # Also writes /etc/invictus/release from the ISO's release file, and with
 # --hostname-from-user (plain path, where the hostname field is hidden)
@@ -25,19 +23,15 @@ JOB_NAME=invictus-settings
 need_root "${1:-}"
 USER_NAME="${2:-}"
 FLAVOR="${3:-}"
-GUARDRAILS="${4:-}"
 HOSTNAME_FROM_USER=false
-[[ "${5:-}" == --hostname-from-user ]] && HOSTNAME_FROM_USER=true
+[[ "${4:-}" == --hostname-from-user ]] && HOSTNAME_FROM_USER=true
 
 [[ "$USER_NAME" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "bad user name '$USER_NAME'"
 one_of "$FLAVOR" "$INVICTUS_FLAVORS" || die "flavor must be one of: $INVICTUS_FLAVORS (got '$FLAVOR')"
-one_of "$GUARDRAILS" "$INVICTUS_GUARDRAILS" || die "guard rails must be one of: $INVICTUS_GUARDRAILS (got '$GUARDRAILS')"
 ids="$(user_ids "$USER_NAME")" || die "user $USER_NAME not found in the target"
 read -r uid gid <<<"$ids"
 
-# ---- machine: guard rails and release -----------------------------------------
-printf '%s\n' "$GUARDRAILS" | write_file "$INVICTUS_GUARDRAILS_FILE" 644
-say "guard rails: $GUARDRAILS"
+# ---- machine: AI and release ---------------------------------------------------
 printf 'off\n' | write_file /etc/invictus/ai 644
 say "AI: off until first start"
 # The ISO's own release file (written by scripts/build-iso.sh) is read from
@@ -48,15 +42,6 @@ if [[ -f "$iso_release" ]]; then
       echo "installed=$(date -u +%Y-%m-%dT%H:%M:%SZ)"; } | write_file /etc/invictus/release 644
 else
     say "no $iso_release on the live system: /etc/invictus/release not written"
-fi
-# design-simple-mode 1.3: the installer runs `invictus-sys guardrails apply`
-# once so the derived files match (invictus-guardrails, from invictus-base).
-# An image without invictus-sys gets the file only.
-if in_target sh -c 'command -v invictus-sys' >/dev/null 2>&1; then
-    in_target invictus-sys guardrails apply || die "invictus-sys guardrails apply failed"
-    say "guard rails applied"
-else
-    say "invictus-sys is not installed yet: guard rails file written, nothing applied"
 fi
 # sshd is off on every install (design-simple-mode 1.3), whether or not
 # openssh is present.

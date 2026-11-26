@@ -29,8 +29,6 @@ esac
 LIB="${INVICTUS_LIB:-/usr/lib/invictus}"
 # shellcheck source=scripts/lib/pacman.sh
 . "$LIB/lib/pacman.sh"
-# shellcheck source=scripts/lib/guardrails-state.sh
-. "$LIB/lib/guardrails-state.sh"
 # shellcheck source=scripts/lib/acta.sh
 . "$LIB/lib/acta.sh"
 # shellcheck source=scripts/lib/ai-set.sh
@@ -46,7 +44,7 @@ say() { echo "ai-pending: $*"; }
 done_pending() { rm -f "$PENDING"; "$SYSTEMCTL" disable invictus-ai-pending.service >/dev/null 2>&1 || true; }
 
 [[ -e "$PENDING" ]] || { say "nothing pending"; exit 0; }
-if [[ "$(gr_ai)" != on ]]; then
+if [[ "$(ai_state)" != on ]]; then
     done_pending
     say "AI was turned off since; nothing installed"
     exit 0

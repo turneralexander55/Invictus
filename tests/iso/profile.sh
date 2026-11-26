@@ -117,14 +117,14 @@ check "boot wait: the live image enables no time-sync or network-online waiter" 
 # sshd to /run/ssh-unix-local/socket whenever openssh is installed. The mask
 # is invictus-sys's file (Janus I-2), so the live image and every install
 # get it from the package: invictus-base (in the live image's package list)
-# brings invictus-guardrails, which brings invictus-sys. A copy in airootfs
+# brings invictus-sys. A copy in airootfs
 # would make pacstrap refuse invictus-sys ("exists in filesystem").
 gm=/etc/systemd/system-generators/systemd-ssh-generator
 check "sshd off: the generator mask is not in airootfs, keep.txt or live-only.txt (invictus-sys owns it)" \
     bash -c "[[ ! -e '$ISO/airootfs$gm' && ! -L '$ISO/airootfs$gm' ]] && ! grep -qx '$gm' '$ISO/keep.txt' '$ISO/live-only.txt'"
-check "sshd off: invictus-sys ships the mask, and the live image installs invictus-sys (invictus-base -> invictus-guardrails -> invictus-sys)" \
+check "sshd off: invictus-sys ships the mask, and the live image installs invictus-sys (invictus-base -> invictus-sys)" \
     bash -c "grep -qF 'ln -s /dev/null \"\$pkgdir$gm\"' '$REPO/pkgs/own/invictus-sys/PKGBUILD' && grep -qx invictus-base '$ISO/packages.x86_64' \
-             && grep -q \"'invictus-guardrails'\" '$REPO/pkgs/meta/invictus-base/PKGBUILD' && grep -q \"'invictus-sys\" '$REPO/pkgs/own/invictus-guardrails/PKGBUILD'"
+             && grep -q \"'invictus-sys'\" '$REPO/pkgs/meta/invictus-base/PKGBUILD'"
 
 # ---- 4. secrets ---------------------------------------------------------------------------
 SCAN="$ISO/secrets-scan.sh"

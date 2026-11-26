@@ -217,7 +217,7 @@ mkdir -p "$T/var/tmp/gen"
 arch-chroot "$T" "$gen" /var/tmp/gen /var/tmp/gen /var/tmp/gen >"$L/gen.log" 2>&1 || true
 check "control: with openssh installed, the generator makes sshd-unix-local.socket" test -f "$T/var/tmp/gen/sshd-unix-local.socket"
 rm -rf "$T/var/tmp/gen"
-job settings settings.sh "$T" maria atrium custodia --hostname-from-user
+job settings settings.sh "$T" maria atrium --hostname-from-user
 gm="$T/etc/systemd/system-generators/systemd-ssh-generator"
 check "settings: systemd-ssh-generator masked (a link to /dev/null)" bash -c "[[ -L '$gm' && \"\$(readlink '$gm')\" == /dev/null ]]"
 # Janus I-2: the mask is invictus-sys's file (from the ISO's airootfs, which
@@ -229,7 +229,7 @@ check "settings: /etc/systemd/system-generators is searched before /usr/lib/syst
     bash -c "arch-chroot '$T' systemd-path systemd-search-system-generator | grep -q '/etc/systemd/system-generators:.*/usr/lib/systemd/system-generators'"
 check "settings: sshd.service not enabled" bash -c "! arch-chroot '$T' systemctl is-enabled sshd.service >/dev/null 2>&1"
 check "settings: nothing else enables an ssh socket" bash -c "! find '$T/etc/systemd/system' -name '*ssh*' | grep -q ."
-check "settings: guard rails Custodia, applied" bash -c "grep -qx custodia '$T/etc/invictus/guardrails' && chroot '$T' invictus-sys guardrails check >/dev/null"
+check "settings: no guard rails (no rails file, no managed Claude Code settings)" bash -c "[[ ! -e '$T/etc/invictus/guardrails' && ! -e '$T/etc/claude-code/managed-settings.json' ]]"
 check "settings: hostname from the user" grep -qx maria-invictus "$T/etc/hostname"
 
 # ---- initcpiocfg (Calamares module, useSystemdHook: true) --------------------------
@@ -321,7 +321,7 @@ if [[ -n "$KEEP" ]]; then
         [[ -f "$pb" && "$(<"$pb")" == linux-cachyos ]] && kernel="$(basename "$(dirname "$pb")")"
     done
     check "test image: the linux-cachyos kernel's release found" test -n "$kernel"
-    printf 'kernel=%s\nkernel_pkgbase=linux-cachyos\nroot_uuid=%s\nrails=custodia\nuser=maria\n' \
+    printf 'kernel=%s\nkernel_pkgbase=linux-cachyos\nroot_uuid=%s\nuser=maria\n' \
         "$kernel" "$uuid" >"$KEEP/disk.env"
     cp "$conf" "$L/limine.conf"
     # Unmount for real (no lazy detach): the image must be clean before it boots.
