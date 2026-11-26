@@ -696,7 +696,7 @@ class Panel:
         self.tty = sys.stdin.isatty()
 
     # One panel at a time: a second one finds this socket answering and
-    # stops. Nothing is read from it.
+    # stops. The only message read from it is "stop" (invictus-sys ai off).
     def listen(self):
         d = runtime_dir()
         os.makedirs(d, mode=0o700, exist_ok=True)
@@ -840,6 +840,28 @@ class Panel:
             self.close()
         return EXIT_OK
 
+    def read_message(self):
+        """One line from a connection: "stop" from invictus-sys ai off (sent as
+        this person), or nothing from a second panel's probe."""
+        conn, _ = self.sock.accept()
+        data = b""
+        try:
+            import struct
+            cred = conn.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i"))
+            if struct.unpack("3i", cred)[1] not in (0, os.getuid()):
+                return None
+            conn.settimeout(1)
+            while b"\n" not in data and len(data) < 64:
+                chunk = conn.recv(64)
+                if not chunk:
+                    break
+                data += chunk
+        except OSError:
+            return None
+        finally:
+            conn.close()
+        return "stop" if data.split(b"\n", 1)[0] == b"stop" else None
+
     def header(self):
         print("Cicero. Super+A shows and hides this panel. What invictus-sys changed: tribune acta")
         rows = acta_lines(3)
@@ -857,8 +879,11 @@ class Panel:
                     print("Press Enter to start Cicero again, or close this window.", flush=True)
                     running = None
             r, _, _ = select.select(watch, [], [], 0.5)
-            if self.sock in r:
-                self.sock.accept()[0].close()  # a second panel's probe
+            if self.sock in r and self.read_message() == "stop":
+                if self.child:
+                    self.stop_agent()
+                print("Cicero stopped: AI was turned off on this computer.", flush=True)
+                return
             if sys.stdin in r:
                 line = sys.stdin.readline()
                 if line == "":

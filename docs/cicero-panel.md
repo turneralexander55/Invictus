@@ -65,7 +65,7 @@ First start (wizard): after `invictus-sys ai on`, Claude path: `invictus-provide
 | `stop` | the same end, says `Cicero stopped: AI was turned off on this computer.`, removes the socket and exits |
 | anything else | ignored |
 
-A second panel finds the first one's socket answering and exits 3.
+A second panel finds the first one's socket answering and exits 3. The socket (`$XDG_RUNTIME_DIR/invictus/tribune.sock`, 0600) takes one message, `stop`, from its owner or root: `invictus-sys ai off` sends it to every running panel, as that person, and the panel ends its agent and closes.
 
 ## The Claude Code side
 

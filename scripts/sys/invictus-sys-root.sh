@@ -215,6 +215,28 @@ sign_out_everyone() {
         rm -f -- "$out"
     done < <(people)
 }
+# stop_panels: N3 step 1. Every running Cicero panel gets "stop" on its
+# socket, sent as the socket's owner (never as root into their folder), so
+# the panel ends its agent and closes before the AI set goes.
+# shellcheck disable=SC2329
+stop_panels() {
+    local s dir n gid sent=0
+    local -a as
+    for s in "$R"/run/user/*/invictus/tribune.sock; do
+        [[ -S "$s" ]] || continue
+        dir="${s%/invictus/tribune.sock}"; n="${dir##*/}"
+        [[ "$n" =~ ^[0-9]+$ && "$(stat -c %u -- "$dir" 2>/dev/null)" == "$n" ]] || continue
+        if [[ "$n" == "$EUID" ]]; then as=()
+        elif [[ $EUID -eq 0 ]]; then
+            gid="$(getent passwd "$n" 2>/dev/null | cut -d: -f4)"
+            [[ "$gid" =~ ^[0-9]+$ ]] || gid="$(stat -c %g -- "$dir")"
+            as=(setpriv --reuid="$n" --regid="$gid" --clear-groups)
+        else continue; fi
+        timeout 3 "${as[@]}" python3 -I -c 'import socket,sys; c=socket.socket(socket.AF_UNIX); c.connect(sys.argv[1]); c.sendall(b"stop\n")' "$s" 2>/dev/null \
+            && sent=$((sent + 1))
+    done
+    ((sent == 0)) || say "told $sent Cicero panel(s) to stop"
+}
 # shellcheck disable=SC2329 # called through with_pair
 ai_turn_on() {  # returns 5 when the packages wait for a connection
     local rc=0
@@ -248,6 +270,7 @@ ai_turn_off() {
     # The setting first: whatever fails below, every reader sees No AI.
     write_ai off
     rm -f "$AI_PENDING"; "$SYSTEMCTL" disable --now invictus-ai-pending.service >/dev/null 2>&1 || true
+    stop_panels
     write_browser_policy
     sign_out_everyone
     # N3 step 4: the AI set, whichever of it is installed.

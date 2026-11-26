@@ -595,7 +595,19 @@ if [[ $EUID -eq 0 ]]; then
     echo "carol:65533:65533:$HC" >> "$TMP/people"
 fi
 : > "$TMP/sys.log"
+# A running Cicero panel: a socket in the caller's runtime folder that records what it gets.
+mkdir -p "$R/run/user/$me/invictus"; chmod 700 "$R/run/user/$me" "$R/run/user/$me/invictus"
+python3 -I -c 'import socket,sys
+s=socket.socket(socket.AF_UNIX); s.bind(sys.argv[1]); s.listen(1); s.settimeout(60)
+c=s.accept()[0]; open(sys.argv[2],"wb").write(c.recv(64))' "$R/run/user/$me/invictus/tribune.sock" "$TMP/panel-got" &
+panel_pid=$!
+for _ in $(seq 50); do [[ -S "$R/run/user/$me/invictus/tribune.sock" ]] && break; sleep 0.1; done
 INVICTUS_PEOPLE="$TMP/people" FAKE_INSTALLED="claude-code invictus-cicero" isys ai off
+wait "$panel_pid" 2>/dev/null || true
+[[ "$(cat "$TMP/panel-got" 2>/dev/null)" == stop ]] && grep -q "told 1 Cicero panel(s) to stop" "$TMP/sys.out" \
+    && ok "NA2: ai off tells a running Cicero panel to stop, on its socket, as its owner" \
+    || gbad "ai off did not stop the panel: got $(cat "$TMP/panel-got" 2>/dev/null) out: $(cat "$TMP/sys.out")"
+rm -rf "$R/run/user"
 if [[ $rc == 0 && "$(cat "$R/etc/invictus/ai")" == off && "$(stat -c %a "$R/etc/invictus/ai")" == 644 ]] \
    && grep -q 'pkexec action=org.invictus.sys.ai-off ' "$TMP/sys.log" \
    && [[ ! -e "$R/var/lib/invictus/ai-install-pending" ]] && logged "systemctl disable --now invictus-ai-pending.service" \

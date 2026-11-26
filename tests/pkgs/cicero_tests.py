@@ -290,6 +290,62 @@ check(second.returncode == 3 and "already open" in second.stdout and os.path.exi
       "panel: a second panel refuses (exit 3) and leaves the first one's socket alone",
       f"second panel: {second.returncode} {second.stdout!r}")
 
+
+def send(msg):
+    import socket
+    s = socket.socket(socket.AF_UNIX)
+    s.connect(SOCK)
+    try:
+        s.sendall(msg)
+    except OSError:
+        pass  # the panel hangs up after 64 bytes
+    s.close()
+
+
+def gone(pid_list, timeout):
+    end = time.time() + timeout
+    while time.time() < end:
+        if not any(alive(p) for p in pid_list):
+            return True
+        time.sleep(0.05)
+    return False
+
+
+a1 = pids("agent")
+send(b"rm -rf ~\n")
+send(b"x" * 5000)
+send(b"stopx\n")
+send(b"restart-profile\n")
+time.sleep(0.6)
+check(a1 and all(alive(p) for p in a1) and P.p.poll() is None and P.text().count("[tribune] started") == 1,
+      "panel: anything but exactly 'stop' is ignored", f"junk messages: {P.text()!r}")
+
+t0 = time.time()
+send(b"stop\n")
+try:
+    rc = P.p.wait(8)
+except subprocess.TimeoutExpired:
+    rc = None
+all_pids = pids("agent") + pids("grandchild")
+check(rc == 0 and gone(all_pids, 3) and not os.path.exists(SOCK) and time.time() - t0 < 5
+      and "AI was turned off" in P.text(),
+      f"NA2: stop (from ai off) ends the agent, its leftovers and the panel within 5 s ({time.time() - t0:.1f} s); the socket is removed",
+      f"stop: rc {rc} alive {[p for p in all_pids if alive(p)]} sock {os.path.exists(SOCK)} {P.text()!r}")
+P.finish()
+
+# An agent that ignores SIGTERM is killed after the grace time.
+reset_logs()
+P = Panel(AGENT_IGNORE_TERM="1", TRIBUNE_GRACE="1")
+P.wait_for("[tribune] started")
+time.sleep(0.3)
+a1 = pids("agent")
+send(b"stop\n")
+try:
+    rc = P.p.wait(8)
+except subprocess.TimeoutExpired:
+    rc = None
+check(rc == 0 and gone(a1, 2), "G7: an agent that ignores SIGTERM gets SIGKILL after the grace time",
+      f"TERM-ignoring agent: rc {rc} alive {[p for p in a1 if alive(p)]}")
 P.finish()
 
 # The panel refuses every provider with No AI.
