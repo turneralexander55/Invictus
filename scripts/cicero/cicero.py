@@ -14,18 +14,15 @@
 #
 # Security (design 4.1, 4.7 T7 and T11, design-simple-mode 12.3):
 #   * Whether a provider may run is decided from root-owned state only
-#     (`guardrails status`: rails, full access, AI), never from the person's
-#     own config, which an agent can edit. Unreadable state means nothing runs.
-#   * Only the shipped claude-code provider runs a command without Full
-#     access. generic-cli and every provider defined in a home directory
-#     (kind cli) are "a command-line agent": Libertas and Full access on.
+#     (/etc/invictus/ai: AI on or No AI), never from the person's own
+#     config, which an agent can edit.
 #   * A provider in a home directory never replaces a shipped one.
 #   * api providers run nothing: proposed invictus-sys calls become numbered
 #     buttons, and only the person's key press runs one (no shell).
 #   * Keys live in the keyring (secret-tool), under the namespace
 #     invictus/provider, tied to the endpoint they were typed for.
 #
-# Env (tests): INVICTUS_GUARDRAILS, INVICTUS_PROVIDERS_DIR, INVICTUS_SYS,
+# Env (tests): INVICTUS_AI_FILE, INVICTUS_PROVIDERS_DIR, INVICTUS_SYS,
 #   INVICTUS_SECRET_TOOL, INVICTUS_JOURNALCTL, TRIBUNE_GRACE. Honoured only
 #   when run from a checkout; the installed copy (/usr/...) ignores them.
 # ------------------------------------------------------------
@@ -75,7 +72,7 @@ except ImportError as e:  # not a gate: say what is missing and stop
     sys.exit(f"{e}")
 
 
-GUARDRAILS = env("INVICTUS_GUARDRAILS", "/usr/lib/invictus/guardrails")
+AI_FILE = env("INVICTUS_AI_FILE", "/etc/invictus/ai")
 SYSTEM_PROVIDERS = env("INVICTUS_PROVIDERS_DIR", "/usr/share/invictus/providers")
 INVICTUS_SYS = env("INVICTUS_SYS", "/usr/bin/invictus-sys")
 SECRET_TOOL = env("INVICTUS_SECRET_TOOL", "/usr/bin/secret-tool")
@@ -84,9 +81,7 @@ GRACE = float(env("TRIBUNE_GRACE", "5"))
 
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
 KEY_NAMESPACE = "invictus/provider"   # design-no-ai.md N4: ai off clears it
-CLI_OFF = "Cicero's command-line agent is off. Pick who answers in Settings > Cicero."
 AI_OFF = "AI is off on this computer. Settings > AI turns it on."
-NO_STATE = "Cicero cannot read the guard-rails state, so it does not start. Run invictus-doctor."
 
 EXIT_OK, EXIT_FAILED, EXIT_BAD, EXIT_REFUSED = 0, 1, 2, 3
 
@@ -139,24 +134,14 @@ BIDI = set("\u061c\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u
 # ---- root-owned state -------------------------------------------------------------
 
 def machine_state():
-    """rails, full access and AI from `guardrails status` (root-owned files).
-    Any failure returns None: callers refuse to start anything but none."""
+    """AI on or off from /etc/invictus/ai (root-owned; missing or garbled
+    reads as off, like ai_state in scripts/lib/ai-set.sh)."""
     try:
-        out = subprocess.run([GUARDRAILS, "status"], capture_output=True, text=True,
-                             timeout=10, stdin=subprocess.DEVNULL)
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    if out.returncode != 0:
-        return None
-    kv = {}
-    for line in out.stdout.splitlines():
-        if "=" in line:
-            k, v = line.split("=", 1)
-            kv[k.strip()] = v.strip()
-    rails = kv.get("effective") or kv.get("rails")
-    if rails not in ("custodia", "libertas"):
-        return None
-    return {"rails": rails, "full_access": kv.get("full-access") == "on", "ai": kv.get("ai") == "on"}
+        with open(AI_FILE, encoding="utf-8") as f:
+            first = f.readline().strip()
+    except OSError:
+        first = ""
+    return {"ai": first == "on"}
 
 
 # ---- providers -------------------------------------------------------------------
@@ -276,18 +261,14 @@ def permitted(p, state):
     """(True, "") or (False, why). Root-owned state only."""
     if p["kind"] == "none":
         return True, ""
-    if state is None:
-        return False, NO_STATE
     if not state["ai"]:
         return False, AI_OFF
-    if is_command_agent(p) and not (state["rails"] == "libertas" and state["full_access"]):
-        return False, CLI_OFF
     return True, ""
 
 
 def offered(p, state):
-    """What Settings and the wizard may list (SM10: no command-line agent
-    under Custodia; none is No AI, which Settings shows as its own card)."""
+    """What Settings and the wizard may list (none is No AI, which Settings
+    shows as its own card)."""
     return permitted(p, state)[0]
 
 
@@ -472,7 +453,7 @@ PROVIDER_HELP = """invictus-provider: who answers in the Cicero panel (docs/cice
   set NAME [--endpoint URL] [--model M] [--command -- PROGRAM ARGS...]
   key set NAME                          the API key, one line on stdin, to the keyring
   key clear [NAME]                      forget the keys (all Cicero keys without NAME)
-Exit: 0 done, 1 failed, 2 bad arguments, 3 refused (guard rails, Full access, No AI)."""
+Exit: 0 done, 1 failed, 2 bad arguments, 3 refused (a protected package, No AI)."""
 
 
 # ---- Acta --------------------------------------------------------------------------------
@@ -527,9 +508,9 @@ def acta_cli(argv):
 
 # What a model may propose. The person presses a number to run one through
 # invictus-sys and its password prompt; nothing runs on its own (MUST A13).
-# Guard rails, Full access and AI on/off are the person's choices in Settings.
+# AI on/off is the person's choice in Settings.
 PROPOSABLE = {"update", "install", "remove", "snapshot", "rollback", "service", "set-config", "report-collect"}
-SETTABLE = re.compile(r"^(nets\.[a-z-]+|flavor\.lock)$")
+SETTABLE = re.compile(r"^flavor\.lock$")
 
 SYSTEM_PROMPT = """You are Cicero, the assistant on this Invictus computer. You cannot run anything yourself.
 When a change to the system would help, propose it as invictus-sys calls in a fenced block, one per line:
@@ -537,7 +518,7 @@ When a change to the system would help, propose it as invictus-sys calls in a fe
 install firefox
 ```
 Verbs: update; install PKG...; remove PKG...; snapshot DESCRIPTION; rollback ID;
-service enable|disable|restart UNIT; set-config nets.KEY on|off; report-collect.
+service enable|disable|restart UNIT; set-config flavor.lock on|off; report-collect.
 Say in one plain sentence what each call changes and how to undo it. The person presses a button to run it,
 and the system asks for their password. Never suggest sudo, pacman, makepkg or editing files under /etc or /usr."""
 
@@ -613,7 +594,7 @@ def run_proposal(argv, thread):
         print(f"Could not run invictus-sys: {ext(e)}")
         return 127
     meaning = {0: "Done.", 1: "It did not work; the message above says why.", 2: "invictus-sys did not accept that.",
-               3: "Refused by the guard rails or because it protects the system.", 4: "Another change is running; try again shortly.",
+               3: "Refused because it protects the system, or AI is off.", 4: "Another change is running; try again shortly.",
                126: "You said no; nothing changed.", 127: "This account is not allowed to do that."}
     print(meaning.get(rc, f"Finished with code {rc}."))
     return rc
@@ -714,7 +695,8 @@ class Panel:
         self.sock_ino = None
         self.tty = sys.stdin.isatty()
 
-    # The socket invictus-sys and the guard rails talk to (docs/invictus-sys.md).
+    # One panel at a time: a second one finds this socket answering and
+    # stops. The only message read from it is "stop" (invictus-sys ai off).
     def listen(self):
         d = runtime_dir()
         os.makedirs(d, mode=0o700, exist_ok=True)
@@ -750,32 +732,6 @@ class Panel:
                     os.unlink(self.sock_path)
             except OSError:
                 pass
-
-    def read_message(self):
-        conn, _ = self.sock.accept()
-        try:
-            uid = None
-            try:
-                import struct
-                cred = conn.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i"))
-                uid = struct.unpack("3i", cred)[1]
-            except OSError:
-                pass
-            if uid not in (0, os.getuid()):
-                return None
-            conn.settimeout(1)
-            data = b""
-            while b"\n" not in data and len(data) < 64:
-                chunk = conn.recv(64)
-                if not chunk:
-                    break
-                data += chunk
-        except OSError:
-            return None
-        finally:
-            conn.close()
-        msg = data.split(b"\n", 1)[0].decode("ascii", "replace")
-        return msg if msg in ("stop", "restart-profile") else None
 
     # ---- the agent process ----
     def start(self):
@@ -884,6 +840,28 @@ class Panel:
             self.close()
         return EXIT_OK
 
+    def read_message(self):
+        """One line from a connection: "stop" from invictus-sys ai off (sent as
+        this person), or nothing from a second panel's probe."""
+        conn, _ = self.sock.accept()
+        data = b""
+        try:
+            import struct
+            cred = conn.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i"))
+            if struct.unpack("3i", cred)[1] not in (0, os.getuid()):
+                return None
+            conn.settimeout(1)
+            while b"\n" not in data and len(data) < 64:
+                chunk = conn.recv(64)
+                if not chunk:
+                    break
+                data += chunk
+        except OSError:
+            return None
+        finally:
+            conn.close()
+        return "stop" if data.split(b"\n", 1)[0] == b"stop" else None
+
     def header(self):
         print("Cicero. Super+A shows and hides this panel. What invictus-sys changed: tribune acta")
         rows = acta_lines(3)
@@ -901,19 +879,11 @@ class Panel:
                     print("Press Enter to start Cicero again, or close this window.", flush=True)
                     running = None
             r, _, _ = select.select(watch, [], [], 0.5)
-            if self.sock in r:
-                msg = self.read_message()
-                if msg == "stop":
-                    if self.child:
-                        self.stop_agent()
-                    print("Cicero stopped: AI was turned off on this computer.", flush=True)
-                    return
-                if msg == "restart-profile":
-                    if self.child:
-                        self.stop_agent()
-                    print("Cicero is starting again with the new rules.", flush=True)
-                    running = self.start()
-                    continue
+            if self.sock in r and self.read_message() == "stop":
+                if self.child:
+                    self.stop_agent()
+                print("Cicero stopped: AI was turned off on this computer.", flush=True)
+                return
             if sys.stdin in r:
                 line = sys.stdin.readline()
                 if line == "":

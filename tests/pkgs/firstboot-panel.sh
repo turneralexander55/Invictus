@@ -3,8 +3,8 @@
 # start and the Cicero panel together. The real `invictus-first-boot
 # assistant` step drives the real `invictus-provider` (scripts/cicero/cicero.py,
 # as invictus-tribune links it), with only root and the keyring faked:
-# invictus-sys (writes the AI state the way the root helper does), `guardrails
-# status` (reads that same state) and secret-tool (records argv and stdin).
+# invictus-sys (writes the AI state file the way the root helper does; the
+# provider layer reads it) and secret-tool (records argv and stdin).
 # Groups 17 and 18 each test one side against the documented contract; this
 # group checks that the two sides actually meet.
 # shellcheck disable=SC2153,SC2015,SC2016 # REPO and TMP come from run.sh; ok || bad on purpose; the fakes' bodies expand when they run
@@ -29,8 +29,6 @@ ipfake invictus-sys 'printf "%s\n" "$*" >> "$IP_DIR/sys-argv"
 if [[ "$3 $4" == "ai on" ]]; then echo on > "$IP_DIR/ai"; fi
 if [[ "$3 $4" == "ai off" ]]; then echo off > "$IP_DIR/ai"; fi
 echo "invictus-sys: ok snapshot=7"'
-ipfake guardrails '[[ "$1" == status ]] || exit 2
-printf "rails=custodia\neffective=custodia\nfull-access=off\nai=%s\n" "$(cat "$IP_DIR/ai")"'
 ipfake secret-tool 'printf "%s\n" "$*" >> "$IP_DIR/secret-argv"
 if [[ "$1" == store ]]; then cat >> "$IP_DIR/secret-stdin"; printf "\n--\n" >> "$IP_DIR/secret-stdin"; fi'
 
@@ -47,7 +45,7 @@ ip_env() {   # ip_env CMD...: the environment both programs see in a session
     HOME="$IH/home" XDG_CONFIG_HOME="$IH/home/.config" XDG_STATE_HOME="" XDG_RUNTIME_DIR="$IH/run" \
         IP_DIR="$IH" IP_BIN="$IP/bin" INVICTUS_STATE="" INVICTUS_AI_FILE="$IH/ai" \
         INVICTUS_SYS_CMD="$IP/invictus-sys" INVICTUS_PROVIDER_CMD="$IP/invictus-provider" \
-        INVICTUS_GUARDRAILS="$IP/guardrails" INVICTUS_PROVIDERS_DIR="$REPO/scripts/cicero/providers" \
+        INVICTUS_PROVIDERS_DIR="$REPO/scripts/cicero/providers" \
         INVICTUS_SYS="$IP/invictus-sys" INVICTUS_SECRET_TOOL="$IP/secret-tool" \
         "$@"
 }

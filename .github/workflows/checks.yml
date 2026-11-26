@@ -1,5 +1,5 @@
 # Checks on every push and pull request: shell and Lua lint, the config and
-# package tests, invictus-sys and the guard rails under a real polkitd, the
+# package tests, invictus-sys under a real polkitd, the
 # package sets checked against Arch and the AUR,
 # end-to-end signed-repo tests in Arch (including no-ai-in-base on the
 # built repo, and the one-command container build), the first-start
@@ -66,9 +66,9 @@ jobs:
       - name: Hyprland Lua config tests
         run: LUA=lua5.4 tests/hyprland-lua/run.sh
       - name: Package tests
-        # Groups 14-17 (invictus-sys, polkit rules, guard rails, the Cicero
-        # panel) need node, python3 (3.11+ for tomllib) and visudo; the
-        # runner image has all three.
+        # Groups 14-17 (invictus-sys, polkit rules, the Cicero panel) need
+        # node, python3 (3.11+ for tomllib) and visudo; the runner image has
+        # all three.
         run: |
           node --version && python3 --version && command -v visudo
           tests/pkgs/run.sh
@@ -96,7 +96,7 @@ jobs:
     container: archlinux:base-devel
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: invictus-sys, the guard rails and the Cicero panel with real polkitd, pkexec, pacman and visudo
+      - name: invictus-sys and the Cicero panel with real polkitd, pkexec, pacman and visudo
         run: bash tests/pkgs/e2e-sys.sh "$GITHUB_WORKSPACE"
 
   firstboot-qml:

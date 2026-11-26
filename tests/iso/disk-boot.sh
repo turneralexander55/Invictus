@@ -5,8 +5,7 @@
 # through limine, and fail when the boot is not what an install promises
 # (tests/iso/disk-boot.py has the rules: the CachyOS kernel from limine's
 # entry, no failed or timed-out unit, the default target and the login
-# screen, the Fresh install snapshot and its boot entry, no ssh, Custodia
-# applied; then one boot of the snapshot entry to multi-user).
+# screen, the Fresh install snapshot and its boot entry, no ssh; then one boot of the snapshot entry to multi-user).
 #
 #   tests/iso/disk-boot.sh DIR RUNDIR [--timeout SECONDS] [--mem MB] [--no-snapshot-boot]
 #

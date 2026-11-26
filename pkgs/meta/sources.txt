@@ -71,7 +71,6 @@ invictus-branding invictus
 invictus-desktop invictus
 invictus-dev invictus
 invictus-gaming invictus
-invictus-guardrails invictus
 invictus-keyring invictus
 invictus-office invictus
 invictus-sys invictus

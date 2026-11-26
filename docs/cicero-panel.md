@@ -8,15 +8,14 @@ Package: `invictus-tribune` (in the AI set; `invictus-cicero` pulls it, `invictu
 
 | Name | Kind | What it runs | Offered when |
 |---|---|---|---|
-| `claude-code` | cli | `/usr/bin/claude --plugin-dir /usr/share/invictus/claude-plugin`, with the managed settings in `/etc/claude-code` | AI is on |
-| `generic-cli` | cli | the command the person sets | AI is on, guard rails **Libertas** and **Full access on** |
+| `claude-code` | cli | `/usr/bin/claude --plugin-dir /usr/share/invictus/claude-plugin` | AI is on |
+| `generic-cli` | cli | the command the person sets | AI is on |
 | `openai-compatible` | api | the panel's chat client, against the endpoint the person sets | AI is on |
 | `none` | none | nothing ("No assistant is set up") | always |
 
 A provider is `/usr/share/invictus/providers/<name>/provider.toml` (shipped, root-owned) or `~/.config/invictus/providers/<name>/provider.toml` (the person's own). Fields: `name`, `kind` (`cli`, `api`, `none`), `label`, `chat` (argv, cli only), `endpoint` and `model` (api only), `harness`, `capabilities`; `run`, `resume` and `login` are kept for the Desk and the wizard. Rules:
 - A home provider never replaces a shipped one of the same name.
-- Every cli provider whose command is not fixed by a shipped file (`generic-cli`, and every cli provider in a home) is "a command-line agent": offered and started only under Libertas with Full access on.
-- Whether anything may run is read from root-owned state only (`/usr/lib/invictus/guardrails status`: rails, Full access, AI). If that cannot be read, only `none` is offered.
+- Whether anything may run is read from root-owned state only (`/etc/invictus/ai`, first line `on` or `off`). If it is missing or not `on`, only `none` is offered.
 
 The person's choice is `~/.config/invictus/cicero.toml` (0600), written only by `invictus-provider set`:
 
@@ -43,7 +42,7 @@ Runs as the person. No password, nothing root.
 | `invictus-provider key set NAME` | the API key, one line on **stdin**, into the keyring | never on a command line |
 | `invictus-provider key clear [NAME]` | forget the keys (every Cicero key without NAME) | |
 
-Exit codes: 0 done, 1 failed (the keyring refused), 2 bad arguments, 3 refused (guard rails, Full access, No AI).
+Exit codes: 0 done, 1 failed (the keyring refused), 2 bad arguments, 3 refused (No AI).
 
 Keys are stored by `secret-tool` with the attributes `invictus-namespace invictus/provider`, `provider NAME`, `endpoint URL`. The endpoint is part of the lookup, so a key typed for one endpoint is never sent to another (an edited `cicero.toml` finds no key). `ai off` clears the namespace (design-no-ai.md N4: `invictus-provider key clear` in the caller's session; `invictus-session` for the others, not built yet).
 
@@ -66,12 +65,9 @@ First start (wizard): after `invictus-sys ai on`, Claude path: `invictus-provide
 | `stop` | the same end, says `Cicero stopped: AI was turned off on this computer.`, removes the socket and exits |
 | anything else | ignored |
 
-A second panel finds the first one's socket answering and exits 3.
+A second panel finds the first one's socket answering and exits 3. The socket (`$XDG_RUNTIME_DIR/invictus/tribune.sock`, 0600) takes one message, `stop`, from its owner or root: `invictus-sys ai off` sends it to every running panel, as that person, and the panel ends its agent and closes.
 
 ## The Claude Code side
 
-- Managed settings: `/etc/claude-code/managed-settings.json`, a link `guardrails apply` points at `/usr/share/invictus/guardrails/claude/fixed.json` or `full.json` (invictus-guardrails, on every machine). Both carry A7's deny rules, bypass and auto mode off, `DISABLE_UPDATES`, and the A6 guard as managed hooks; the fixed one also denies Bash and NotebookEdit and allows only managed hooks.
-- The A6 guard: `/usr/lib/invictus/claude-config-guard pre fixed|full` (PreToolUse on Edit, Write, NotebookEdit, 10 s timeout) and `post` (PostToolUse, 60 s). See `TOOLS.md` for the allowlist. Under the fixed profile it is data only (Minerva, 2026-10-01): `~/.config/invictus/themes/*.toml`, `~/.config/invictus/motion`, `~/.config/waybar/*.css`; files a program executes (`user.lua`, `monitors.lua`, waybar config) are the person's or a tool's, because any of them can start a program, and any other file under `~/.config/invictus` is refused until the guard lists it with its validating reader. The fixed profile also denies `Edit` on `~/.config/hypr/**`, `~/.config/waybar/config*` and `theme-hooks.d/`, and (Janus I-1, 2026-10-08) on the shell startup files (`~/.bashrc`, `~/.bash_profile`, `~/.profile`, `~/.zshrc`, `~/.zprofile`), `~/.config/systemd/user/**`, `~/.config/autostart/**`, `~/.config/environment.d/**`, `~/.local/bin/**`, `~/.config/kitty/**` and `~/.config/quickshell/**`, which holds if the hook times out. Under the fixed profile an existing file must be a plain file with one link (Janus J-L3): the deny rules and the guard's path checks see a symlink's target but not a hard link's, so a hard link or a FIFO is refused. Under the full profile the full list applies and the guard backs up and restores; `~/.config/invictus/theme-hooks.d/` is excluded from it (programs `invictus-theme apply` runs). It fails closed on its own errors (exit 2); if a hook times out, Claude Code lets the edit go ahead, and what still holds is the managed deny rules.
-- **What A6 guarantees, by profile (Janus, 2026-10-01).** Under the fixed profile the allowlist binds: Cicero has no shell, so the guard is the only way to write a file. Under the full profile it does not: Bash can write any file the person can (a script that opens files itself is outside Edit rules), including a home `provider.toml` and `cicero.toml` through `invictus-provider set`, so Cicero can pick its own provider; the guarantee there is the deny rules plus the OS boundary (no sudo, root only through invictus-sys and its password prompt, api providers only propose). That is what Full access means: Cicero can do what the person can at the keyboard.
-- The plugin: `/usr/share/invictus/claude-plugin/` with the `invictus-tools` skill (`collegium/template/TOOLS.md`) and the MCP server `invictus` (`/usr/lib/invictus/cicero/mcp.py`): `doctor`, `acta`, `update_now`, `snapshot`, `package_install`, `package_remove`, `service_set`, `rollback`, `report_collect`. No tool for the guard rails, Full access or AI on/off.
-- Updates: the package's `/usr/bin/claude` wrapper and the managed `env` both set `DISABLE_UPDATES=1`; Claude Code updates come with `invictus-sys update` like everything else.
+- The plugin: `/usr/share/invictus/claude-plugin/` with the `invictus-tools` skill (`collegium/template/TOOLS.md`) and the MCP server `invictus` (`/usr/lib/invictus/cicero/mcp.py`): `doctor`, `acta`, `update_now`, `snapshot`, `package_install`, `package_remove`, `service_set`, `rollback`, `report_collect`. No tool for AI on/off.
+- Updates: the package's `/usr/bin/claude` wrapper sets `DISABLE_UPDATES=1`; Claude Code updates come with `invictus-sys update` like everything else.

@@ -1,5 +1,7 @@
 # Invictus: No AI
 
+> **Removed 2026-11-26 (Alex):** the guard rails (Custodia, Libertas, Full access, the `invictus-guardrails` package, the managed Claude Code settings and the A6 edit guard) are gone. Text here about them is history, not the build. `invictus-sys` replaces the package.
+
 Status: design, not yet built. Owner: Venus (designer). Date: 2026-09-30.
 Asked for by Alex (2026-09-30): "there should be a 3rd option... No harness. Not everyone is thrilled with AI."
 

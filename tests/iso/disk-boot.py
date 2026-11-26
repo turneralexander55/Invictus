@@ -8,8 +8,7 @@ The disk image tests/iso/e2e-jobs.sh --keep leaves behind boots through its
 own ESP: OVMF, limine (EFI/BOOT/BOOTX64.EFI), limine.conf's default entry.
 The image's debug-shell.service gives a root shell on the guest's second
 serial port (RUNDIR/shell.sock). DISK.ENV (key=value, written by e2e-jobs)
-says what the boot must show: kernel (uname -r), kernel_pkgbase, root_uuid,
-rails.
+says what the boot must show: kernel (uname -r), kernel_pkgbase, root_uuid.
 
 Fails when, on the first boot:
   - no root shell, or the boot does not finish, before the deadline;
@@ -25,8 +24,6 @@ Fails when, on the first boot:
   - snapper's root config has no "Fresh install" snapshot, or limine.conf
     has no limine-snapper-sync entry booting it (within --sync-wait s);
   - sshd runs or a socket of sshd's own units is listening;
-  - `invictus-sys guardrails status` does not show the image's rails, or
-    `invictus-sys guardrails check` says the derived files are wrong;
   - pacman's download sandbox is off (no DownloadUser = alpm, a
     DisableSandbox* option, or no Landlock/seccomp line in `pacman -Sy
     --debug`), or `pacman -Sy` with it cannot resolve the mirrors' names
@@ -199,7 +196,7 @@ def main():
     ap.add_argument("--no-snapshot-boot", action="store_true")
     a = ap.parse_args()
     env = read_env(a.env)
-    for k in ("kernel", "kernel_pkgbase", "root_uuid", "rails"):
+    for k in ("kernel", "kernel_pkgbase", "root_uuid"):
         if not env.get(k):
             sys.exit(f"disk-boot: {a.env} has no {k}=")
     t0 = time.monotonic()
@@ -371,20 +368,6 @@ def main():
         listen = out("ss -Hlp") or ""
         if any('"sshd' in ln for ln in listen.splitlines()):
             problems.append("sshd is listening:\n" + "\n".join(ln for ln in listen.splitlines() if '"sshd' in ln))
-
-        # Custodia: the guard-rails file and the files derived from it.
-        st = out("invictus-sys guardrails status") or ""
-        kv = dict(ln.split("=", 1) for ln in st.splitlines() if "=" in ln)
-        if kv.get("rails") != env["rails"] or kv.get("effective") != env["rails"]:
-            problems.append(f"guard rails are not {env['rails']}: invictus-sys guardrails status says\n{st.rstrip()}")
-        elif env["rails"] == "custodia" and kv.get("full-access") != "off":
-            problems.append(f"Custodia with the assistant's full access {kv.get('full-access', '?')}")
-        else:
-            say(f"guard rails: {kv.get('rails')}, full-access {kv.get('full-access', '?')}")
-        r = sh.run("invictus-sys guardrails check", 60)
-        if r is None or r[0] != 0:
-            problems.append("invictus-sys guardrails check: the derived files do not match the rails:\n"
-                            + (r[1].rstrip() if r else "(no answer)"))
 
         # pacman-sandbox-dns (build note 63): updates work with pacman's
         # download sandbox on, against the image's own mirrors.

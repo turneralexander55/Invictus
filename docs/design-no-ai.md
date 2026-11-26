@@ -1,5 +1,7 @@
 # Invictus: No AI, the security side
 
+> **Removed 2026-11-26 (Alex):** the guard rails (Custodia, Libertas, Full access, the `invictus-guardrails` package, the managed Claude Code settings and the A6 edit guard) are gone. Text here about them is history, not the build. `invictus-sys` replaces the package.
+
 Author: Minerva (consultant). Date: 2026-09-30. Status: design, answers to Venus's `no-ai.md` section 7 (N1 to N8) and an audit of No AI against the Custodia and Libertas designs. Addendum to `design-simple-mode.md` (its section 13 points here); the experience side is `no-ai.md`, `simple-mode.md` 5.3 and `settings.md` 3.9.1.
 
 The ask (Alex, 2026-09-30): No AI as a first-class choice, then "is a No AI person badly off under Custodia?" Cicero's answer, checked in section 1: no, the protections are OS-level; they lose the chat helper, and more lands on Alex.

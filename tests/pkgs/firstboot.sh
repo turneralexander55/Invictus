@@ -452,22 +452,9 @@ EOF
 n_bad="$(python3 "$HERE/lib/env-ast.py" "$TMP/envast-bad.py" | wc -l)"
 [[ "$n_bad" == 4 ]] && ok "N3: the check catches a split call, a computed name, a subscript and a bare tool() default (4 of 4; the marked label passes)" \
     || bad "N3: the checker found $n_bad of 4 planted reads"
-# Minerva ruling 5: the loader raises, and a hook exits only with the literal 2.
-mkdir -p "$TMP/envast-hook/scripts/guardrails/claude" "$TMP/envast-hook/scripts/tool"
-cat > "$TMP/envast-hook/scripts/guardrails/claude/hook.py" <<'EOF'
-import os, sys
-def main(): return 2
-if main():
-    sys.exit(2)
-sys.exit(main())
-sys.exit(1)
-sys.exit()
-raise SystemExit
-raise SystemExit(0)
-os._exit(3)
-exit(1)
-EOF
-cat > "$TMP/envast-hook/scripts/tool/loader.py" <<'EOF'
+# Minerva ruling 5: the loader raises ImportError and never exits.
+mkdir -p "$TMP/envast-load/scripts/tool"
+cat > "$TMP/envast-load/scripts/tool/loader.py" <<'EOF'
 import os, sys
 def _invictus_env():
     path = None
@@ -477,130 +464,12 @@ def _invictus_env():
 env = _invictus_env()
 sys.exit(1)
 EOF
-python3 "$HERE/lib/env-ast.py" "$TMP/envast-hook/scripts/guardrails/claude/hook.py" "$TMP/envast-hook/scripts/tool/loader.py" > "$TMP/envast-hook.out"
-n_hook="$(grep -c 'hook.py:.*without the literal 2' "$TMP/envast-hook.out")"
-n_exit="$(grep -c 'hook.py:.*exit (forbidden in a hook' "$TMP/envast-hook.out")"
-n_eh="$(grep -c 'hook.py: a hook must set an exit-2 sys.excepthook' "$TMP/envast-hook.out")"
-n_load="$(grep -c 'loader.py:.*_invictus_env exits' "$TMP/envast-hook.out")"
-n_all="$(wc -l < "$TMP/envast-hook.out")"
-[[ "$n_hook" == 6 && "$n_exit" == 1 && "$n_eh" == 1 && "$n_load" == 1 && "$n_all" == 9 ]] \
-    && ok "ruling 5: the check catches a hook exit that is not the literal 2 (6 of 6: main(), 1, none, bare and 0 SystemExit, os._exit), the builtin exit, a hook with no excepthook, and a loader that exits; sys.exit(2) and a tool's own exit 1 pass" \
-    || bad "ruling 5: env-ast found $n_hook of 6 hook exits, $n_exit of 1 builtin exit, $n_eh of 1 missing excepthook, $n_load of 1 loader exits, $n_all lines: $(head -10 "$TMP/envast-hook.out")"
-# Janus J-L2: the rule is a shape, not a list of exits. Each planted hook
-# below exits non-2 (or could) and must be named by the lint; the good one
-# must pass. The first eight carry a correct excepthook, so only the shape
-# itself can be what the lint catches.
-JL2="$TMP/envast-jl2/scripts/guardrails/claude"
-rm -rf "$TMP/envast-jl2"; mkdir -p "$JL2"
-hdr='import os
-import sys
-
-
-def _block(*_):
-    try:
-        sys.stderr.write("blocked\n")
-    finally:
-        os._exit(2)
-
-
-sys.excepthook = _block
-'
-plant_hook() {  # plant_hook NAME HEADER(yes|no) BODY
-    { [[ "$2" == yes ]] && printf '%s' "$hdr"; printf '%s\n' "$3"; } >"$JL2/$1.py"
-}
-plant_hook alias-sys yes 'import sys as s
-s.exit(1)'
-plant_hook from-exit yes 'from sys import exit as bye
-bye(1)'
-plant_hook abort yes 'os.abort()'
-plant_hook kill yes 'os.kill(os.getpid(), 9)'
-plant_hook getattr yes 'getattr(sys, "exit")(1)'
-plant_hook alias-systemexit yes 'E = SystemExit
-raise E(1)'
-plant_hook subclass yes 'class Out(SystemExit):
-    pass
-
-
-raise Out(1)'
-plant_hook builtins-exit yes 'import builtins
-builtins.exit(1)'
-plant_hook loader-no-try no 'import os, sys
-def _invictus_env():
-    raise ImportError("helper missing")
-env = _invictus_env()'
-plant_hook module-raise no 'import os
-import pwd
-HOME = pwd.getpwuid(os.getuid()).pw_dir'
-plant_hook hook-late no 'import os, sys
-import json
-sys.excepthook = lambda *a: os._exit(2)'
-plant_hook hook-exits-1 no 'import os, sys
-sys.excepthook = lambda *a: os._exit(1)'
-plant_hook hook-undone yes 'sys.excepthook = sys.__excepthook__'
-plant_hook good yes 'def main():
-    return 2
-
-
-if main() != 0:
-    sys.exit(2)
-raise SystemExit(2) from None'
-printf '#!/bin/sh\nexit 1\n' >"$JL2/shell-hook.sh"
-ln -s good.py "$JL2/link.py"
-python3 "$HERE/lib/env-ast.py" --hook-dir "$JL2" >"$TMP/envast-jl2.out"; jl2_rc=$?
-jl2_missed=()
-for f in alias-sys from-exit abort kill getattr alias-systemexit subclass builtins-exit \
-         loader-no-try module-raise hook-late hook-exits-1 hook-undone; do
-    grep -q "^$JL2/$f.py" "$TMP/envast-jl2.out" || jl2_missed+=("$f")
-done
-grep -q "^$JL2/shell-hook.sh: not a .py or .json file" "$TMP/envast-jl2.out" || jl2_missed+=(shell-hook.sh)
-grep -q "^$JL2/link.py: not a .py or .json file" "$TMP/envast-jl2.out" || jl2_missed+=(link.py)
-grep -q "^$JL2/good.py" "$TMP/envast-jl2.out" && jl2_missed+=("good.py was flagged")
-if [[ $jl2_rc == 1 && ${#jl2_missed[@]} == 0 ]]; then
-    ok "J-L2: the hook lint catches all 15 planted shapes (sys and exit aliases, os.abort, os.kill, getattr, a SystemExit alias and subclass, builtins.exit, an unwrapped loader, a module-level raise, a late, exit-1 or undone excepthook, a shell hook, a symlink) and passes the good hook"
-else
-    bad "J-L2: env-ast rc $jl2_rc, missed: ${jl2_missed[*]}"
-fi
-# Janus N-L1: the excepthook looks up the global os when it runs, so a hook
-# that rebinds or deletes os or sys makes the hook itself raise, and Python
-# exits 1. Each plant below has the good header and must be named; the
-# first three are Janus's own shapes (rc 1, and the lint missed them on 12f17c5).
-NL1="$TMP/envast-nl1/scripts/guardrails/claude"
-rm -rf "$TMP/envast-nl1"; mkdir -p "$NL1"
-plant_nl1() { { printf '%s' "$hdr"; printf '%s\n' "$2"; } >"$NL1/$1.py"; }
-plant_nl1 rebind-os 'os = None
-raise ValueError("boom")'
-plant_nl1 del-os 'del os
-raise ValueError("boom")'
-plant_nl1 import-as-os 'import posixpath as os
-raise ValueError("boom")'
-plant_nl1 from-as-sys 'from os import path as sys'
-plant_nl1 with-as-os 'with open("/dev/null") as os:
-    pass'
-plant_nl1 global-sys 'def f():
-    global sys
-    sys = None'
-python3 "$HERE/lib/env-ast.py" --hook-dir "$NL1" >"$TMP/envast-nl1.out"; nl1_rc=$?
-nl1_missed=()
-for f in rebind-os del-os import-as-os from-as-sys with-as-os global-sys; do
-    grep -q "^$NL1/$f.py:[0-9]*: rebinds or deletes" "$TMP/envast-nl1.out" || nl1_missed+=("$f")
-done
-# the plants are real: run as they are, Janus's three exit 1, not 2
-nl1_rc1=0
-for f in rebind-os del-os import-as-os; do
-    python3 -I "$NL1/$f.py" >/dev/null 2>&1; r=$?
-    [[ $r == 1 ]] && nl1_rc1=$((nl1_rc1 + 1))
-done
-if [[ $nl1_rc == 1 && ${#nl1_missed[@]} == 0 && $nl1_rc1 == 3 ]]; then
-    ok "N-L1: the hook lint names every rebinding or deletion of os or sys (6 of 6: os = None, del os, import ... as os, from ... import ... as sys, with ... as os, global sys); Janus's three exit 1 when run"
-else
-    bad "N-L1: env-ast rc $nl1_rc, missed: ${nl1_missed[*]}; plants exiting 1: $nl1_rc1 of 3"
-fi
-# ... and the real hook folder: Python hooks and JSON profiles only, every hook in the good shape
-if python3 "$HERE/lib/env-ast.py" --hook-dir "$REPO/scripts/guardrails/claude" >"$TMP/envast-dir.out"; then
-    ok "J-L2: scripts/guardrails/claude holds only .py and .json files and every hook sets the exit-2 excepthook first"
-else
-    bad "J-L2: the hook folder: $(head -5 "$TMP/envast-dir.out")"
-fi
+python3 "$HERE/lib/env-ast.py" "$TMP/envast-load/scripts/tool/loader.py" > "$TMP/envast-load.out"
+n_load="$(grep -c 'loader.py:.*_invictus_env exits' "$TMP/envast-load.out")"
+n_all="$(wc -l < "$TMP/envast-load.out")"
+[[ "$n_load" == 1 && "$n_all" == 1 ]] \
+    && ok "ruling 5: the check catches a loader that exits; a tool's own exit 1 passes" \
+    || bad "ruling 5: env-ast found $n_load of 1 loader exits, $n_all lines: $(head -10 "$TMP/envast-load.out")"
 # ... and the block the helper's docstring tells every script to copy passes the same check
 if python3 - "$REPO/scripts/lib/invictus_env.py" "$TMP/envast-doc.py" <<'EOF'
 import ast, sys, textwrap

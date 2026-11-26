@@ -14,3 +14,11 @@ AI_METAS="invictus-cicero invictus-voice"
 AI_PKGS="claude-code invictus-tribune whisper-cpp ggml-vulkan invictus-collegium $AI_METAS"
 # shellcheck disable=SC2034
 AI_ON_INSTALL="invictus-cicero"
+
+# ai_state: on | off, as /etc/invictus/ai says (missing or garbled reads
+# as off). INVICTUS_SYS_ROOT (tests) is put in front of the path.
+ai_state() {
+    local w="" f="${INVICTUS_SYS_ROOT:-}/etc/invictus/ai"
+    [[ -r "$f" ]] && read -r w < "$f"
+    if [[ "$w" == on ]]; then echo on; else echo off; fi
+}

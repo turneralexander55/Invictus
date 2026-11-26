@@ -6,8 +6,7 @@
 #   invictus-doctor                 all checks
 #   invictus-doctor --post-update   all checks, plus what to do if one fails
 #   invictus-doctor --system        only the system checks (pinned, repo,
-#                                   snapshots, guardrails, kernel,
-#                                   extras)
+#                                   snapshots, kernel, extras)
 #   invictus-doctor --user          only the checks on your own files
 #                                   (hypr, defaults)
 #                                   (--post-update combines with either)
@@ -23,8 +22,6 @@
 #   pinned    installed hypr* versions match the tested set
 #   repo      [invictus-testing]/[invictus] comes before [extra]
 #   snapshots btrfs root: snapper has a root config and snap-pac is there
-#   guardrails Custodia or Libertas (since, until), nets that are off, and
-#             whether the derived files match the setting
 #   kernel    each installed kernel has its image, initramfs and a boot
 #             entry; the running kernel's modules still exist
 #   extras    extras picked at install that are still not installed
@@ -51,7 +48,6 @@ KEYSYMS="${XKB_KEYSYMS_H:-/usr/include/xkbcommon/xkbcommon-keysyms.h}"
 BOOT="${INVICTUS_BOOT:-/boot}"
 MODULES="${INVICTUS_MODULES:-/usr/lib/modules}"
 PACMAN_CONF="${INVICTUS_PACMAN_CONF:-/etc/pacman.conf}"
-GUARDRAILS="${INVICTUS_GUARDRAILS:-/usr/lib/invictus/guardrails}"
 EXTRAS_PENDING="${INVICTUS_EXTRAS_PENDING:-/var/lib/invictus/pending-extras}"
 # INVICTUS_DOCTOR_AS_ROOT (tests, from a checkout only): 1 makes a
 # person's run behave like root's; 0 lets the test suite, which also runs
@@ -252,26 +248,6 @@ check_kernel() {
     [[ -d "$MODULES/$running" ]] || warn "kernel: modules for the running kernel $running are gone (updated): reboot soon"
 }
 
-# ---- guard rails -----------------------------------------------------------------
-# design-simple-mode TS11, SM24: say which guard rails are on, since when and
-# until when, which nets are off, and whether the derived files match.
-check_guardrails() {
-    local st rails until by n
-    [[ -x "$GUARDRAILS" ]] || { note "guard rails: invictus-guardrails is not installed"; return; }
-    st="$("$GUARDRAILS" status 2>/dev/null)" || { warn "guard rails: could not read the state"; return; }
-    val() { sed -n "s/^$1=//p" <<< "$st"; }
-    rails="$(val effective)"; until="$(val until)"; by="$(val by)"
-    if [[ "$rails" == custodia ]]; then ok "guard rails: Custodia"
-    elif [[ -n "$until" ]]; then note "guard rails: Libertas until $until${by:+ (by $by)}"
-    else note "guard rails: Libertas"; fi
-    for n in pre-admin-snapshot auto-update boot-guard home-snapshots; do
-        [[ "$(val "net.$n")" == off ]] && note "guard rails: safety net $n is off"
-    done
-    [[ "$(val full-access)" == on ]] && note "guard rails: Cicero has full access (terminal and every tool)"
-    if "$GUARDRAILS" apply --check >/dev/null 2>&1; then ok "guard rails: the derived files match (sudoers and polkit rules only when run as root)"
-    else warn "guard rails: the derived files do not match (sudo invictus-sys guardrails apply)"; fi
-}
-
 # ---- extras --------------------------------------------------------------------
 # Names only (a pending file could hold anything); the count is the second
 # word of pending-extras' PENDING.tries, "boot-id count".
@@ -332,7 +308,7 @@ case "$MODE" in
     *)
         if ((AS_ROOT)); then note "per-user checks skipped as root (your Hyprland config and defaults: run invictus-doctor --user as yourself)"; fi
         [[ "$PART" == system ]] || check_hypr
-        [[ "$PART" == user ]] || { check_pinned; check_repo; check_snapshots; check_guardrails; check_kernel; check_extras; }
+        [[ "$PART" == user ]] || { check_pinned; check_repo; check_snapshots; check_kernel; check_extras; }
         [[ "$PART" == system ]] || check_defaults ;;
 esac
 

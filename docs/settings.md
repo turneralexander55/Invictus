@@ -1,5 +1,7 @@
 # Invictus: Settings
 
+> **Removed 2026-11-26 (Alex):** the guard rails (Custodia, Libertas, Full access, the `invictus-guardrails` package, the managed Claude Code settings and the A6 edit guard) are gone. Text here about them is history, not the build. `invictus-sys` replaces the package.
+
 Status: design, not yet built. Owner: Venus (designer). Date: 2026-09-30.
 Replaces the sketch in `simple-mode.md` 8.5. Works in both flavors (Atrium and Tessera) and under both guard rails (Custodia and Libertas). The admin model behind every switch is Minerva's (`design-simple-mode.md`, sections 1.3 to 1.6, 2, 4, and Alex's answers in 11); this document is what people see and touch.
 

@@ -1,10 +1,8 @@
 # shellcheck shell=bash
 # Group 17 of tests/pkgs/run.sh (sourced; uses REPO, TMP, TREES, ok, bad):
-# the Cicero panel and the provider layer (design 4.2; MUSTs A6 to A9, A12,
-# A13; design-simple-mode SM10, SM26). The behaviour checks are in
-# cicero_tests.py; this file adds the package layout, the managed profiles'
-# keys (each checked against the Claude Code docs, design.md 11 "Cicero
-# panel") and the static checks for A9 and A12.
+# the Cicero panel and the provider layer (design 4.2; MUSTs A9, A12, A13).
+# The behaviour checks are in cicero_tests.py; this file adds the package
+# layout and the static checks for A9 and A12.
 # shellcheck disable=SC2153,SC2015 # REPO, TMP and TREES come from run.sh; ok || bad on purpose
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]] || ! declare -F ok bad >/dev/null || [[ -z "${REPO:-}" || -z "${TMP:-}" || -z "${TREES:-}" ]]; then
@@ -14,9 +12,8 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]] || ! declare -F ok bad >/dev/null || [[ -z 
 fi
 
 set +e
-echo "== Cicero panel: packages and profiles"
+echo "== Cicero panel: packages"
 MT="$TREES/invictus-tribune"
-GT="$TREES/invictus-guardrails"
 m_fail=0
 mbad() { bad "$1"; m_fail=1; }
 
@@ -44,100 +41,13 @@ if [[ "$(sed -n '1p;4p' "$SH" | paste -sd' ')" != "--- ---" ]] || ! grep -qx 'na
 fi
 [[ -f "$MT/usr/share/invictus/hypr/invictus/cicero.lua" ]] || mbad "invictus-tribune must ship cicero.lua (Super+A)"
 [[ ! -e "$TREES/invictus-desktop/usr/share/invictus/hypr/invictus/cicero.lua" ]] || mbad "invictus-desktop ships cicero.lua: a No AI desktop would have Super+A"
-[[ "$(stat -c %a "$GT/usr/lib/invictus/claude-config-guard" 2>/dev/null)" == 755 ]] || mbad "invictus-guardrails must ship /usr/lib/invictus/claude-config-guard 0755 beside the profiles"
-# Janus N-L1: the hook is the /bin/sh wrapper (any exit but 0 becomes 2), the
-# Python guard beside it is 0644, and the wrapper finds that file.
-if [[ "$(head -1 "$GT/usr/lib/invictus/claude-config-guard" 2>/dev/null)" != "#!/bin/sh" ]] \
-   || ! cmp -s "$GT/usr/lib/invictus/claude-config-guard" "$REPO/scripts/guardrails/claude-config-guard.sh" \
-   || [[ "$(stat -c %a "$GT/usr/lib/invictus/claude-config-guard.py" 2>/dev/null)" != 644 ]] \
-   || ! cmp -s "$GT/usr/lib/invictus/claude-config-guard.py" "$REPO/scripts/guardrails/claude/config-guard.py" \
-   || ! grep -qx 'py=/usr/lib/invictus/claude-config-guard.py' "$REPO/scripts/guardrails/claude-config-guard.sh"; then
-    mbad "N-L1: /usr/lib/invictus/claude-config-guard must be the /bin/sh wrapper (scripts/guardrails/claude-config-guard.sh) and claude-config-guard.py the guard, 0644"
-fi
-for p in fixed full; do
-    [[ "$(stat -c %a "$GT/usr/share/invictus/guardrails/claude/$p.json" 2>/dev/null)" == 644 ]] || mbad "profile $p.json missing or not 0644"
-done
 # shellcheck source=scripts/lib/ai-set.sh
 ( . "$REPO/scripts/lib/ai-set.sh"; [[ " $AI_PKGS " == *" invictus-tribune "* ]] ) || mbad "invictus-tribune must be in the AI set (ai off removes it)"
-for f in scripts/cicero/cicero.py scripts/cicero/mcp.py scripts/guardrails/claude/config-guard.py; do
+for f in scripts/cicero/cicero.py scripts/cicero/mcp.py; do
     head -1 "$REPO/$f" | grep -qx '#!/usr/bin/python3 -I' || mbad "$f must run with python3 -I (no cwd or user site on sys.path)"
     python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' "$REPO/$f" || mbad "$f does not parse"
 done
-[[ $m_fail == 0 ]] && ok "invictus-tribune: panel, providers (0644), plugin with TOOLS.md as its skill, MCP server, Super+A; the guard ships with the profiles; tribune is in the AI set"
-
-# A7, A8: the managed profiles. Only keys checked against the docs.
-if python3 - "$REPO/scripts/guardrails/claude/fixed.json" "$REPO/scripts/guardrails/claude/full.json" "$REPO/scripts/cicero/claude-plugin/.mcp.json" <<'PY'
-import json, sys
-MCP = json.load(open(sys.argv.pop()))["mcpServers"]["invictus"]
-A7 = ["Bash(sudo *)", "Bash(rm -rf *)", "Bash(dd *)", "Bash(mkfs*)", "Bash(btrfs subvolume delete *)",
-      "Bash(makepkg *)", "Bash(pacman *)", "Read(~/.claude/.credentials.json)", "Read(~/.ssh/**)",
-      "Read(~/.local/share/keyrings/**)", "Read(~/.config/invictus/windows/**)", "Read(~/.config/winapps/**)",
-      "Edit(//etc/**)", "Edit(//boot/**)", "Edit(//usr/**)"]
-# allowManagedMcpServersOnly, allowedMcpServers: https://code.claude.com/docs/en/managed-mcp
-# ("Restrict the allowlist to managed settings only", "How serverCommand entries match"), read 2026-10-08
-# strictPluginOnlyCustomization: https://code.claude.com/docs/en/settings-reference
-# ("strictPluginOnlyCustomization", ".agents", ".mcp"), read 2026-10-08: managed only; "agents"
-# stops ~/.claude/agents, "mcp" stops ~/.claude.json and .mcp.json servers; plugin agents and
-# plugin MCP servers keep loading
-VERIFIED_TOP = {"permissions", "disableAutoMode", "env", "hooks", "allowManagedHooksOnly",
-                "allowManagedMcpServersOnly", "allowedMcpServers", "strictPluginOnlyCustomization"}
-VERIFIED_PERM = {"defaultMode", "disableBypassPermissionsMode", "deny"}
-for path in sys.argv[1:]:
-    kind = "fixed" if path.endswith("fixed.json") else "full"
-    d = json.load(open(path))
-    assert set(d) <= VERIFIED_TOP, (path, set(d) - VERIFIED_TOP)
-    p = d["permissions"]
-    assert set(p) <= VERIFIED_PERM, (path, set(p) - VERIFIED_PERM)
-    assert p["defaultMode"] == "default" and p["disableBypassPermissionsMode"] == "disable", path
-    assert d["disableAutoMode"] == "disable", path
-    missing = [r for r in A7 if r not in p["deny"]]
-    assert not missing, (path, missing)
-    for r in p["deny"]:
-        assert "(" not in r or r.endswith(")"), r
-        if r.startswith(("Read(", "Edit(")):
-            assert r[5:7] in ("~/", "//"), ("absolute and home rules need // or ~/", r)
-    assert d["env"]["DISABLE_UPDATES"] == "1", path
-    pre = d["hooks"]["PreToolUse"][0]
-    assert pre["matcher"] == "Edit|Write|MultiEdit|NotebookEdit", path
-    assert pre["hooks"][0]["command"] == f"/usr/lib/invictus/claude-config-guard pre {kind}", path
-    assert d["hooks"]["PostToolUse"][0]["hooks"][0]["command"] == "/usr/lib/invictus/claude-config-guard post", path
-    if kind == "fixed":
-        assert "Bash" in p["deny"] and "NotebookEdit" in p["deny"] and d.get("allowManagedHooksOnly") is True, path
-        # Minerva's final review, ruling 1: files a program executes, denied by rule too (holds on a hook timeout)
-        for r in ("Edit(~/.config/hypr/**)", "Edit(~/.config/waybar/config*)", "Edit(~/.config/invictus/theme-hooks.d/**)"):
-            assert r in p["deny"], (path, r)
-        # Janus I-1: what else starts a program at login or on a click, denied by rule so a
-        # timed-out hook still leaves them alone (forms from the permissions docs: ~/ is the
-        # home, ** crosses folders)
-        for r in ('Edit(~/.bashrc)', 'Edit(~/.bash_profile)', 'Edit(~/.profile)', 'Edit(~/.zshrc)', 'Edit(~/.zprofile)', 'Edit(~/.config/systemd/user/**)', 'Edit(~/.config/autostart/**)', 'Edit(~/.config/environment.d/**)', 'Edit(~/.local/bin/**)', 'Edit(~/.config/kitty/**)', 'Edit(~/.config/quickshell/**)'):
-            assert r in p["deny"], ("I-1", path, r)
-        # Janus I-1b: more files that run something at login, on a click, on a git command or
-        # at Python start-up; a backstop for a timed-out hook, not a boundary (TOOLS.md, note 28)
-        for r in ('Edit(~/.zshenv)', 'Edit(~/.zlogin)', 'Edit(~/.bash_login)', 'Edit(~/.config/fish/**)',
-                  'Edit(~/.config/uwsm/**)', 'Edit(~/.local/share/applications/**)', 'Edit(~/.config/mimeapps.list)',
-                  'Edit(~/.local/share/dbus-1/**)', 'Edit(~/.gitconfig)', 'Edit(~/.config/git/**)', 'Edit(~/.ssh/**)',
-                  'Edit(~/.local/lib/**)', 'Edit(~/.claude.json)'):
-            assert r in p["deny"], ("I-1b", path, r)
-        # I-1b: ~/.claude.json's mcpServers can name a command that runs at the next start. The
-        # managed allowlist, locked to managed settings, lets only our own server's exact command
-        # run (stdio servers must match a serverCommand entry once one exists; remote ones match
-        # no serverUrl entry, so none load)
-        assert d.get("allowManagedMcpServersOnly") is True, ("I-1b", path)
-        want = [{"serverCommand": [MCP["command"]] + MCP["args"]}]
-        assert d.get("allowedMcpServers") == want, ("I-1b allowlist", d.get("allowedMcpServers"), want)
-        assert want == [{"serverCommand": ["/usr/bin/python3", "-I", "/usr/lib/invictus/cicero/mcp.py"]}], want
-        # Janus P-L1: the allowlist does not compare env, so no server or agent may come from the
-        # home at all: user agents (inline mcpServers) and user/project MCP files are not loaded,
-        # and Claude's edit tools may not write them (deny rules bind Claude's tools only, not
-        # Claude Code's own writes of its state)
-        assert d.get("strictPluginOnlyCustomization") == ["agents", "mcp"], ("P-L1", d.get("strictPluginOnlyCustomization"))
-        for r in ("Edit(~/.claude/**)", "Edit(~/.mcp.json)"):
-            assert r in p["deny"], ("P-L1", path, r)
-    else:
-        assert "Bash" not in p["deny"], path
-PY
-then ok "A7/A8: both profiles carry every A7 deny rule, bypass and auto mode off, updates off and the A6 guard; only documented keys; fixed also denies Edit on hypr, waybar's config, theme hooks, shell startup files, systemd user units, autostart, environment.d, ~/.local/bin, kitty and quickshell (I-1), and zshenv, fish, uwsm, desktop entries, D-Bus services, git config, ~/.ssh, ~/.local/lib and ~/.claude.json (I-1b); only our MCP server's exact command may run (managed allowlist, locked); no agents or MCP servers from the home, ~/.claude/** and ~/.mcp.json denied (P-L1)"
-else bad "A7/A8: the managed profiles (see the assertion above)"; fi
+[[ $m_fail == 0 ]] && ok "invictus-tribune: panel, providers (0644), plugin with TOOLS.md as its skill, MCP server, Super+A; tribune is in the AI set"
 
 # Janus L1: every print or write in the panel that interpolates a value goes
 # through ext() (one line, no control bytes, no direction overrides), except
@@ -169,45 +79,13 @@ PY
 then ok "L1: every print in the panel and provider tools that carries outside text goes through ext()"
 else bad "L1: a print bypasses ext() (see the line above)"; fi
 
-# Janus L2: Claude Code lets a tool call go ahead when a hook times out, so
-# the guard's hooks carry short timeouts, and the guard's own doctor run ends
-# before the post hook's does (a slow check still restores).
-if python3 - "$REPO/scripts/guardrails/claude/fixed.json" "$REPO/scripts/guardrails/claude/full.json" "$REPO/scripts/guardrails/claude/config-guard.py" <<'PY'
-import json, re, sys
-dt = int(re.search(r"^DOCTOR_TIMEOUT = (\d+)$", open(sys.argv[3]).read(), re.M).group(1))
-for path in sys.argv[1:3]:
-    h = json.load(open(path))["hooks"]
-    pre, post = h["PreToolUse"][0]["hooks"][0], h["PostToolUse"][0]["hooks"][0]
-    assert isinstance(pre.get("timeout"), int) and 1 <= pre["timeout"] <= 15, (path, pre)
-    assert isinstance(post.get("timeout"), int) and dt + 5 <= post["timeout"] <= 120, (path, post, dt)
-PY
-then ok "L2: the guard's hooks have short timeouts (pre <= 15 s), and its doctor run ends before the post hook's"
-else bad "L2: hook timeouts (see the assertion above)"; fi
-
-# Minerva's final review: the docs say what the guard does. Every fixed-profile
-# entry is in TOOLS.md's "Without Full access" item, cicero-panel.md and the A6
-# row, and none of those name user.lua as allowed without Full access; the S2
+# Minerva's final review: the S2
 # row carries the Wi-Fi exception and its 802.1X exclusion, note 45 and
 # first-boot.md point to it; note 37b no longer says byte-identical.
 if python3 - "$REPO" <<'PY'
 import ast, re, sys
 repo = sys.argv[1]
-src = open(f"{repo}/scripts/guardrails/claude/config-guard.py").read()
-fixed = next(n.value for n in ast.parse(src).body if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", None) == "FIXED_ALLOW")
-entries = [f"~/{e.elts[0].value}/{e.elts[1].value}" for e in fixed.elts]
-assert entries == ["~/.config/invictus/themes/*.toml", "~/.config/invictus/motion", "~/.config/waybar/*.css"], entries
-tools = open(f"{repo}/collegium/template/TOOLS.md").read()
-item = re.search(r"^- \*\*Without Full access\*\*.*$", tools, re.M).group(0)
-for e in entries:
-    folder, name = e.rsplit("/", 1)
-    assert (e in item or (folder + "/" in item and name in item)), ("TOOLS.md", e)
-assert "user.lua" not in item.split("Files a program executes")[0], "TOOLS.md lists user.lua as allowed without Full access"
-panel = open(f"{repo}/docs/cicero-panel.md").read()
 design = open(f"{repo}/docs/design.md").read()
-a6 = next(l for l in design.splitlines() if l.startswith("| A6 |"))
-for e in entries:
-    assert e in panel, ("cicero-panel.md", e)
-    assert e in a6, ("A6 row", e)
 s2 = next(l for l in design.splitlines() if l.startswith("| S2 |"))
 assert "Wi-Fi passwords of shared networks" in s2 and "802.1X" in s2 and "auth_admin_keep" in s2, "S2 row"
 n45 = next(l for l in design.splitlines() if l.startswith("45. "))
@@ -216,21 +94,12 @@ fb = " ".join(open(f"{repo}/docs/first-boot.md").read().split())
 assert "802.1X exclusion: design.md S2" in fb, "first-boot.md"
 n37b = next(l for l in design.splitlines() if l.startswith("37b. "))
 assert "byte-identical" not in n37b, "note 37b"
-sm8 = next(l for l in open(f"{repo}/docs/design-simple-mode.md").read().splitlines() if l.startswith("| SM8 |"))
-assert "no Write/Edit of any file a program executes; data files on the A6 fixed list only" in sm8, "SM8"
-# Janus I-1b: the deny list is a backstop for a hook timeout, not a boundary, said where Cicero reads it and in note 28
-assert "backstop for the rare case the guard does not answer in time, not the boundary" in " ".join(tools.split()), "TOOLS.md backstop"
-n28 = next(l for l in design.splitlines() if l.startswith("28. "))
-assert "deny list is a backstop, not a boundary" in n28, "note 28 backstop"
 # Janus I-2: SM2 holds on adopted installs too, because invictus-sys owns the generator mask
 sm2 = next(l for l in open(f"{repo}/docs/design-simple-mode.md").read().splitlines() if l.startswith("| SM2 |"))
 assert "owned by `invictus-sys` (`pacman -Qo`), on ISO and adopted installs alike" in sm2, "SM2"
-# Janus I-5: the flush comment no longer claims the flush keeps the exit code right
-assert "a failed flush at exit would end in 120, which lets the call through" not in src, "I-5 comment"
-assert "It does not decide the exit code" in " ".join(l.strip("# ") for l in src.splitlines()), "I-5 comment"
 PY
-then ok "A6/S2 docs: TOOLS.md, cicero-panel.md, the A6 and SM8 rows match the guard's fixed list; S2 has the Wi-Fi exception, note 45 and first-boot.md point to it; note 37b fixed; TOOLS.md and note 28 call the deny list a backstop (I-1b); SM2 names invictus-sys as the mask's owner (I-2); the flush comment is right (I-5)"
-else bad "A6/S2 docs out of step with the guard or Minerva's text (see the assertion above)"; fi
+then ok "S2 docs: S2 has the Wi-Fi exception, note 45 and first-boot.md point to it; note 37b fixed; SM2 names invictus-sys as the mask's owner (I-2)"
+else bad "S2 docs out of step with Minerva's text (see the assertion above)"; fi
 
 # A9: no tool of ours names the Windows VM's or the work profile's files, except
 # the deny rules that keep Cicero out of them.

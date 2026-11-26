@@ -7,7 +7,7 @@
 # cleanup job removes it from the installed system.
 # Changes from the AUR copy (pkgrel 2.2):
 #   - packagechooser is built (the AUR build skips it): the Advanced install
-#     path uses it for the Atrium/Tessera and Custodia/Libertas choices;
+#     path uses it for the Atrium/Tessera choice;
 #   - python is named, so the Python job modules (unpackfs,
 #     mount, fstab, initcpiocfg, services-systemd, ...) are always built
 #     instead of depending on what the build chroot happens to have;

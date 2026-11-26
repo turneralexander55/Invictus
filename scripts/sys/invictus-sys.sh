@@ -16,26 +16,19 @@
 #   snapshot DESCRIPTION...        make a safety copy now
 #   rollback ID                    put the system back to safety copy ID
 #   service enable|disable|restart UNIT
-#   set-config KEY on|off          nets.pre-admin-snapshot, nets.auto-update,
-#                                  nets.boot-guard, nets.home-snapshots,
-#                                  flavor.lock, assistant.full-access
+#   set-config KEY on|off          flavor.lock
 #   ai on|off                      AI on this computer, or No AI (design-no-ai.md
 #                                  N1, N3): on asks for your password every time;
 #                                  off signs everyone out and removes the AI set
 #   report-collect                 collect the logs a problem report needs root for
 #   vm start|stop                  the Windows VM (runs as you; not set up yet)
-#   guardrails status              key=value lines (no password)
-#   guardrails check               would apply change anything? (exit 1 if so)
-#   guardrails set custodia        guard rails on (instant from your own desktop)
-#   guardrails set libertas [--for 1h]   guard rails off (password; --for ends it)
-#   guardrails apply | expire      root only: installer, package, boot, timer
 #   help                           this list
 #
 # --request ID labels the call in Acta (the Cicero thread that asked).
 # Exit: 0 ok; 1 the change failed; 2 bad arguments; 3 refused; 4 busy;
 # 126 the password prompt was cancelled; 127 not allowed, or pkexec failed.
 # Env (tests): INVICTUS_LIB, INVICTUS_PKEXEC, INVICTUS_SYS_HELPER,
-#   INVICTUS_GUARDRAILS, INVICTUS_SYS_ROOT, INVICTUS_DOCTOR
+#   INVICTUS_SYS_ROOT, INVICTUS_DOCTOR
 # ------------------------------------------------------------
 set -euo pipefail
 
@@ -46,10 +39,9 @@ LIB="${INVICTUS_LIB:-/usr/lib/invictus}"
 . "$LIB/lib/sys-verbs.sh"
 HELPER="${INVICTUS_SYS_HELPER:-/usr/lib/invictus/invictus-sys}"
 PKEXEC="${INVICTUS_PKEXEC:-pkexec}"
-GUARDRAILS="${INVICTUS_GUARDRAILS:-/usr/lib/invictus/guardrails}"
 DOCTOR="${INVICTUS_DOCTOR:-invictus-doctor}"
 
-usage() { sed -n '2,38p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,32p' "$0" | sed 's/^# \{0,1\}//'; }
 
 if [[ "${1:-}" == --request ]]; then
     [[ "${2:-}" =~ ^[A-Za-z0-9._:-]{1,64}$ ]] || { sys_err "--request takes an id of letters, digits and ._:-"; exit 2; }
@@ -93,11 +85,9 @@ case "$verb" in
     snapshot)
         as_root snapshot "$*" ;;
     set-config)
-        if [[ "${1:-}" == assistant.full-access ]]; then as_root assistant-full-access "${@:2}"
-        else as_root set-config "$@"; fi ;;
+        as_root set-config "$@" ;;
     ai)
-        # Two actions, two answers (N1): ai-on is a password every time,
-        # ai-off is instant from your own desktop (it only removes).
+        # Two actions (N1), each its own password prompt.
         [[ $# -eq 1 && "$1" =~ ^(on|off)$ ]] || { sys_err "ai on|off"; exit 2; }
         as_root "ai-$1" ;;
     vm)
@@ -106,23 +96,6 @@ case "$verb" in
         [[ "${1:-}" =~ ^(start|stop)$ && $# -eq 1 ]] || { sys_err "vm start|stop"; exit 2; }
         sys_err "the Windows VM is not set up on this computer yet"
         exit 3 ;;
-    guardrails)
-        sub="${1:-}"; shift || true
-        case "$sub" in
-            status) exec "$GUARDRAILS" status ;;
-            check) exec "$GUARDRAILS" apply --check ;;
-            set)
-                case "${1:-}" in
-                    custodia) (($# == 1)) || { sys_err "guardrails set custodia takes nothing else"; exit 2; }
-                              as_root guardrails-custodia ;;
-                    libertas) as_root guardrails-libertas "${@:2}" ;;
-                    *) sys_err "guardrails set custodia|libertas"; exit 2 ;;
-                esac ;;
-            apply|expire)
-                [[ $EUID -eq 0 ]] || { sys_err "guardrails $sub is run as root by the installer, the package and the boot service"; exit 2; }
-                exec "$GUARDRAILS" "$sub" "$@" ;;
-            *) sys_err "guardrails status|check|set custodia|set libertas [--for D]"; exit 2 ;;
-        esac ;;
     *)
         sys_err "unknown verb '$verb' (invictus-sys help lists them)"
         exit 2 ;;
